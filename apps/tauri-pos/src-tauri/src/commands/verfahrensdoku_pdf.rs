@@ -125,6 +125,11 @@ pub async fn generate_verfahrensdoku_pdf(daten: VerfahrensdokuDaten) -> HwResult
 
 /// Das N mit dem Faden, in der Geometrie aus `icons/generate.py`.
 ///
+/// 19.08.2026, Basels Anweisung: der Faden IST die Schräge des N. Vorher lag
+/// er QUER über einem vollen N und las sich als durchgestrichener Buchstabe.
+/// Zwei Stämme in Tinte, die Diagonale in Weinrot (0,11 der Höhe), die runden
+/// Kappen um ihren Radius eingerückt — Zahl für Zahl wie in der Quelle.
+///
 /// `kante` ist die Kantenlänge des gedachten Quadrats in Millimetern; alle
 /// Masse darin sind Verhältnisse, genau wie in der Quelle.
 pub(crate) fn zeichen(kante_mm: f64) -> String {
@@ -135,26 +140,21 @@ pub(crate) fn zeichen(kante_mm: f64) -> String {
     let (l, r) = (c / 2.0 - w / 2.0, c / 2.0 + w / 2.0);
     let (t, b) = (c / 2.0 - s / 2.0, c / 2.0 + s / 2.0);
 
-    // Der Faden, an beiden Enden um seine halbe Dicke eingerückt, damit die
-    // runde Kappe innerhalb der Balken sitzt — wie die Ellipsen in der Quelle.
-    let dicke = 0.075 * s;
+    // Der Faden läuft von der Spitze des LINKEN Stamms zum Fuss des RECHTEN,
+    // auf den Mittellinien der Stämme; die runde Kappe endet bündig auf den
+    // Kanten des N.
+    let dicke = 0.11 * s;
     let kappe = dicke / 2.0;
-    let (dx, dy) = (r - l, t - b);
-    let lang = (dx * dx + dy * dy).sqrt();
-    let (ex, ey) = (dx / lang, dy / lang);
-    let (x1, y1) = (l + ex * kappe, b + ey * kappe);
-    let (x2, y2) = (r - ex * kappe, t - ey * kappe);
+    let (x1, y1) = (l + d / 2.0, t + kappe);
+    let (x2, y2) = (r - d / 2.0, b - kappe);
 
     format!(
         "#box(width: {c:.3}mm, height: {c:.3}mm)[\n\
          #place(dx: {l:.3}mm, dy: {t:.3}mm)[#rect(width: {d:.3}mm, height: {s:.3}mm, fill: rgb(\"{TINTE}\"), stroke: none)]\n\
          #place(dx: {rd:.3}mm, dy: {t:.3}mm)[#rect(width: {d:.3}mm, height: {s:.3}mm, fill: rgb(\"{TINTE}\"), stroke: none)]\n\
-         #place(dx: 0mm, dy: 0mm)[#polygon(fill: rgb(\"{TINTE}\"), stroke: none, ({l:.3}mm, {t:.3}mm), ({ld:.3}mm, {t:.3}mm), ({r:.3}mm, {b:.3}mm), ({rr:.3}mm, {b:.3}mm))]\n\
          #place(dx: 0mm, dy: 0mm)[#line(start: ({x1:.3}mm, {y1:.3}mm), end: ({x2:.3}mm, {y2:.3}mm), stroke: (paint: rgb(\"{FADEN}\"), thickness: {dicke:.3}mm, cap: \"round\"))]\n\
          ]",
         rd = r - d,
-        ld = l + d * 1.35,
-        rr = r - d * 1.35,
     )
 }
 
@@ -593,13 +593,23 @@ mod tests {
     /// UND die Palette, direkt aus der Quelldatei.
     #[test]
     fn zeichen_stimmt_mit_der_quelle() {
+        // 19.08.2026, Basels Anweisung: der Faden IST die Schräge (0.11 der
+        // Höhe); die alte Tintenschräge (Versatz 1.35) und der alte Querfaden
+        // (0.075) sind aus der Quelle ausgezogen. Dieser Wächter hat den
+        // Umbau selbst gefangen (CI-Lauf 32310888165) — genau seine Aufgabe.
         let quelle = include_str!("../../icons/generate.py");
-        for wert in ["0.60 * c", "0.78 * s", "0.16 * s", "1.35", "0.075 * s"] {
+        for wert in ["0.60 * c", "0.78 * s", "0.16 * s", "0.11 * s"] {
             assert!(
                 quelle.contains(wert),
                 "die Geometrie in generate.py hat sich geaendert: {wert} fehlt dort"
             );
         }
+        // Kein Tintenbalken mehr unter dem Faden: sonst kreuzen sich zwei
+        // Diagonalen und das Zeichen liest sich wieder als durchgestrichen.
+        assert!(
+            !quelle.contains("z.polygon"),
+            "die Tintenschraege ist zurueck; der Faden wuerde wieder zur Streichung"
+        );
         assert!(
             quelle.contains("0x26, 0x20, 0x19"),
             "TINTE hat sich geaendert"
@@ -608,9 +618,11 @@ mod tests {
             quelle.to_lowercase().contains("9c2630"),
             "der Faden hat sich geaendert"
         );
-        // Und die Zeichnung selbst benutzt beide Farben.
+        // Und die Zeichnung selbst benutzt beide Farben und KEINE Schraege
+        // in Tinte.
         let z = zeichen(22.0);
         assert!(z.contains(TINTE) && z.contains(FADEN));
+        assert!(!z.contains("polygon"), "die Zeichnung traegt wieder eine Tintenschraege");
     }
 }
 

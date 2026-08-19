@@ -302,8 +302,18 @@ mod tests {
             q.contains(TINTE) && q.contains(FADEN),
             "die Hausfarben fehlen"
         );
-        // Das Zeichen ist die Polygon-Geometrie aus icons/generate.py.
-        assert!(q.contains("#polygon"), "das Zeichen des Hauses fehlt");
+        // 19.08.2026: das Zeichen sind zwei Tintenstämme und der weinrote
+        // Faden als Schräge (icons/generate.py). Eine Polygon-Schräge in
+        // Tinte wäre der alte, durchgestrichen wirkende Stand.
+        assert!(q.contains("#rect"), "die Stämme des Zeichens fehlen");
+        assert!(
+            q.contains("cap: \"round\""),
+            "der Faden des Zeichens fehlt"
+        );
+        assert!(
+            !q.contains("#polygon"),
+            "die Tintenschraege ist zurueck; das Zeichen wuerde wieder durchgestrichen wirken"
+        );
     }
 
     /// Die Gegenzeichnung erscheint nur, wo sie verlangt ist.
