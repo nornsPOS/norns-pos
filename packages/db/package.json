@@ -1,0 +1,59 @@
+{
+  "name": "@norns/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Drizzle ORM schema, SQL migrations, and connection clients for Warehouse14",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "default": "./dist/client.js"
+    },
+    "./schema": {
+      "types": "./dist/schema/index.d.ts",
+      "default": "./dist/schema/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "migrations"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepare": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests --exclude '**/tests/audit/**' --exclude '**/tests/inventory-lock/**' --exclude '**/tests/migrations/**'",
+    "test:integration": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "clean": "rm -rf dist .tsbuildinfo coverage",
+    "db:migrate": "drizzle-kit migrate",
+    "db:status": "drizzle-kit up",
+    "db:generate": "drizzle-kit generate",
+    "db:studio": "drizzle-kit studio",
+    "test:tief": "vitest run tests/inventory-lock tests/audit tests/migrations"
+  },
+  "dependencies": {
+    "drizzle-orm": "0.36.4",
+    "postgres": "3.4.5"
+  },
+  "devDependencies": {
+    "@testcontainers/postgresql": "10.13.2",
+    "@types/node": "20.17.10",
+    "@vitest/coverage-v8": "2.1.8",
+    "@norns/config": "workspace:*",
+    "@norns/audit": "workspace:*",
+    "@norns/inventory-lock": "workspace:*",
+    "drizzle-kit": "0.30.0",
+    "testcontainers": "10.13.2",
+    "typescript": "5.7.2",
+    "vitest": "2.1.8"
+  }
+}

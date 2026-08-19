@@ -1,0 +1,92 @@
+# ─── Dependencies ────────────────────────────────────────
+node_modules/
+.pnpm-store/
+
+# ─── Build outputs ───────────────────────────────────────
+dist/
+build/
+.next/
+
+# ─── Generated knowledge-graph output (graphify) ─────────
+graphify-out/
+out/
+*.tsbuildinfo
+
+# ─── Tauri (Rust) ────────────────────────────────────────
+src-tauri/target/
+src-tauri/gen/
+**/*.rs.bk
+
+# ─── Drizzle ─────────────────────────────────────────────
+packages/db/drizzle/meta/
+!packages/db/drizzle/meta/.gitkeep
+
+# ─── Environment ─────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# ─── Editor / OS ─────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# ─── Logs ────────────────────────────────────────────────
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+
+# ─── Test coverage ───────────────────────────────────────
+coverage/
+*.lcov
+.nyc_output/
+
+# ─── Turbo ───────────────────────────────────────────────
+.turbo/
+
+# ─── Tauri release artifacts (Day-15) ────────────────────
+# Built bundles are release-only — every commit should produce them
+# fresh in CI. Stray local copies of these in the repo balloon the
+# clone size and can leak machine-specific signatures.
+*.dmg
+*.msi
+*.exe
+*.app/
+*.AppImage
+*.deb
+*.snap
+# Tauri's intermediate iconset directory — iconutil regenerates it
+# from the source PNGs in apps/tauri-pos/src-tauri/icons/.
+*.iconset/
+
+# ─── Update-signing private key — NEVER COMMIT ───────────
+# Lives only in operator's password manager + GitHub Actions secret
+# `TAURI_SIGNING_PRIVATE_KEY`. Belt-and-braces ignore by every common
+# generated filename so a stray copy can't slip through.
+warehouse14_updater.key
+warehouse14_updater.key.bak
+*.minisign
+*.minisign.pub
+tauri-updater-key.*
+
+# mTLS dev certs — never commit (rotate any leaked key)
+apps/api-cloud/dev-certs/
+
+# Der Pooler traegt seine Anmeldedaten in userlist.txt. Die Datei gehoert auf
+# den Server (Rechte 0400, Eigentuemer postgres) und NIEMALS ins Verzeichnis.
+infrastructure/pgbouncer/userlist.txt
+
+# Der Läufer wird hergestellt, nicht aufbewahrt (werkzeug/laeufer-bereitstellen.sh).
+apps/tauri-pos/src-tauri/binaries/
+
+# Das Bündel und die Saat werden hergestellt, nicht aufbewahrt (siehe LIESMICH).
+apps/tauri-pos/src-tauri/resources/sidecar/start.mjs
+apps/tauri-pos/src-tauri/resources/sidecar/erststart/
+apps/tauri-pos/src-tauri/resources/sidecar/node_modules/
+apps/tauri-pos/public/__probe/
+fiskaly-geheimnisse/

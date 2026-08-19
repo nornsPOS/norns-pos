@@ -1,0 +1,33 @@
+{
+  "name": "@norns/auth-pin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "POS PIN authentication primitives — argon2id hashing, weak-PIN blacklist, brute-force lockout policy. ADR-0022.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist .tsbuildinfo coverage"
+  },
+  "dependencies": {
+    "@node-rs/argon2": "2.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "20.17.10",
+    "@norns/config": "workspace:*",
+    "typescript": "5.7.2",
+    "vitest": "2.1.8"
+  }
+}

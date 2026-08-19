@@ -1,0 +1,3 @@
+# Placeholder so git tracks this directory.
+# Deployable apps land here per phase:
+#   pos-desktop/ (Chunk 0.4) · api-cloud/ (Chunk 0.3) · admin-web/ (Phase 1+) · storefront/ (Phase 2+)

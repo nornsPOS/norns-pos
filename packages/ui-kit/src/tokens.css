@@ -1,0 +1,1293 @@
+/**
+ * Warehouse14 design tokens — the OFFICIAL STORE design system.
+ *
+ * The public webshop (warehouse14-onlineshop globals.css) is the single
+ * source of truth. This file mirrors it exactly so web + POS share one
+ * identity. Imported once at the top of any app's entry stylesheet:
+ *
+ *   @import "@norns/ui-kit/styles.css";
+ *
+ * PHILOSOPHY (binding — understand before any colour choice):
+ *   • One warm paper ground + one ink + hairlines. Aged paper, NEVER bright
+ *     white. Layered for depth.
+ *   • GILT (gold) = a thread, an edge, or a seal ONLY. NEVER a fill, NEVER a
+ *     background, NEVER body text. Hairlines, underline-draws, badge borders,
+ *     tiny dots. (Die Raute ist seit dem 19.08.2026 aus dem Programm verbannt.)
+ *   • Functional colours carry MEANING only: verdigris = positive/up/alive,
+ *     wax-red = error/down. Never decoration.
+ *   • LIGHT ONLY. The store has no dark mode; do not introduce one.
+ *
+ * Every colour is defined twice — a HEX var AND an RGB-triplet var (e.g.
+ * --w14-ink: #1c1c1c; --w14-ink-rgb: 28 28 28). The RGB triplet is REQUIRED
+ * so Tailwind slash-opacity utilities (bg-ink/45) compile; Tailwind cannot
+ * inject alpha into a plain var(--hex). KEEP THE PAIRS IN SYNC.
+ */
+
+:root {
+  /* ─── Flächen — Elfenbein, von norns.de INSPIRIERT ──────────────────
+     Basel, 27.07.2026: „Nimm Norns als Inspiration, nicht als Kopie. Der
+     Rotton dort ist WEINROT auf ELFENBEIN, kein Ziegelrot — und ein
+     Gold-Thema kommt in keiner Form infrage."
+
+     Die drei Papierstufen sind an norns.de angelehnt (paper #faf6ee,
+     cream #f2ece1, cream-2 #ece4d6), aber für den Tresen um eine Spur
+     ruhiger gesetzt: die Website wird aus 50 cm gelesen, die Kasse aus
+     einem Meter im Stehen unter Ladenlicht. */
+  --w14-parchment: #f2ece1;   /* Grundfläche — Elfenbein wie norns.de cream */
+  --w14-parchment-2: #faf6ee; /* Karten, Felder — das hellere Papier */
+  --w14-parchment-3: #ece4d6; /* erhaben, Schwebe — die dritte Stufe */
+  /* Compatibility aliases so every surface slot has a stable name. */
+  --w14-parchment-1: var(--w14-parchment-2);
+  --w14-card: var(--w14-parchment-2);
+  --w14-raised: var(--w14-parchment-3);
+
+  /* ─── Ink — text + strokes. Warm near-black, never pure ────────────── */
+  --w14-ink: #1c1c1c;       /* primary text + dark buttons */
+  --w14-ink-aged: #4c4a45;  /* secondary text */
+  /* TIEFER GESETZT (27.07.2026): vorher #6e6b64. Auf dem Grundpergament stand
+     das bei haarscharf 4,50:1 und fiel auf der erhabenen Fläche parchment-3
+     auf 4,10:1 — unter WCAG AA für Fliesstext, bei 603 Verwendungen. Der neue
+     Wert bleibt dieselbe warme Grau-Familie (blasser als ink-aged, damit die
+     Rangordnung ink > aged > faded lesbar bleibt) und erreicht 5,56 / 6,08 /
+     5,07 auf den drei Flächen. Der kontrast-waechter rechnet das nach. */
+  --w14-ink-faded: #605d56; /* faint / meta text */
+  /* 19.08.2026, Basels Befund „manche Ecken sind blass, ohne Leben": die
+     Zierlinie lag bei 1,05:1 und war damit nicht zart, sondern WEG — jede
+     Karte, jeder Kopf, jeder Fuss, der sie trug, endete im Nichts. Sie bleibt
+     ein Hauch (deutlich unter der Tabellenlinie, der Wächter prüft das
+     Verhältnis), aber ein Hauch, den ein Auge findet: ~1,2:1. */
+  --w14-rule: #ded7c8;      /* soft hairline — DECORATION and whisper-structure */
+  /* NEU (27.07.2026): die Zierlinie oben liegt bei 1,05:1 und trug an 272
+     Stellen die GESAMTE Struktur jeder Tabelle — aus einem Meter Abstand ist
+     eine solche Tabelle ein Brei. Für Linien, die Struktur TRAGEN (Kopfzeile
+     einer Tabelle, Zeilentrenner im Geldweg), gilt ab jetzt diese kräftigere
+     Marke: mindestens 1,5:1 auf jeder Pergamentfläche, in beiden Themen. Die
+     Zierlinie bleibt zart und bleibt erlaubt — nur nie als einzige Struktur. */
+  --w14-tabellenlinie: #b8b3a2; /* tragende Linie — 1,78 / 1,94 / 1,62 : 1 */
+  /* NEU (29.07.2026, Basels Ort-Befund): 23 Dateien zeichneten EINGABEFELDER
+     nur mit der Zierlinie oben — im Hellthema 1,05:1, das Feld verschmilzt
+     mit dem Papier und der Inhaber tippt blind („ich taste und setze"). Ein
+     Feld ist BEDIENUNG, keine Zierde: WCAG 1.4.11 verlangt für tragende
+     UI-Kennzeichen mindestens 3:1. Gemessen auf den echten Flächen:
+     3,74:1 auf der Karte (#faf6ee), 3,42:1 auf dem Grund (#f2ece1). */
+  --w14-feldlinie: #857e70; /* Unterstrich von Eingabefeldern — nie die Zierlinie */
+
+  /* ─── Accent = ink itself. The historical gold tokens now resolve to ─
+     deep neutral umber so every legacy `*-gold` utility renders as quiet
+     ink, NEVER yellow. Text-bearing emphasis uses ink; decorative gold
+     uses gilt. */
+  --w14-gold: #2e2b26;       /* primary accent — deep ink-umber (LEGACY name, quiet ink) */
+  --w14-gold-soft: #59554d;  /* hover companion of the accent */
+  --w14-gold-deep: #17150f;  /* pressed / deepest accent */
+
+  /* ─── GILT — the house gilding. THREAD / EDGE / SEAL only ────────────
+     Inspired by the gilded edges of rare stamps and antique trading cards.
+     NEVER a fill, NEVER a background, NEVER body text. */
+  --w14-gilt: #a3823b;       /* aged gilt thread on cream */
+  /* TIEFER GESETZT (27.07.2026): vorher #876a2c mit 4,31:1 auf Pergament —
+     gilt-deep steht vereinzelt als Text und muss dann 4,5:1 halten. Jetzt
+     5,03 / 5,51 / 4,59 : 1, derselbe gealterte Goldton, nur gepresster. */
+  --w14-gilt-deep: #7a6028;  /* pressed / hover gilt */
+
+  /* ─── Functional — meaning only ───────────────────────────────────── */
+  --w14-verdigris: #3f6b54;  /* patina green — positive / price-up / alive */
+  /* TIEFER GESETZT (27.07.2026): vorher #c0492f mit 4,20:1 auf Pergament —
+     als Fehlertext in kleiner Schrift fiel die wichtigste Warnfarbe des
+     Hauses durch WCAG AA. Der neue Ton bleibt warmes Siegelwachs, nur eine
+     Spur tiefer gebrannt: 5,22 / 5,71 / 4,76 : 1 auf den drei Flächen. */
+  --w14-wax-red: #ab3c25;    /* warm sealing-wax red — negative / error / price-down */
+  --w14-wax-red-soft: #d98a72;
+  --w14-forest: #46583f;     /* deep olive — nature (rare) */
+  /* TIEFER GESETZT (27.07.2026): vorher #a4633c mit 4,01:1 auf Pergament.
+     Terra steht selten, aber als Text — jetzt 5,16 / 5,64 / 4,70 : 1. */
+  --w14-terra: #8f5330;      /* terracotta — sparing warmth (rare) */
+
+  /* Semantic danger / status aliases — same warm family, never a cool
+     off-palette red. */
+  --w14-danger: var(--w14-wax-red);
+  --w14-status-alert: var(--w14-wax-red);
+  --w14-success: var(--w14-verdigris);
+  /* Accent = verdigris, aliased so the many active/selected fills across the app
+     that reach for --w14-accent actually resolve (an undefined custom property
+     collapses the fill to transparent — an invisible active state). The catalog
+     filter, settings toggles, the offline dot and picker highlights all depend
+     on this. --w14-accent-ink is the AA-safe near-white text that sits on it. */
+  /* ── DER WEINROTE AKZENT (27.07.2026) ───────────────────────────────
+     Bis heute war der Akzent Patinagrün — ein Erbe der alten
+     Warehouse14-Haut. Norns führt ein tiefes WEINROT auf Elfenbein; das
+     ist die Farbe, die diese Kasse tragen soll.
+
+     ⚠️ AUSDRÜCKLICH KEIN GOLD. Basel, 27.07.: „Es muss kein Gold sein,
+     in keiner Form." Ein Goldton auf einer Goldkasse wäre die
+     billigste denkbare Idee — ein Juwelier umgibt seine Ware nicht mit
+     ihrer eigenen Farbe, er stellt sie auf dunkles Tuch.
+
+     Gemessen gegen die drei Papierflächen: 7,13 / 7,73 / 6,60 : 1 —
+     besteht AA auch als kleiner Text. Elfenbein darauf: 7,13:1. */
+  --w14-weinrot: #9c2630;      /* der Akzent — Norns' tiefes Weinrot */
+  --w14-weinrot-tief: #74202a; /* gedrückt, aktiv, Rahmen */
+  --w14-accent: var(--w14-weinrot);
+  --w14-accent-ink: #faf6ee;
+
+  /* ─── RGB channel triplets — REQUIRED for Tailwind slash-opacity ──── */
+  /* Im Gleichschritt mit den Elfenbein-Flaechen oben (27.07.2026). */
+  --w14-parchment-rgb: 242 236 225;
+  --w14-parchment-2-rgb: 250 246 238;
+  --w14-parchment-3-rgb: 236 228 214;
+  --w14-ink-rgb: 28 28 28;
+  --w14-ink-aged-rgb: 76 74 69;
+  --w14-ink-faded-rgb: 96 93 86;
+  --w14-rule-rgb: 222 215 200;
+  --w14-tabellenlinie-rgb: 184 179 162;
+  --w14-gold-rgb: 46 43 38;
+  --w14-gold-soft-rgb: 89 85 77;
+  --w14-gold-deep-rgb: 23 21 15;
+  --w14-gilt-rgb: 163 130 59;
+  --w14-gilt-deep-rgb: 122 96 40;
+  --w14-verdigris-rgb: 63 107 84;
+  --w14-wax-red-rgb: 171 60 37;
+  --w14-forest-rgb: 70 88 63;
+  --w14-terra-rgb: 143 83 48;
+
+  /* ─── DIE STIMME: Fraunces zeigt an, Manrope spricht und rechnet ────
+     Von norns.de INSPIRIERT, nicht kopiert (27.07.2026).
+
+     Vorher stand hier Bricolage Grotesque als Anzeige — und weil für
+     Cormorant nie ein `@font-face` existierte, war die ganze Kasse in
+     einer Groteske gesetzt. Genau das las Basel als „Bedienfeld einer
+     Nähmaschine".
+
+     ⚠️ GELD GEHÖRT NIEMALS IN DIE ANZEIGE. An der Schriftdatei gemessen:
+     Fraunces führt kein `tnum` und keine gleichbreiten Ziffern (0 = 1461,
+     1 = 1024 Einheiten, 43 % Unterschied). Eine Betragsspalte würde bei
+     jeder Ziffernänderung springen, und `tabular-nums` kann das nicht
+     heilen, weil das Merkmal fehlt. Deshalb:
+       --w14-font-display  → Überschriften, Namen, Marke
+       --w14-font-body     → Text
+       --w14-font-zahl     → JEDE Zahl, jeder Betrag, jede Tabellenspalte
+     Alle drei lokal, kein CDN. Siehe typography.css. */
+  --w14-font-display: "Fraunces", "Bricolage Grotesque", Georgia, serif;
+  --w14-font-manrope: "Manrope", "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --w14-font-body: var(--w14-font-manrope);
+  /* Zahlen: dieselbe Familie wie der Text, aber IMMER mit tabular-nums
+     (siehe `.w14-tabular`). Eine eigene Marke, damit jede Geldfläche
+     sichtbar macht, dass sie eine Geldfläche ist. */
+  --w14-font-zahl: var(--w14-font-manrope);
+  --w14-font-mono: "JetBrains Mono", "Menlo", "Consolas", monospace;
+  /* Altname, damit die 66 bestehenden Verweise weiterleben. */
+  --w14-font-inter: var(--w14-font-manrope);
+
+  /* ─── DIE GRÖSSENSPREIZUNG (27.07.2026) ─────────────────────────────
+     Der zweite Grund für das Maschinen-Gefühl: fast alles war gleich
+     gross. Ein Tresenmöbel wird aus 80 bis 100 cm im STEHEN gelesen, und
+     dann darf es nur wenige, sehr klare Ränge geben.
+
+     Die Leiter ist hart — dazwischen liegt NICHTS:
+       Gesamtbetrag       48 – 64 px   (das Einzige, was aus 2 m trägt)
+       Zeilenbeträge      20 – 24 px
+       Beschriftungen     14 – 16 px
+     Alles Antippbare mindestens 48 px hoch. */
+  --w14-betrag-gross: clamp(2.75rem, 2.2rem + 1.6vw, 4rem);              /* 44 → 64 px */
+  /* Die Kartenspalte ist auf 460 Punkte gedeckelt. „12.345,67 €" bei 44 px
+     Manrope misst rund 275 Punkte und passt; die grosse Stufe (64) bräche
+     dort aus. Darum eine eigene Stufe für den Korb. */
+  --w14-betrag-spalte: clamp(2rem, 1.55rem + 1.1vw, 2.75rem);            /* 32 → 44 px */
+  --w14-betrag-zeile: clamp(1.25rem, 1.1rem + 0.4vw, 1.5rem);            /* 20 → 24 px */
+  --w14-beschriftung: clamp(0.875rem, 0.84rem + 0.14vw, 1rem);           /* 14 → 16 px */
+
+  /* ─── Fluid type scale (mobile-first clamp) ─────────────────────────
+     The EXACT steps from the store globals.css. One step per role; no
+     intermediate magic numbers. Line-heights: display 1.1, body 1.62. */
+  --w14-step--1: 0.8125rem;                                              /* eyebrow / label */
+  --w14-step-0: clamp(1rem, 0.98rem + 0.12vw, 1.0625rem);                /* body */
+  --w14-step-1: clamp(1.0625rem, 1.02rem + 0.25vw, 1.25rem);             /* lead */
+  --w14-step-2: clamp(1.3125rem, 1.18rem + 0.55vw, 1.625rem);            /* H3 */
+  --w14-step-3: clamp(1.625rem, 1.36rem + 1.1vw, 2.5rem);               /* H2 */
+  --w14-step-4: clamp(2.0625rem, 1.55rem + 2.2vw, 4rem);                /* H1 */
+  --w14-step-5: clamp(2.5rem, 1.7rem + 3.4vw, 5.5rem);                  /* hero */
+  --w14-step-6: clamp(3rem, 1.9rem + 4.6vw, 7.5rem);                    /* maximal */
+  --w14-leading-display: 1.1;
+  --w14-leading-body: 1.62;
+  --w14-tracking-eyebrow: 0.14em;
+  --w14-measure: 62ch;
+
+  /* Legacy fixed-rem aliases (kept so existing components keep compiling
+     while they migrate to the clamp ladder). Map to the nearest step. */
+  --w14-text-meta: var(--w14-step--1);
+  --w14-text-caption: var(--w14-step--1);
+  --w14-text-body: var(--w14-step-0);
+  --w14-text-sub: var(--w14-step-1);
+  --w14-text-head: var(--w14-step-3);
+  --w14-text-anchor: var(--w14-step-4);
+  --w14-leading-tight: var(--w14-leading-display);
+  --w14-leading-snug: 1.35;
+  /* FUND (26.07.2026): hier stand
+         --w14-leading-body: var(--w14-leading-body);
+     also eine Marke, die sich selbst liest. Eine solche Schleife ist nach der
+     Regel für Farb- und Massmarken „ungültig zum Rechenzeitpunkt": die Marke
+     bekommt gar keinen Wert, und JEDE Regel, die sie ohne Rückfall liest,
+     wird verworfen. Die spätere Zeile gewinnt im Kaskadenspiel gegen die
+     frühere `--w14-leading-body: 1.62`, also war 1.62 seit dem Tag tot.
+
+     Im echten Browser gemessen, nicht behauptet:
+         --w14-leading-body  ->  "" (leer)
+         html/body line-height -> "normal"   (statt 16px * 1.62 = 25,92px)
+
+     Nichts hat gewarnt. Der Typprüfer sieht eine Zeichenkette, der
+     Marken-Wächter prüft nur, OB ein Name definiert ist, und definiert war er
+     ja, zweimal sogar. Am Tresen bedeutete das: der ganze Fliesstext stand
+     ein Drittel enger, als er entworfen war. Genau das Gefühl von „zu dicht".
+
+     Die Schleife ist entfernt, die Marke lebt wieder. Was das global mit dem
+     Zeilenabstand macht, steht unten bei `html, body`, und es ist bewusst
+     NICHT mit erledigt worden. */
+
+  /* ═══ Schriftgrössen: die Leiter des TRESENS ═══════════════════════════
+
+     DIE AUSGANGSLAGE, frisch gezählt in apps/tauri-pos/src am 26.07.2026:
+     48 verschiedene handgetippte Schriftgrössen bei 1062 Verwendungen.
+     `fontSize: 'var(...)'` kommt kein einziges Mal vor. Nebeneinander auf
+     einem Bogen stehen 0,78 / 0,80 / 0,82 / 0,84 / 0,85 / 0,86 / 0,88rem.
+     Das sind Unterschiede von einem Drittel Pixel. Für das Auge ist das
+     keine Rangordnung, sondern Rauschen, und Rauschen ist genau das, was
+     Basel als „zu viele Dinge, chaotisch" beschreibt.
+
+     DIE ERSTE FRAGE WAR: reicht die vorhandene Leiter?
+     Ihre kleinste Stufe ist --w14-step--1 mit 0,8125rem (13px). Gezählt,
+     wie viele Verwendungen DARUNTER liegen:
+
+         unter 0,8125rem   441 von 1062 Verwendungen   (41,5 %)
+         allein 0,78rem    155                          (die häufigste überhaupt)
+
+     Die Antwort ist also NEIN, und zwar deutlich. Wer die Kasse auf die
+     vorhandene Leiter zwingt, macht 441 Stellen grösser, die kleinste davon
+     (0,54rem) um die Hälfte. Jede dichte Liste, jede Kachelzeile, jedes
+     Formularetikett bricht ihr Raster. Die Leiter ist nicht falsch, sie ist
+     für etwas anderes gebaut: für den Webshop, wo eine Seite eine Spalte
+     Fliesstext ist. Ein Kassenbildschirm ist ein Werkzeugbrett.
+
+     Sie wird deshalb NICHT ersetzt und NICHT angefasst. Sie bekommt eine
+     zweite, eigene Leiter daneben, die nach unten reicht, und die Kasse
+     bekommt ihre eigenen Namen.
+
+     DIE REGEL DER LEITER, damit man sie sich merken kann:
+         bis 15px   jede Stufe ist ein ganzer Pixel
+         ab 16px    jede Stufe sind zwei Pixel
+         ab 28px    die Sprünge einer Überschrift (32, 40, 48)
+     17 Stufen statt 48 Grössen. Keine Stufe ohne Verwendung.
+
+     WARUM GANZE PIXEL UND NICHT EIN SCHÖNES VERHÄLTNIS:
+     die Vorgabe war, dass sich keine Grösse um mehr als etwa 0,03rem
+     verschieben darf. 0,03rem sind bei 16px Wurzel 0,48px, also eine halbe
+     Pixelstufe. Eine Leiter, die diese Schranke im dichten Bereich hält,
+     IST damit zwangsläufig das Pixelraster. Ein Verhältnis wie 1,125 hätte
+     dort Sprünge von anderthalb Pixeln erzeugt und die Schranke gerissen.
+
+     WAS DIE ZUORDNUNG UNTEN KOSTET, ausgerechnet und nicht geschätzt:
+         1006 von 1062 Verwendungen (94,7 %) verschieben sich um <= 0,03rem
+           56 von 1062 (5,3 %) darüber, maximal 0,10rem = 1,6px
+         die grösste relative Verschiebung überhaupt: 5,3 % (1,9rem, 1 Stelle)
+
+     Und wo genau liegen diese 56? AUSSCHLIESSLICH oberhalb von 1rem. Im
+     dichten Bereich bis 0,96rem, wo 879 der 1062 Verwendungen liegen, hält
+     die Schranke ausnahmslos. Das ist die wichtige Hälfte: unten sitzt Text
+     in einer Zeile mit fester Höhe, und eine halbe Pixelstufe schiebt die
+     Nachbarspalte. Oben sitzt eine Überschrift oder eine grosse Zahl allein
+     in ihrem Kasten und hat Luft; dort kann sich nichts stauchen.
+
+     Die elf Grössen, die über 0,03rem wandern, sind unten mit ihrem Betrag
+     ausgewiesen und mit ! markiert. Der nächste Durchgang soll sie einzeln
+     ansehen, statt sie blind zu ersetzen. Die Alternative wäre gewesen, für
+     17px, 19px und 21px je eine eigene Stufe zu erfinden. Dann hätten drei
+     benachbarte Stufen „Titel", „Kopf" und „grosser Kopf" geheissen und sich
+     um einen Pixel unterschieden. Das ist wieder genau das Rauschen, das
+     diese Etappe beseitigt. 20 Stufen, die niemand auseinanderhalten kann,
+     sind schlechter als 17, die eine Rolle tragen.
+
+     DIE NAMEN sagen, WOZU die Stufe da ist, nicht wie gross sie ist. Wer
+     „--w14-schrift-zeile" liest, weiss, dass er eine Listenzeile vor sich
+     hat. Wer „0,78rem" liest, weiss gar nichts. ═══════════════════════ */
+  --w14-schrift-fussnote: 0.5625rem; /*  9px  die Fussnote in einer Vorschau */
+  --w14-schrift-marke: 0.625rem;     /* 10px  Einheit, Kürzel, Zähler neben einer Zahl */
+  --w14-schrift-kuerzel: 0.6875rem;  /* 11px  Kennzeichen und Zustandswörter in einer Zeile */
+  --w14-schrift-zeile: 0.75rem;      /* 12px  die Zeile einer dichten Liste (319 Stellen, die häufigste) */
+  --w14-schrift-feld: 0.8125rem;     /* 13px  Beschriftung und Eingabe im Formular (= --w14-step--1) */
+  --w14-schrift-text: 0.875rem;      /* 14px  der Fliesstext am Tresen */
+  --w14-schrift-betont: 0.9375rem;   /* 15px  die betonte Zeile, die Zwischensumme */
+  --w14-schrift-grund: 1rem;         /* 16px  der Grundtext einer ruhigen Fläche */
+  --w14-schrift-lead: 1.125rem;      /* 18px  der einleitende Satz über einer Gruppe */
+  --w14-schrift-titel: 1.25rem;      /* 20px  der Titel einer Karte */
+  --w14-schrift-kopf: 1.375rem;      /* 22px  die Überschrift einer Gruppe */
+  --w14-schrift-summe: 1.5rem;       /* 24px  die Summe, die im Stehen gelesen wird */
+  --w14-schrift-flaeche: 1.625rem;   /* 26px  die Überschrift einer ganzen Fläche */
+  --w14-schrift-kachel: 1.75rem;     /* 28px  die Zahl in einer Kennzahl-Kachel */
+  --w14-schrift-betrag: 2rem;        /* 32px  der Betrag im Bezahlvorgang */
+  --w14-schrift-anschlag: 2.5rem;    /* 40px  die Zahl, die den Bildschirm trägt */
+  --w14-schrift-buehne: 3rem;        /* 48px  die eine Zahl, die allein steht */
+
+  /* ─── DIE ZUORDNUNGSTABELLE ────────────────────────────────────────────
+     Das Werkzeug für den nächsten Durchgang, der die Bildschirme umstellt.
+     Jede der 48 gemessenen Grössen steht hier genau einmal, mit ihrer Zahl
+     an Fundstellen, ihrer künftigen Stufe und der Verschiebung in rem und
+     in Pixeln. Ein ! heisst: über 0,03rem, bitte hinsehen.
+
+     Sie steht als Kommentar und nicht als ausgeführte Konstante, und das ist
+     eine Entscheidung, keine Bequemlichkeit. Eine Konstante in einer .ts
+     wäre eine zweite Wahrheit: sie könnte eine Stufe nennen, die es in
+     dieser Datei gar nicht mehr gibt, und niemand würde es merken.
+     `tokens.test.ts` liest DIESEN Block aus DIESER Datei und prüft jede
+     Zeile gegen die Stufen darüber. Die Tabelle kann deshalb nicht driften.
+
+       SCHRIFT 0.54rem   x1    -> --w14-schrift-fussnote  +0.0225rem (+0.36px)
+       SCHRIFT 0.6rem    x5    -> --w14-schrift-marke     +0.0250rem (+0.40px)
+       SCHRIFT 0.62rem   x4    -> --w14-schrift-marke     +0.0050rem (+0.08px)
+       SCHRIFT 0.64rem   x4    -> --w14-schrift-marke     -0.0150rem (-0.24px)
+       SCHRIFT 0.65rem   x1    -> --w14-schrift-marke     -0.0250rem (-0.40px)
+       SCHRIFT 0.66rem   x16   -> --w14-schrift-kuerzel   +0.0275rem (+0.44px)
+       SCHRIFT 0.68rem   x22   -> --w14-schrift-kuerzel   +0.0075rem (+0.12px)
+       SCHRIFT 0.7rem    x27   -> --w14-schrift-kuerzel   -0.0125rem (-0.20px)
+       SCHRIFT 0.72rem   x88   -> --w14-schrift-zeile     +0.0300rem (+0.48px)
+       SCHRIFT 0.74rem   x53   -> --w14-schrift-zeile     +0.0100rem (+0.16px)
+       SCHRIFT 0.75rem   x4    -> --w14-schrift-zeile     +0.0000rem (+0.00px)
+       SCHRIFT 0.76rem   x19   -> --w14-schrift-zeile     -0.0100rem (-0.16px)
+       SCHRIFT 0.78rem   x155  -> --w14-schrift-zeile     -0.0300rem (-0.48px)
+       SCHRIFT 0.8rem    x44   -> --w14-schrift-feld      +0.0125rem (+0.20px)
+       SCHRIFT 0.82rem   x75   -> --w14-schrift-feld      -0.0075rem (-0.12px)
+       SCHRIFT 0.84rem   x17   -> --w14-schrift-feld      -0.0275rem (-0.44px)
+       SCHRIFT 0.85rem   x65   -> --w14-schrift-text      +0.0250rem (+0.40px)
+       SCHRIFT 0.86rem   x30   -> --w14-schrift-text      +0.0150rem (+0.24px)
+       SCHRIFT 0.88rem   x36   -> --w14-schrift-text      -0.0050rem (-0.08px)
+       SCHRIFT 0.9rem    x72   -> --w14-schrift-text      -0.0250rem (-0.40px)
+       SCHRIFT 0.92rem   x82   -> --w14-schrift-betont    +0.0175rem (+0.28px)
+       SCHRIFT 0.94rem   x3    -> --w14-schrift-betont    -0.0025rem (-0.04px)
+       SCHRIFT 0.95rem   x57   -> --w14-schrift-betont    -0.0125rem (-0.20px)
+       SCHRIFT 0.96rem   x2    -> --w14-schrift-betont    -0.0225rem (-0.36px)
+       SCHRIFT 0.98rem   x4    -> --w14-schrift-grund     +0.0200rem (+0.32px)
+       SCHRIFT 1rem      x28   -> --w14-schrift-grund     +0.0000rem (+0.00px)
+       SCHRIFT 1.05rem   x18   -> --w14-schrift-grund     -0.0500rem (-0.80px) !
+       SCHRIFT 1.08rem   x1    -> --w14-schrift-lead      +0.0450rem (+0.72px) !
+       SCHRIFT 1.1rem    x9    -> --w14-schrift-lead      +0.0250rem (+0.40px)
+       SCHRIFT 1.12rem   x1    -> --w14-schrift-lead      +0.0050rem (+0.08px)
+       SCHRIFT 1.15rem   x8    -> --w14-schrift-lead      -0.0250rem (-0.40px)
+       SCHRIFT 1.16rem   x1    -> --w14-schrift-lead      -0.0350rem (-0.56px) !
+       SCHRIFT 1.2rem    x10   -> --w14-schrift-titel     +0.0500rem (+0.80px) !
+       SCHRIFT 1.25rem   x3    -> --w14-schrift-titel     +0.0000rem (+0.00px)
+       SCHRIFT 1.3rem    x13   -> --w14-schrift-titel     -0.0500rem (-0.80px) !
+       SCHRIFT 1.35rem   x2    -> --w14-schrift-kopf      +0.0250rem (+0.40px)
+       SCHRIFT 1.4rem    x29   -> --w14-schrift-kopf      -0.0250rem (-0.40px)
+       SCHRIFT 1.5rem    x22   -> --w14-schrift-summe     +0.0000rem (+0.00px)
+       SCHRIFT 1.6rem    x11   -> --w14-schrift-flaeche   +0.0250rem (+0.40px)
+       SCHRIFT 1.65rem   x1    -> --w14-schrift-flaeche   -0.0250rem (-0.40px)
+       SCHRIFT 1.7rem    x2    -> --w14-schrift-kachel    +0.0500rem (+0.80px) !
+       SCHRIFT 1.8rem    x3    -> --w14-schrift-kachel    -0.0500rem (-0.80px) !
+       SCHRIFT 1.9rem    x1    -> --w14-schrift-betrag    +0.1000rem (+1.60px) !
+       SCHRIFT 2rem      x4    -> --w14-schrift-betrag    +0.0000rem (+0.00px)
+       SCHRIFT 2.1rem    x1    -> --w14-schrift-betrag    -0.1000rem (-1.60px) !
+       SCHRIFT 2.4rem    x4    -> --w14-schrift-anschlag  +0.1000rem (+1.60px) !
+       SCHRIFT 2.6rem    x2    -> --w14-schrift-anschlag  -0.1000rem (-1.60px) !
+       SCHRIFT 3rem      x2    -> --w14-schrift-buehne    +0.0000rem (+0.00px)
+
+     NICHT in dieser Tabelle und mit Absicht: die Grössen in `pt` im
+     Belegdesigner und im Druckaufbau (9,5pt bis 12pt). Das ist Papier, kein
+     Bildschirm, dort ist ein Punkt eine physikalische Länge auf einer
+     80mm-Rolle. Eine Bildschirmleiter hat dort nichts zu suchen. ────── */
+
+  /* ─── Abstände: EINE Leiter, das 4-Pixel-Raster ─────────────────────
+     FUND (26.07.2026, gemessen, nicht geschätzt): es gab hier ZWEI Leitern.
+     Die eine hiess offiziell (`--w14-space-1..7`, das 8-Punkt-Raster), die
+     andere galt als veraltet (`--space-1..12`, das 4-Pixel-Raster). Gezählt
+     im Quelltext der Kasse:
+
+         die veraltete Leiter    289 Verwendungen
+         die offizielle Leiter     0 Verwendungen
+
+     (Die Namen stehen absichtlich NICHT als `var(...)` in diesem Kommentar.
+     Der Marken-Wächter in apps/tauri-pos liest jede CSS-Datei Zeile für Zeile,
+     auch die Kommentare, und hätte ein hier zitiertes Muster für eine echte,
+     undefinierte Marke gehalten. Er hat es prompt getan, als es hier stand.)
+
+     Benutzt wurde also ausschliesslich die Leiter, die als veraltet markiert
+     war. Das ist kein Versehen einzelner Bildschirme, sondern der Beweis,
+     dass die offizielle Leiter für einen Kassenbildschirm nicht taugt: sie
+     wurde für den Webshop entworfen, wo Abschnitte 64 und 96 Pixel Luft
+     bekommen. Am Tresen liegen Karten, Zeilen und Marken dicht beieinander.
+
+     Und sie KANN die gelebten Abstände gar nicht darstellen. Stufe für Stufe
+     durchgerechnet, die Spalte „offiziell" nennt die Entsprechung, wenn es
+     eine gibt:
+
+         gelebt      Wert  benutzt   offizielle Entsprechung
+         --space-1     4px   31x     KEINE
+         --space-2     8px   60x     --w14-space-1
+         --space-3    12px   94x     KEINE   (und das ist die häufigste von allen)
+         --space-4    16px   59x     --w14-space-2
+         --space-5    20px   17x     KEINE
+         --space-6    24px   10x     --w14-space-3
+         --space-7    32px   14x     KEINE
+         --space-8    40px    0x     --w14-space-4
+         --space-9    48px    4x     KEINE
+         --space-10   64px    0x     --w14-space-5
+         --space-11   80px    0x     KEINE
+         --space-12   96px    0x     --w14-space-6
+         (kein Name) 128px    0x     --w14-space-7
+
+     Sechs von zwölf Stufen haben keine Entsprechung, und darunter sind die
+     zwei meistbenutzten überhaupt: 12px (94x) und 4px (31x). Wer die
+     veraltete Leiter „einfach" auf die offizielle umbiegt, verdoppelt jeden
+     4-Pixel-Abstand auf 8 und schiebt jeden 12-Pixel-Abstand auf 8 oder 16.
+     Das wären 125 Stellen, an denen sich am Tresen sichtbar etwas bewegt.
+
+     ENTSCHEIDUNG: die gelebte Leiter ist die richtige. Sie wird zur EINEN
+     Leiter erhoben und bekommt einen Namen unter der Hausmarke, damit der
+     Marken-Wächter sie überhaupt sehen kann (`--space-N` trägt kein
+     `--w14-`-Präfix und ist deshalb für ihn unsichtbar, ein `var(--space-13)`
+     wäre bis heute stumm durchgegangen). Die Stufe heisst nach ihrem Pixel-
+     wert, nicht nach einer Ordnungszahl: `--w14-abstand-12` kann niemand mit
+     „die dritte Stufe" verwechseln, und niemand rechnet zwei Stufen zusammen
+     und landet daneben.
+
+     Die Rungs sind genau die VEREINIGUNG beider alten Leitern, dreizehn
+     Stück. Keine erfundene Zwischenstufe: eine Stufe, die niemand braucht,
+     ist wieder ein Ding mehr.
+
+     Tragend sind vier davon: 4, 8, 12 und 16 Pixel decken 244 der 289
+     Verwendungen. Der Rest ist der Schwanz und darf selten bleiben.
+
+     NICHTS VERSCHIEBT SICH: beide alten Namen bleiben bestehen und zeigen auf
+     genau den Pixelwert, den sie vorher hatten. `tokens.test.ts` löst jede
+     Kette auf und vergleicht sie gegen die Werte von vorher. ───────────── */
+  /* 27.07.2026: vier Halbstufen kamen dazu — NICHT erfunden, nachgemessen.
+     Die Zählung oben (289) sah nur var()-Verwendungen. Über ALLE rohen
+     gap/padding-Bausteine der Kasse gezählt (1346 Stück) liegen 464 auf
+     genau 2, 6, 10 und 14 — die 10 allein 103-mal, öfter als fast jede
+     Vollstufe. Am dichten Ende des Tresens ist das gelebte Raster 2 Pixel;
+     eine Leiter, die das nicht darstellen kann, zwingt jede dieser Stellen
+     in eine sichtbare 2-Pixel-Verschiebung. Ab der 16 bleibt es beim
+     4er-Raster: dort lebt nichts dazwischen. */
+  --w14-abstand-2: 2px;     /* die feinste Fuge: Marke an Marke in einer Zeile */
+  --w14-abstand-4: 4px;     /* Haarspalt: zwischen einer Marke und ihrem Text */
+  --w14-abstand-6: 6px;     /* enge Chip-Innenluft, Zeile an Zeile im Kompakten */
+  --w14-abstand-8: 8px;     /* innerhalb einer Zeile: Symbol zu Wort */
+  --w14-abstand-10: 10px;   /* die gelebte Standardluft dichter Bedienleisten */
+  --w14-abstand-12: 12px;   /* zwischen zwei Zeilen einer dichten Liste */
+  --w14-abstand-14: 14px;   /* der halbe Schritt vor dem Karteninnenrand */
+  --w14-abstand-16: 16px;   /* Innenrand einer Karte, Abstand zweier Karten */
+  --w14-abstand-20: 20px;   /* der grosszügigere Karteninnenrand */
+  --w14-abstand-24: 24px;   /* zwischen zwei Gruppen auf einer Fläche */
+  --w14-abstand-32: 32px;   /* zwischen zwei Abschnitten */
+  --w14-abstand-40: 40px;   /* der Rand einer Fläche zum Fensterrand */
+  --w14-abstand-48: 48px;   /* Luft vor einem neuen Kapitel */
+  --w14-abstand-64: 64px;   /* Webshop-Abschnitt, am Tresen selten */
+  --w14-abstand-80: 80px;   /* Webshop-Abschnitt, am Tresen selten */
+  --w14-abstand-96: 96px;   /* Webshop-Abschnitt, am Tresen selten */
+  --w14-abstand-128: 128px; /* der grösste Sprung, ganze Seitenkapitel */
+
+  /* Das 8-Punkt-Raster des Webshops. Es bleibt gültig, es ist nur keine
+     zweite Wahrheit mehr: jede Stufe zeigt auf dieselbe Leiter, mit exakt dem
+     Pixelwert von vorher. */
+  --w14-space-1: var(--w14-abstand-8);
+  --w14-space-2: var(--w14-abstand-16);
+  --w14-space-3: var(--w14-abstand-24);
+  --w14-space-4: var(--w14-abstand-40);
+  --w14-space-5: var(--w14-abstand-64);
+  --w14-space-6: var(--w14-abstand-96);
+  --w14-space-7: var(--w14-abstand-128);
+
+  --w14-section-pad: clamp(56px, 4vw + 40px, 128px);
+  --w14-card-pad: clamp(20px, 1.5vw + 14px, 28px);
+  --w14-gutter: clamp(20px, 5vw, 40px);
+  --w14-gap-headline: 16px;
+  --w14-gap-group: 40px;
+
+  /* Die gelebten Namen. 289 Verwendungen hängen daran; sie bleiben, bis ein
+     eigener Durchgang sie auf `--w14-abstand-*` umschreibt. Bis dahin sind es
+     Zeiger auf dieselbe Leiter, Pixel für Pixel unverändert.
+
+     ZUORDNUNG für den nächsten Durchgang (Suchen und Ersetzen, ohne Rechnung):
+       ABSTAND var(--space-1)  ->  var(--w14-abstand-4)
+       ABSTAND var(--space-2)  ->  var(--w14-abstand-8)
+       ABSTAND var(--space-3)  ->  var(--w14-abstand-12)
+       ABSTAND var(--space-4)  ->  var(--w14-abstand-16)
+       ABSTAND var(--space-5)  ->  var(--w14-abstand-20)
+       ABSTAND var(--space-6)  ->  var(--w14-abstand-24)
+       ABSTAND var(--space-7)  ->  var(--w14-abstand-32)
+       ABSTAND var(--space-8)  ->  var(--w14-abstand-40)
+       ABSTAND var(--space-9)  ->  var(--w14-abstand-48)
+       ABSTAND var(--space-10) ->  var(--w14-abstand-64)
+       ABSTAND var(--space-11) ->  var(--w14-abstand-80)
+       ABSTAND var(--space-12) ->  var(--w14-abstand-96) */
+  --w14-unit: var(--w14-abstand-8);
+  --space-1: var(--w14-abstand-4);
+  --space-2: var(--w14-abstand-8);
+  --space-3: var(--w14-abstand-12);
+  --space-4: var(--w14-abstand-16);
+  --space-5: var(--w14-abstand-20);
+  --space-6: var(--w14-abstand-24);
+  --space-7: var(--w14-abstand-32);
+  --space-8: var(--w14-abstand-40);
+  --space-9: var(--w14-abstand-48);
+  --space-10: var(--w14-abstand-64);
+  --space-11: var(--w14-abstand-80);
+  --space-12: var(--w14-abstand-96);
+
+  /* ─── Accessibility — touch targets ────────────────────────────────── */
+  --w14-touch-min: 44px;
+  --w14-touch-comfortable: 48px;
+
+  /* ─── Radii — ONE system. button 8 / card 12 / xl2 20 ───────────────
+     The old antique kit used {0, 4, 8}; the official store uses {8, 12, 20}.
+     We adopt the store scale. */
+  /* ── DIE ECKEN (27.07.2026) ─────────────────────────────────────────
+     Der dritte Grund für das Maschinen-Gefühl, und der leiseste.
+     Maschinen haben scharfe Ecken, weil Blech gekantet wird. Wertvolle
+     Dinge haben weiche — ein Etui, ein Buchrücken, eine Schatulle.
+     Die Leiter lag bei 0 / 8 / 12; norns.de arbeitet mit 12 bis 34.
+     INSPIRIERT, nicht kopiert: die Website führt sieben Werte, von denen
+     drei unveränderte Vorgaben sind und einer (6 px) kleiner ist als die
+     Stufe darunter — eine Leiter, die nicht steigt, wird hier nicht
+     übernommen. Diese hier steigt sauber und bleibt am Tresen ruhig. */
+  --w14-radius-sharp: 0px;
+  --w14-radius-button: 12px;
+  --w14-radius-card: 18px;
+  /* Für grosse, ruhige Flächen: Geldsäule, Beleg, Kundenkarte. */
+  --w14-radius-flaeche: 26px;
+  --w14-radius-xl2: 20px;
+  /* Zwei Stufen, die der Bestand längst lebt (27.07.2026, gezählt): 37 rohe
+     Vierer auf kleinen Plaketten, Balken und Feldern, 33 rohe 999 auf Pillen.
+     Die Vierer auf die 8er-Stufe zu heben wäre ein sichtbarer Umbau kurz nach
+     0.9.0 — deshalb bekommt die gelebte Form einen Namen statt einer neuen
+     Gestalt. Die Pille ist absichtlich riesig: jeder Wert über der halben
+     Höhe ergibt die volle Rundung, 999px ist nur die übliche Schreibweise. */
+  --w14-radius-fein: 4px;
+  --w14-radius-pille: 999px;
+  /* Legacy aliases. */
+  --w14-radius: var(--w14-radius-card);
+
+  /* ─── Shadows — only these three ────────────────────────────────────
+     Warm ink tint (not cold grey) so a card rests on aged paper.
+     19.08.2026 (Basels Befund „blass, ohne Leben"): die Kartenschatten lagen
+     bei 0,06/0,08 und waren auf Elfenbein praktisch unsichtbar — Karten
+     SCHWAMMEN im Papier statt darauf zu liegen. Eine Spur tiefer und breiter
+     gesetzt; immer noch Papier auf Papier, kein Grau. */
+  --w14-shadow-card: 0 1px 2px rgba(28, 28, 28, 0.07), 0 2px 6px rgba(28, 28, 28, 0.09);
+  --w14-shadow-lift: 0 8px 20px rgba(28, 28, 28, 0.14);
+  --w14-shadow-modal: 0 18px 44px rgba(28, 28, 28, 0.22);
+
+  /* ─── Motion — one language ─────────────────────────────────────────
+     Die Bewegung der Kasse ist ein feines Instrument, kein Spielzeug:
+     exponentieller Ausklang, kein Bounce, kein Elastic. Die Familie ist
+     bewusst VOLLSTÄNDIG — wer eine rohe Zahl in eine Bewegungszeichenkette
+     schreibt, erfindet eine Marke daneben und bricht die eine Sprache.
+
+     Eintritt:  --w14-ease-out (curator) — Fenster, Blasen, Flächen kommen an.
+     Ausklang:  --w14-ease-exit (ease-out-quart) — Abgänge sind SCHNELLER und
+                flacher als Eintritte; ein Fenster legt sich hin, es
+                verschwindet nicht rückwärts durch seine Eintrittskurve.
+     Druck:     --w14-dur-press — die kürzeste Dauer im Haus. Ein Knopf
+                quittiert den Finger sofort, sonst fühlt er sich tot an. */
+  --w14-ease-out: cubic-bezier(0.16, 1, 0.3, 1);   /* curator — entrances (the key curve) */
+  --w14-ease-hover: cubic-bezier(0.4, 0, 0.2, 1);  /* small interactions */
+  --w14-ease-curator: var(--w14-ease-out);
+  --w14-ease-exit: cubic-bezier(0.25, 1, 0.5, 1);  /* ease-out-quart — der Haus-Abgang */
+  --w14-dur-press: 120ms;  /* Druckzustand eines Knopfes */
+  --w14-dur-exit: 160ms;   /* Abgang — schneller als jeder Eintritt */
+  --w14-dur-fast: 180ms;
+  /* ── DAS TEMPO DER MARKE (27.07.2026) ──────────────────────────────
+     Gemessen: die Kasse fuhr 420 / 650 / 800 ms, norns.de faehrt 150 /
+     250 / 300 ms. Die App war um Faktor 1,5 bis 2,7 LANGSAMER als ihre
+     eigene Marke — und Langsamkeit liest sich am Tresen nicht als
+     Wuerde, sondern als Zaehigkeit. Ein Kassierer macht dieselbe Geste
+     zweihundertmal am Tag; jede zusaetzliche Zehntelsekunde ist eine
+     Minute seines Lebens.
+     Die KURVEN bleiben unveraendert — sie stimmen bereits mit norns.de
+     ueberein. Nur die Dauern folgen jetzt der Marke. */
+  --w14-dur-base: 250ms;
+  --w14-dur-slow: 300ms;
+  /* BEGRÜNDETE AUSNAHME (27.07.2026): die Zielkarte zeichnet Messinstrumente
+     (Zeiger, Bogen, Schiff), keine Bedienelemente. Ein Zeiger, der sich in
+     180 ms setzt, wirkt wie ein Sprung, nicht wie ein Instrument. Diese eine
+     Dauer liegt deshalb bewusst ÜBER dem 500-ms-Deckel der Bedien-Momente
+     und ist NUR für die Instrumente der Zielkarte gedacht; dort schalten die
+     Zeiger unter prefers-reduced-motion selbst auf 'none', den Rest nullt die
+     globale Regel unten über die Dauer. In einem Knopf, einem Fenster oder
+     einer Liste hat sie nichts verloren. */
+  --w14-dur-instrument: 400ms;
+  --w14-stagger: 70ms;
+  /* Legacy duration aliases. */
+  --w14-dur-short: var(--w14-dur-fast);
+  --w14-dur-medium: 220ms;
+  --w14-dur-long: var(--w14-dur-base);
+
+  /* ─── Scrims + focus ──────────────────────────────────────────────── */
+  --w14-overlay: rgba(28, 28, 28, 0.45);
+  /* Focus ring = ink (clears 3:1 on every surface). */
+  --w14-focus-ring: var(--w14-ink);
+  --w14-focus-shadow: 0 0 0 3px rgba(28, 28, 28, 0.30);
+
+  /* ─── Ebenen — die EINE Leiter für alles, was übereinander liegt ────
+     FUND (2026-07-26): der Meldungskasten stand auf 900 und wurde als
+     gewöhnliches Kind der Anwendungshülle gezeichnet, jedes Fenster auf 1050
+     mit eigenem Portal an den Seitenkörper. Damit lag JEDE Meldung, die
+     während eines offenen Fensters kam, unter dessen Schleier — unsichtbar.
+     Am Tresen traf das genau die Sätze, für die der Kasten existiert:
+     „Druck fehlgeschlagen", „Terminal nicht konfiguriert", „Beleg ausgegeben,
+     aber der Gutschein wurde nicht verbucht". Die Kassiererin sah nur den
+     Bezahldialog und hielt den Vorgang für sauber.
+
+     Regel ab jetzt: keine nackte Zahl mehr in einer Ebene, nur diese Namen.
+     Die Reihenfolge ist bindend:
+       Fenster < Zweitbestätigung < Meldung < Hinweis.
+
+     Die Sprünge sind absichtlich gross. Die fremden nackten Zahlen, vor denen
+     dieser Block früher warnte (1300 Assistenten-Hülle, 1200 Terminal-Warte-
+     kreisel und Belegvorschau, 1100 Zuschnitt), haben am 27.07.2026 Namen
+     bekommen — Werkbank, Vorhang und die Assistentenstufe, mit den ALTEN
+     Werten, damit sich am Tresen nichts verschiebt. (Die Assistentenstufe
+     1300 ist am 19.08.2026 mit dem Assistenten ausgezogen; die Lücke in der
+     Leiter bleibt als Zeuge.) Die Meldungsstufe liegt weiterhin ÜBER allen, sonst
+     verdeckt eine Zwischenebene wieder genau die Warnung, die gelesen werden
+     muss. Wer hier eine Zahl senkt, macht den ursprünglichen Fehler erneut;
+     der ebenen-waechter in der Kasse macht jede neue nackte Zahl rot. */
+  --w14-z-basis: 0;      /* der gewöhnliche Fluss — Karten, Listen, Formulare */
+  --w14-z-klebend: 100;  /* klebende Kopf- und Fusszeilen innerhalb einer Fläche */
+  --w14-z-schleier: 1000;/* ein abdunkelnder Schleier ohne eigenes Fenster (Spotlight) */
+  --w14-z-fenster: 1050; /* Dialoge und Schubladen samt ihrem Schleier */
+  --w14-z-anker: 1060;   /* an ein Bedienelement geheftete Blasen — liegen über ihrem Fenster,
+                            weil sie AUS einem Fenster heraus geöffnet werden */
+  --w14-z-werkbank: 1100;/* eine Arbeitsfläche ÜBER einem Fenster — der Foto-Zuschnitt,
+                            der aus einem Dialog heraus die ganze Bühne braucht */
+  --w14-z-vorhang: 1200; /* ein deckender Vorhang über allem Fensterwerk: der
+                            Terminal-Wartekreisel und die Belegvorschau. Sie sperren
+                            die Bedienung, bis der Vorgang entschieden ist */
+  /* 1300 gehörte der Hülle des Sprachassistenten — ausgezogen am 19.08.2026,
+     kein Träger mehr im ganzen Haus. Die Stufe bleibt frei. */
+  --w14-z-stufe: 1400;   /* die Zweitbestätigung vor einer empfindlichen Handlung —
+                            sie unterbricht ein laufendes Fenster und muss darüber liegen */
+  --w14-z-meldung: 1500; /* der Meldungskasten — Fehler und Quittungen. Gewinnt gegen ALLES
+                            ausser einem Hinweis, sonst geht die Wahrheit verloren */
+  --w14-z-hinweis: 1600; /* kurze Kurzhilfe am Zeiger — nie ein Träger von Wahrheit,
+                            darf deshalb als Einziges über der Meldung liegen */
+
+  /* ─── Max width ───────────────────────────────────────────────────── */
+  --w14-max-edge: 1240px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   DARK THEME — „midnight vellum". A warm, candle-lit dark: aged-ink grounds,
+   cream text, brightened gilt + patina so the antique identity survives on a
+   dark ground. Only the COLOUR tokens change; type, spacing, radii and motion
+   inherit from :root. Every -rgb companion is overridden too so slash-opacity
+   usages follow the theme. The var()-aliases (--w14-card, --w14-accent,
+   --w14-danger, --w14-success, --w14-focus-ring …) follow automatically. The
+   toggle stamps data-theme="dark" on <html>; these rules win over :root.
+   ═══════════════════════════════════════════════════════════════════════ */
+:root[data-theme="dark"] {
+  /* ── Cool slate ───────────────────────────────────────────────────────
+     A deliberately COOL, blue-grey ground — no warm/amber cast. The surfaces
+     carry a faint blue bias (not warmth-by-default), ink is a cool near-white,
+     and the metallic „gilt" thread is muted so it reads as a restrained accent
+     on a cool base, never as an overall yellow tint. The positive/accent green
+     (verdigris) is kept — it is cool and is the app's living-signal colour. */
+
+  /* Surfaces — deepest ground, then two lifted surfaces. */
+  --w14-parchment: #111418;
+  --w14-parchment-2: #192026;
+  --w14-parchment-3: #232c34;
+
+  /* Ink — cool near-white on the slate ground. */
+  --w14-ink: #e6edf3;
+  --w14-ink-aged: #aeb9c4;
+  --w14-ink-faded: #8b98a6;
+  --w14-rule: #2b333d;
+  /* NEU (27.07.2026): die tragende Tabellenlinie des Dunkelthemas — die zarte
+     Zierlinie darüber liegt bei 1,45:1 auf dem tiefsten Grund und 1,11:1 auf
+     der erhabenen Fläche. Diese hier hält 2,33 / 2,07 / 1,78 : 1. */
+  --w14-tabellenlinie: #48525e;
+  /* Feld-Unterstrich des Dunkelthemas — 3,77:1 auf der Karte (#192026),
+     4,23:1 auf dem Grund (#111418). Begründung beim Hellthema-Zwilling. */
+  --w14-feldlinie: #6e7a89;
+
+  /* Quiet emphasis (legacy „gold" = quiet ink) → a quiet cool light. */
+  --w14-gold: #ccd6e0;
+  --w14-gold-soft: #9aa7b4;
+  --w14-gold-deep: #e6edf3;
+
+  /* Gilt — muted metallic thread; a restrained gold accent, not a yellow wash. */
+  --w14-gilt: #c3ac74;
+  --w14-gilt-deep: #a58f5c;
+
+  /* Functional — brightened for legibility as text on the slate ground. */
+  --w14-verdigris: #5cc38d;
+  --w14-wax-red: #ee7461;
+  --w14-wax-red-soft: #f0a091;
+  --w14-forest: #78998a;
+  --w14-terra: #c08a5e;
+
+  /* ── Das Weinrot bei Nacht (27.07.2026) ───────────────────────────────
+     Dasselbe Weinrot wie am Tag wäre auf Schiefer eine dunkle Fläche auf
+     dunklem Grund: der Wächter mass 2,49:1 und hatte recht. Im Dunkeln geht
+     der Ton eine Stufe HELLER, damit die Fläche sich vom Grund abhebt, und
+     die Schrift darauf bleibt elfenbein statt nach Schiefer zu kippen.
+     GEMESSEN: Elfenbein auf #b8404c = 5,03:1 (Text), die Fläche selbst
+     3,04:1 gegen --w14-parchment-2 (Bedienelement). Beide über der Latte. */
+  --w14-weinrot: #b8404c;
+  --w14-weinrot-tief: #93313c;
+  --w14-accent-ink: #faf6ee;
+
+  /* RGB triplets — MUST mirror the overrides above (slash-opacity reads these). */
+  --w14-parchment-rgb: 17 20 24;
+  --w14-parchment-2-rgb: 25 32 38;
+  --w14-parchment-3-rgb: 35 44 52;
+  --w14-ink-rgb: 230 237 243;
+  --w14-ink-aged-rgb: 174 185 196;
+  --w14-ink-faded-rgb: 139 152 166;
+  --w14-rule-rgb: 43 51 61;
+  --w14-tabellenlinie-rgb: 72 82 94;
+  --w14-gold-rgb: 204 214 224;
+  --w14-gold-soft-rgb: 154 167 180;
+  --w14-gold-deep-rgb: 230 237 243;
+  --w14-gilt-rgb: 195 172 116;
+  --w14-gilt-deep-rgb: 165 143 92;
+  --w14-verdigris-rgb: 92 195 141;
+  --w14-wax-red-rgb: 238 116 97;
+  --w14-wax-red-soft-rgb: 240 160 145;
+  --w14-forest-rgb: 120 153 138;
+  --w14-terra-rgb: 192 138 94;
+
+  /* Shadows — ink-tinted shadows vanish on dark; use black + depth. */
+  --w14-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.40), 0 1px 3px rgba(0, 0, 0, 0.50);
+  --w14-shadow-lift: 0 6px 16px rgba(0, 0, 0, 0.50);
+  --w14-shadow-modal: 0 18px 44px rgba(0, 0, 0, 0.62);
+
+  /* Scrims + focus — darker scrim; a cool light focus halo (ink is now light). */
+  --w14-overlay: rgba(0, 0, 0, 0.60);
+  --w14-focus-shadow: 0 0 0 3px rgba(230, 237, 243, 0.35);
+}
+
+/* ────────────────────────────────────────────────────────────────────
+ * User text-scale lever — bumps the root font-size so EVERY rem-based size
+ * grows together. Set data-text-scale on <html> from a Settings toggle.
+ *   (default)      16px  (the store's base, fluid clamp rides this)
+ *   data-text-scale='lg'  18px
+ *   data-text-scale='xl'  20px
+ * ──────────────────────────────────────────────────────────────────── */
+:root {
+  font-size: 16px;
+}
+:root[data-text-scale="lg"] {
+  font-size: 18px;
+}
+:root[data-text-scale="xl"] {
+  font-size: 20px;
+}
+
+/* ────────────────────────────────────────────────────────────────────
+ * Base reset — parchment background everywhere, ink text, font defaults
+ * ──────────────────────────────────────────────────────────────────── */
+html,
+body {
+  background-color: var(--w14-parchment);
+  color: var(--w14-ink);
+  font-family: var(--w14-font-inter);
+  /* ── 27.07.2026: 1rem statt 16px — der Hebel muss durch den BODY ─────
+     Der Textgrössen-Hebel oben stellt die WURZEL auf 16/18/20. Diese Regel
+     hier nagelte den body zusätzlich auf wörtliche 16px fest, und keine
+     Hebel-Regel zielt je auf body: sein Teilbaum blieb bei JEDER Stellung
+     auf 16 stehen. Solange alles rem trug, fiel das nie auf — bis Geld auf
+     `1em` wechselte (die Fläche bestimmt die Grösse): Vererbung endet, wo
+     kein Vorfahr eine Grösse setzt, also am eingefrorenen body. Ergebnis
+     bei „Sehr gross": jede Beschriftung wächst auf 18,75px, der BETRAG
+     daneben bleibt 16 — die Rangordnung kippt in genau den Zahlen, für die
+     es den Hebel gibt. An 20 Stellen, vom Gegenleser nachgewiesen.
+     `1rem` reitet auf der Wurzel: Vorgabe identisch 16px, unter dem Hebel
+     folgt der body — und mit ihm jede geerbte Grösse — der Stellung. */
+  font-size: 1rem;
+  /* Hier stand `line-height: var(--w14-leading-body)`. Weil die Marke sich
+     selbst las (siehe FUND oben), war diese Regel ungültig und der Browser
+     hat sie verworfen: gerendert wurde `normal`, also rund 1,21 statt 1,62.
+     So sieht die Kasse seit Monaten aus, und so sieht Basel sie heute.
+
+     Die Marke ist jetzt heil. Würde diese Zeile wieder auf sie zeigen, ginge
+     der Zeilenabstand JEDES Absatzes, der keinen eigenen setzt, von etwa
+     19,4px auf 25,9px, ein Drittel mehr Luft auf einen Schlag, über die ganze
+     Kasse. Das mag der richtige Wert sein, es ist aber eine Entscheidung mit
+     sichtbarer Folge an einem Tresen, an dem gerade kassiert wird, und keine
+     Nebenwirkung einer Aufräumetappe. Deshalb steht hier ausdrücklich der
+     Wert, der heute gerendert wird.
+
+     Wer 1,62 will, ändert diese eine Zeile zurück auf
+         line-height: var(--w14-leading-body);
+     und sieht sich danach jede Fläche an. */
+  line-height: normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* ── GELD STEHT IN MANROPE, NIE IN DER ANTIQUA (27.07.2026) ──────────
+   Vorher stand hier die Monospace. Eine Schreibmaschinenschrift über
+   einem Betrag ist genau das, was eine Kasse nach Gerät aussehen lässt —
+   Geld gehört in dieselbe Stimme wie der Text, nur mit gleichbreiten
+   Ziffern.
+
+   ⚠️ Die Familie ist ABSICHTLICH nicht `--w14-font-display`: an der
+   Schriftdatei gemessen führt Fraunces kein `tnum` und keine
+   gleichbreiten Ziffern (0 = 1461, 1 = 1024 Einheiten). Eine Geldspalte
+   in der Antiqua springt bei jeder Ziffernänderung, und `tabular-nums`
+   kann das nicht heilen. Manrope hat `tnum` — aber proportional als
+   Vorgabe, deshalb wird es hier AUSDRÜCKLICH eingeschaltet. */
+.w14-tabular,
+.tnum {
+  font-family: var(--w14-font-zahl);
+  font-feature-settings: "tnum" 1, "lnum" 1;
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: -0.01em;
+}
+
+/* Eyebrow / small-caps tracking — the store convention (0.14em + small-caps). */
+.w14-smallcaps,
+.eyebrow {
+  font-variant: all-small-caps;
+  letter-spacing: var(--w14-tracking-eyebrow);
+  text-transform: lowercase;
+}
+
+/* ────────────────────────────────────────────────────────────────────
+ * Visible focus ring — keyboard accessibility floor (WCAG 2.4.7 / 1.4.11).
+ * ──────────────────────────────────────────────────────────────────── */
+.w14-focusable:focus-visible {
+  outline: none;
+  box-shadow: var(--w14-focus-shadow);
+}
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--w14-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Paper-noise overlay — a VERY subtle feTurbulence grain (opacity 0.12),
+ * layout-safe (position: relative + isolation so it never breaks flow).
+ * Opt-in via the `.grain` / `.w14-paper-noise` class. */
+.grain,
+.w14-paper-noise {
+  position: relative;
+  isolation: isolate;
+}
+.grain::before,
+.w14-paper-noise::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.12;
+  background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  z-index: -1;
+}
+
+/* Reading-measure helper — 62ch. */
+.measure {
+  max-width: var(--w14-measure);
+}
+
+/* Hairline border helper — rule-coloured. */
+.hairline {
+  border-color: var(--w14-rule);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────────
+ * Modal motion — Dialog (centered) + Sheet (right slide-over).
+ * Used by @norns/ui-kit Dialog/Sheet; honour prefers-reduced-motion
+ * via the rule above. The curator ease (0.16,1,0.3,1) on the entrance,
+ * ease-out-quart auf dem Abgang, und der Abgang ist SCHNELLER (dur-exit).
+ *
+ * Der Eintritt startet bei 0.55, nicht bei 0: der Inhalt ist von der ersten
+ * Millisekunde an lesbar, die Bewegung veredelt nur (die Regel „Inhalte
+ * dürfen nie unsichtbar starten"). Ein Fenster, das aus dem Nichts
+ * aufblendet, wirkt wie ein Schirm; Papier, das sich hinlegt, ist schon da.
+ * ──────────────────────────────────────────────────────────────────── */
+@keyframes w14-modal-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes w14-modal-overlay-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes w14-dialog-in {
+  from { opacity: 0.55; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes w14-dialog-out {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translateY(4px) scale(0.985); }
+}
+@keyframes w14-sheet-in {
+  from { transform: translateX(100%); }
+  to { transform: none; }
+}
+@keyframes w14-sheet-out {
+  from { transform: none; }
+  to { transform: translateX(100%); }
+}
+
+/* ── JEDES Fenster tritt auf wie das Haus-Fenster (19.08.2026) ─────────
+   Basels Befund: die Bewegung wirkt primitiv. Gemessen: das Haus-Fenster
+   (ModalShell) bewegt sich seit dem 04.08. — aber DUTZENDE Fenster der
+   Kasse sind handgerollte `role="dialog"`-Schleier ohne jede Bewegung;
+   sie SCHLAGEN auf statt sich hinzulegen (Bezahlen, Storno, Rückgabe,
+   Z-Bon …). Diese zwei Regeln geben ihnen denselben Eintritt, ohne 40
+   Dateien anzufassen: der Schleier blendet auf, die eine Karte darin legt
+   sich hin. Das Haus-Fenster meldet sich über `data-w14-fenster` ab (es
+   bewegt sich inline selbst, samt Abgang). `:only-child`, damit Fenster,
+   deren role="dialog" direkt auf der Karte mit vielen Kindern sitzt, nur
+   den Schleier-Eintritt bekommen — Kinder laufen nie einzeln an.
+   prefers-reduced-motion nullt beide über die globale Regel unten. */
+[role="dialog"][aria-modal="true"]:not([data-w14-fenster]) {
+  animation: w14-modal-overlay-in var(--w14-dur-short) var(--w14-ease-curator);
+}
+[role="dialog"][aria-modal="true"]:not([data-w14-fenster]) > :only-child {
+  animation: w14-dialog-in var(--w14-dur-medium) var(--w14-ease-curator);
+}
+
+/* ────────────────────────────────────────────────────────────────────
+ * Meldungsblase (Toast) — Ein- und Abgang. Die Blase sagt dem Menschen am
+ * Tresen die wichtigen Sätze („Druck fehlgeschlagen") und war bisher die
+ * einzige Fläche, die schlagartig erschien und verschwand. Eintritt von
+ * oben mit dem Curator-Ausklang; Abgang kurz nach rechts, wohin auch der
+ * Daumen sie wischt.
+ * ──────────────────────────────────────────────────────────────────── */
+@keyframes w14-toast-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes w14-toast-out {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translateX(16px); }
+}
+
+/* Der Punkt der Zifferntafel tritt auf (19.08.2026): eine gelandete Ziffer
+ * quittiert den Finger mit einem kurzen Wachsen aus der Mitte — reiner
+ * transform, Haus-Kurve, und unter reduced-motion steht sie sofort da. */
+@keyframes w14-punkt-auf {
+  from { transform: scale(0.35); opacity: 0.3; }
+  to { transform: none; opacity: 1; }
+}
+
+/* Reveal-on-mount — a calm rise + fade for surface content (dashboards, cards).
+ * Applied via the tauri-pos <Reveal> helper, which owns the per-item stagger
+ * delay and honours prefers-reduced-motion (the global rule above only zeroes
+ * duration, not delay, so the helper drops the delay itself when reduced). */
+@keyframes w14-reveal-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ────────────────────────────────────────────────────────────────────
+ * Knopf-Zustände — in CSS, nicht in JS.
+ *
+ * WARUM: hover/focus lagen bisher als onMouseEnter/onMouseLeave-Gefummel im
+ * Bauteil, und einen Druckzustand (:active) kann Inline-Stil GAR NICHT
+ * ausdrücken — deshalb hat am Tresen kein einziger Knopf den Finger
+ * quittiert. Die Zustände stehen jetzt hier: eine Quelle, echte Pseudo-
+ * klassen, und der Druck ist reiner transform (kein Layout).
+ *
+ * :not(:disabled) überall — ein gesperrter Knopf gibt nicht nach.
+ * :focus-visible statt :focus — der Ring gehört der Tastatur; der Finger
+ * bekommt stattdessen den Druck.
+ * ──────────────────────────────────────────────────────────────────── */
+.w14-button {
+  outline: none;
+  transition:
+    border-color var(--w14-dur-fast) var(--w14-ease-hover),
+    background-color var(--w14-dur-fast) var(--w14-ease-hover),
+    box-shadow var(--w14-dur-fast) var(--w14-ease-hover),
+    transform var(--w14-dur-press) var(--w14-ease-hover);
+}
+.w14-button--primary {
+  background-color: var(--w14-ink);
+  color: var(--w14-parchment-2);
+  border: 1px solid var(--w14-ink);
+  box-shadow: var(--w14-shadow-card);
+}
+.w14-button--destructive {
+  background-color: transparent;
+  color: var(--w14-wax-red);
+  border: 1px solid var(--w14-wax-red);
+  box-shadow: 0 1px 0 transparent;
+}
+/*
+ * Der Akzent des Hauses als Knopf: für den EINEN Griff, der eine Fläche
+ * abschliesst, wenn ringsum schon Tinte gefüllt ist.
+ *
+ * Gebaut für die Zifferntafel (04.08.2026): dort standen zehn tintengefüllte
+ * Tasten, und „OK" war ein stiller Knopf dazwischen. Das Paar
+ * `--w14-accent` / `--w14-accent-ink` liegt im Kontrastwächter in beiden
+ * Themen auf 4,5:1, also ist es lesbar, ohne dass hier etwas Neues entsteht.
+ *
+ * ⚠️ DIE REGEL, DIE DAS LESBAR HAELT: der Akzent ist Weinrot, und die
+ * Rueckabwicklung („Storno") ist Siegelrot. Beide sind rot. Unterscheidbar
+ * bleiben sie nur, weil hier GEFUELLT und dort UMRISSEN steht:
+ *
+ *     gefuellt rot   = tun
+ *     umrissen rot   = rueckgaengig machen
+ *
+ * Wer `--w14-button--destructive` eine Fuellung gibt oder diesem Rang die
+ * Fuellung nimmt, loescht den Unterschied. Am Tresen heisst das: der
+ * Kassierer stoerniert, wo er kassieren wollte.
+ */
+.w14-button--akzent {
+  background-color: var(--w14-accent);
+  color: var(--w14-accent-ink);
+  border: 1px solid var(--w14-accent);
+  box-shadow: var(--w14-shadow-card);
+}
+.w14-button--akzent:hover:not(:disabled) {
+  box-shadow: var(--w14-shadow-lift);
+}
+/*
+ * ⚠️ BASELS BEFUND VOM 04.08.2026, und er hatte recht.
+ *
+ * Woertlich: „es gibt einen Text, den man drueckt, und man erkennt ihn erst
+ * beim Druecken." Genau das stand hier:
+ *
+ *     background-color: transparent;
+ *     border: 1px solid transparent;   ← UNSICHTBAR
+ *
+ * Der Knopf hatte im Ruhezustand keine Form. Erst beim Zeigen mit der Maus
+ * erschien ein Giltstrich. Am Tresen gibt es keine Maus: der Haendler tippt
+ * auf einen Bildschirm und sieht Text, der wie Text aussieht.
+ *
+ * Getroffen hat es die zweite Reihe ueberall: „Ankaufmarge je Metall",
+ * „Kurs von Hand eintragen", „Abbrechen", „Zurueck".
+ *
+ * Ab jetzt hat der stille Knopf eine SICHTBARE Kante und einen eigenen Grund.
+ * Er bleibt leiser als der Hauptknopf, aber er ist als Knopf zu erkennen,
+ * ohne ihn zu beruehren.
+ */
+.w14-button--ghost {
+  background-color: var(--w14-parchment-3);
+  color: var(--w14-ink);
+  /* ⚠️ NICHT `--w14-rule`: das ist ein Haar fuer Trennlinien und verschwindet
+     auf Pergament. Eine Knopfkante muss man aus einem Meter Abstand sehen. */
+  border: 1px solid var(--w14-ink-faded);
+  box-shadow: 0 1px 0 transparent;
+}
+
+/*
+ * Der ZWEITE Knopf: Tinte gefuellt, Text in Pergament.
+ *
+ * Basels Vorschlag woertlich: im hellen Thema der Grund dunkel, der Text
+ * cremeweiss, die Ecke gerundet und nicht scharf. Genau das ist dieser
+ * Knopf, und er traegt die Handlungen, die eine Fläche WIRKLICH anbietet
+ * und die trotzdem nicht die eine Hauptsache sind: die Ankaufmarge aendern,
+ * einen Kurs von Hand eintragen.
+ *
+ * Er unterscheidet sich vom Hauptknopf durch das Gewicht der Kante, nicht
+ * durch die Farbe: zwei goldene Hauptknoepfe nebeneinander waeren wieder
+ * eine Fläche ohne Rangfolge.
+ */
+.w14-button--zweit {
+  /*
+   * ⚠️ UMRISS, nicht Fuellung.
+   *
+   * Der erste Entwurf war Tinte gefuellt, genau wie Basel es vorschlug. Am
+   * Bildschirm nebeneinander gestellt war er dann NICHT vom Hauptknopf zu
+   * unterscheiden: zwei schwarze Kloetze, und die Fläche hatte keine
+   * Rangfolge mehr. Gesehen, nicht gerechnet.
+   *
+   * Die kraeftige Tintenkante loest beides: unmissverstaendlich ein Knopf,
+   * und deutlich leiser als der gefuellte Hauptknopf.
+   */
+  background-color: var(--w14-parchment-2);
+  color: var(--w14-ink);
+  border: 2px solid var(--w14-ink);
+  box-shadow: 0 1px 0 transparent;
+}
+.w14-button--zweit:hover:not(:disabled) {
+  background-color: var(--w14-ink);
+  color: var(--w14-parchment-2);
+  box-shadow: var(--w14-shadow-lift);
+}
+.w14-button--primary:hover:not(:disabled) {
+  background-color: var(--w14-gold-soft);
+  box-shadow: var(--w14-shadow-lift);
+}
+/* Der Gilt-Unterstrich beim Zeigen — ein Faden, keine Fläche. */
+.w14-button--destructive:hover:not(:disabled) {
+  box-shadow: 0 1px 0 var(--w14-gilt);
+}
+.w14-button--ghost:hover:not(:disabled) {
+  border-color: var(--w14-ink-aged);
+  box-shadow: 0 1px 0 var(--w14-gilt);
+}
+/*
+ * ⚠️ EIN GESPERRTER KNOPF MUSS GESPERRT AUSSEHEN, egal wer ihn setzt.
+ *
+ * `Button.tsx` dimmt ihn per Inline-Stil. Das reicht genau so lange, wie
+ * JEDER Knopf durch das Bauteil geht. Heute ist das so: gemessen am
+ * 04.08.2026, null rohe `<button class="w14-button …">` in der Kasse.
+ *
+ * Diese Regel behebt also nichts, was gerade kaputt ist. Sie schliesst eine
+ * Tür. Denn dieselbe Klasse Fehler wie beim unsichtbaren stillen Knopf
+ * darüber wartet hier: die Eigenschaft wohnt in EINER Umsetzung statt an der
+ * Marke. Der erste rohe Knopf mit dieser Klasse sähe im gesperrten Zustand
+ * aus wie ein drückbarer, in HELL wie DUNKEL. Genau so stand er am selben
+ * Tag im Prüfblatt.
+ */
+.w14-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+.w14-button:focus-visible {
+  box-shadow: var(--w14-focus-shadow);
+}
+.w14-button--primary:focus-visible {
+  box-shadow: var(--w14-shadow-card), var(--w14-focus-shadow);
+}
+.w14-button:active:not(:disabled) {
+  transform: translateY(1px) scale(0.99);
+}
+
+/* Symbole atmen unter der Hand (30.07.2026, Basels Ordnung): das Zeichen in
+   einem Knopf oder einer Zeile wächst beim Überfahren einen Hauch — Antwort
+   der Fläche, kein Spektakel. Nur transform, Haus-Ausklang, und unter
+   reduced-motion steht es still. */
+.w14-symbol {
+  transition: transform var(--w14-dur-fast) var(--w14-ease-curator);
+}
+button:hover:not(:disabled) .w14-symbol,
+a:hover .w14-symbol {
+  transform: scale(1.12);
+}
+button:active:not(:disabled) .w14-symbol {
+  transform: scale(0.96);
+}
+@media (prefers-reduced-motion: reduce) {
+  .w14-symbol {
+    transition: none;
+  }
+  button:hover:not(:disabled) .w14-symbol,
+  a:hover .w14-symbol,
+  button:active:not(:disabled) .w14-symbol {
+    transform: none;
+  }
+}
+
+/* Symbol-Knöpfe (IconButton, Schliesskreuz im Dialog) — dieselbe Sprache. */
+.w14-icon-button {
+  background-color: transparent;
+  outline: none;
+  transition:
+    background-color var(--w14-dur-short) var(--w14-ease-curator),
+    box-shadow var(--w14-dur-short) var(--w14-ease-curator),
+    transform var(--w14-dur-press) var(--w14-ease-hover);
+}
+.w14-icon-button:hover:not(:disabled) {
+  background-color: var(--w14-parchment-3);
+}
+.w14-icon-button:focus-visible {
+  box-shadow: var(--w14-focus-shadow);
+}
+.w14-icon-button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+/* Für nackte <button>-Flächen, die kein Button-Bauteil sind (Zahlenfeld,
+ * Kachel): NUR der Druck, ohne hover/focus-Meinung. */
+.w14-druckbar {
+  transition: transform var(--w14-dur-press) var(--w14-ease-hover);
+}
+.w14-druckbar:active:not(:disabled) {
+  transform: translateY(1px) scale(0.99);
+}
+
+/* ────────────────────────────────────────────────────────────────────
+ * Skelett — der EINE ruhige Ladeplatzhalter des Hauses.
+ *
+ * WARUM: es gab vier verschiedene Ladesprachen und SECHS Kopien desselben
+ * Keyframes in einzelnen Flächen, in zwei Laufrichtungen. Dieser eine Block
+ * ersetzt sie: Pergamentgrund, ein leiser Gilt-Schimmer, der über das Papier
+ * wandert — kein grelles Pulsieren. Der Schimmer ist reiner transform.
+ *
+ * prefers-reduced-motion: der Schimmer steht STILL (nicht nur „schnell") —
+ * die globale Regel oben kürzt nur Dauern, und eine unendliche Animation
+ * mit einer Dauer von 0.001ms wäre ein Stroboskop für den Compositor.
+ * ──────────────────────────────────────────────────────────────────── */
+.w14-skelett {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--w14-parchment-3);
+}
+.w14-skelett::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    100deg,
+    transparent 25%,
+    rgb(var(--w14-gilt-rgb) / 0.14) 50%,
+    transparent 75%
+  );
+  animation: w14-skelett-zug 1.8s var(--w14-ease-hover) infinite;
+}
+@keyframes w14-skelett-zug {
+  to { transform: translateX(100%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .w14-skelett::after {
+    animation: none;
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────────
+ * Rollbalken — fein, aus den Themen-Marken, hell wie dunkel.
+ *
+ * WARUM (26.07.2026, Basels Dekret „Feinschliff besonders auf Windows"):
+ * Es gab im ganzen Programm NULL Rollbalken-Gestaltung. Auf Windows
+ * (WebView2/Chromium) bekam damit jede lange Liste — Lager, Katalog,
+ * Bezahl-Korpus, Tagebuch, Bestellungen — den breiten grauen Systembalken,
+ * der das Pergament zerschneidet. Dieser eine Block veredelt sie alle:
+ * `::-webkit-scrollbar` greift in WebView2 und WebKit, `scrollbar-width`/
+ * `scrollbar-color` decken Firefox und neue Chromium-Fassungen. Die Farben
+ * sind Marken und folgen dem Themenwechsel von selbst.
+ * ──────────────────────────────────────────────────────────────────── */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: var(--w14-parchment-3) transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  /* 2px durchsichtiger Rand + padding-box: der Daumen wirkt wie ein feiner
+     6px-Strich mit Luft, ohne die Trefferfläche zu verkleinern. */
+  background-color: var(--w14-parchment-3);
+  border: 2px solid transparent;
+  border-radius: var(--w14-radius-pille);
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--w14-ink-faded);
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}

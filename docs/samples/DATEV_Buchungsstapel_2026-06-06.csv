@@ -1,0 +1,6 @@
+EXTF;700;21;Buchungsstapel;9;;;;;;;;;;4;;;;;;;EUR;;;;;;;;;
+"Umsatz";"Soll/Haben";"WKZ";"Kurs";"Basis-Umsatz";"WKZ Basis-Umsatz";"Konto";"Gegenkonto";"BU-Schlüssel";"Belegdatum";"Belegfeld1";"Buchungstext"
+"1190,00";"S";"EUR";;;;"1000";"8400";;"0606";"VK-2026-000123";"VERKAUF VK-2026-000123 (STANDARD_19)"
+"850,00";"S";"EUR";;;;"1000";"8400";;"0606";"VK-2026-000124";"VERKAUF VK-2026-000124 (MARGIN_25A)"
+"2200,00";"S";"EUR";;;;"1000";"8400";;"0606";"VK-2026-000125";"VERKAUF VK-2026-000125 (INVESTMENT_GOLD_25C)"
+"600,00";"S";"EUR";;;;"3200";"1000";;"0606";"AK-2026-000045";"ANKAUF AK-2026-000045 (MARGIN_25A)"

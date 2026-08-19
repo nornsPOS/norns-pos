@@ -1,0 +1,15 @@
+# Tauri build artifacts
+src-tauri/target/
+src-tauri/gen/
+
+# Vite
+dist/
+.vite/
+
+# TS
+.tsbuildinfo
+
+# Local fonts cache (downloaded by scripts/download-fonts.sh)
+# NOTE: we DO commit fonts to keep CI deterministic.
+# Uncomment the next line ONLY if Basel decides not to commit them.
+# public/fonts/

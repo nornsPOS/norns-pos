@@ -1,0 +1,26 @@
+diff --git a/dist/commonjs/native/styles/index.js b/dist/commonjs/native/styles/index.js
+index 222296d6bd95a69dd87af100d8387753c54d2095..ce0a55a9b1ba8df198fd291fe8981c5e15dae0de 100644
+--- a/dist/commonjs/native/styles/index.js
++++ b/dist/commonjs/native/styles/index.js
+@@ -373,7 +373,7 @@ function nativeStyleMapping(config, props) {
+       continue;
+     }
+     let target = props;
+-    const tokens = path.split(".");
++    const tokens = (path === true ? key : path).split(".");
+     const lastToken = tokens.pop();
+     for (const token of tokens) {
+       target[token] ??= {};
+diff --git a/dist/module/native/styles/index.js b/dist/module/native/styles/index.js
+index 067f8edb6459cf6b15258df079c541746f233af5..d6ce31113df6b31f9f89d14a4490cf18918c129f 100644
+--- a/dist/module/native/styles/index.js
++++ b/dist/module/native/styles/index.js
+@@ -369,7 +369,7 @@ function nativeStyleMapping(config, props) {
+       continue;
+     }
+     let target = props;
+-    const tokens = path.split(".");
++    const tokens = (path === true ? key : path).split(".");
+     const lastToken = tokens.pop();
+     for (const token of tokens) {
+       target[token] ??= {};

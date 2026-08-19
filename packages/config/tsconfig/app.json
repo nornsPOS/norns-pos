@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "Warehouse14 application (for apps/*)",
+  "extends": "./base.json",
+  "compilerOptions": {
+    "declaration": false,
+    "noEmit": false,
+    "sourceMap": true,
+    "outDir": "dist",
+    "incremental": true,
+    "tsBuildInfoFile": ".tsbuildinfo"
+  }
+}

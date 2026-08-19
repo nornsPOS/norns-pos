@@ -1,0 +1,17 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Default capability for the Warehouse14 POS main window: every hardware bridge command (TSE / ZVT / ESC-POS / PDF / printers) plus shell-open for PDF preview. Settings persistence is client-side (localStorage + audited API).",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "shell:allow-open",
+    "updater:default",
+    "process:allow-restart",
+    "process:allow-exit",
+    "sql:default",
+    "sql:allow-load",
+    "sql:allow-execute",
+    "sql:allow-select"
+  ]
+}

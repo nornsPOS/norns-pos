@@ -1,0 +1,41 @@
+Kassenbericht;06.06.2026
+Status;abgeschlossen
+
+Belege;Verkäufe;3
+Belege;Ankäufe;1
+Belege;Stornos;0
+Belege;Warenrücknahmen;0
+
+Umsatz;Verkauf brutto vor Storno;4240,00 EUR
+Umsatz;davon storniert;0,00 EUR
+Umsatz;Warenrücknahmen;0,00 EUR
+Umsatz;Verkauf brutto nach Storno und Rücknahme;4240,00 EUR
+Umsatz;Verkauf netto vor Storno;4240,00 EUR
+Umsatz;Verkauf netto nach Storno;3922,27 EUR
+Umsatz;Ankauf brutto vor Storno;600,00 EUR
+Umsatz;davon storniert;0,00 EUR
+Umsatz;Ankauf brutto nach Storno;600,00 EUR
+Umsatz;Ankauf netto vor Storno;600,00 EUR
+
+Umsatzsteuer;Regelsteuersatz 19 %;190,00 EUR
+Umsatzsteuer;Differenzbesteuerung § 25a UStG;127,73 EUR
+Umsatzsteuer;Anlagegold, steuerfrei § 25c UStG;0,00 EUR
+Umsatzsteuer;Summe;317,73 EUR
+
+Zahlungsart;Bar;3640,00 EUR
+Zahlungsart;Kartenzahlung Terminal;600,00 EUR
+Zahlungsart;Summe;4240,00 EUR
+
+Kasse;Anfangsbestand (Wechselgeld);200,00 EUR
+Kasse;Bareinnahmen;3640,00 EUR
+Kasse;Barauszahlung Ankauf;0,00 EUR
+Kasse;Erwarteter Endbestand;3840,00 EUR
+Kasse;Gezählter Endbestand;3838,00 EUR
+Kasse;Differenz;-2,00 EUR
+
+TSE;Signiert;4
+TSE;Ausstehend;0
+TSE;Fehlgeschlagen;0
+
+Abschluss;Status;abgeschlossen
+Abschluss;Finalisiert am;06.06.2026, 22:05 Uhr (Ortszeit Berlin)

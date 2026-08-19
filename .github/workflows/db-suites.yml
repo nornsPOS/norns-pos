@@ -1,0 +1,113 @@
+# ──────────────────────────────────────────────────────────────────────────
+# db-suites, PROPOSAL / NON-BLOCKING.
+#
+# Boots Postgres (via @testcontainers/postgresql on the ubuntu runner, which has
+# Docker preinstalled) and runs the Docker/DB-backed suites that the normal
+# `pnpm test` excludes (db integration + migration chain). Today these have ~99
+# pre-existing failures (mostly test bit-rot, minute-precision timestamps,
+# lower(enum), the `?:` SQL ternary, timestamp-as-string, blind_index@0007 which
+# is red-by-design), so the run is informational only:
+#   • `continue-on-error: true` on the test step → the JOB always succeeds, so
+#     this workflow can NEVER block a merge. It exists for visibility.
+#   • It is also NOT a required status check (that is configured in branch
+#     protection, not here), so even the job's pass/fail is advisory.
+#
+# HOW TO PROMOTE TO A REAL GATE (once the bit-rot is triaged down):
+#   1. Commit a baseline allowlist of the known-failing test ids (a JSON/txt
+#      snapshot of today's failures).
+#   2. Replace the raw `vitest run` with a wrapper that diffs the current
+#      failures against the baseline and exits non-zero ONLY on a NEW failure
+#      (so the 99 known ones don't block, but regressions do). Drop
+#      `continue-on-error`.
+#   3. Mark `db-suites / integration` as a required check in branch protection.
+# Until then this file is a no-op gate that only surfaces a report in the logs.
+#
+# ══════════════════════════════════════════════════════════════════════════
+#  ⚠️ NACHTRAG 13.08.2026: ER ZEIGT NICHTS. ER IST NIE GELAUFEN.
+# ══════════════════════════════════════════════════════════════════════════
+#
+# Der Absatz darueber sagt „It exists for visibility". Gemessen:
+#
+#     gh run list --workflow db-suites  →  KEIN EINZIGER LAUF
+#
+# Der Grund steht drei Zeilen tiefer: `on:` kennt nur `pull_request`. In
+# diesem Baum geht ALLES per push auf `main`, es gibt keine Zuege. Damit ist
+# dieser Auftrag doppelt stumm: er wird nie geweckt, und selbst geweckt
+# koennte er wegen `continue-on-error` nicht rot werden.
+#
+# ── WAS DIE MESSUNG ERGAB ────────────────────────────────────────────────
+#
+# Erstmals gefahren am 13.08.2026: 17 von 43 Dateien rot, 96 von 742 Tests.
+# Fuenf Agenten haben JEDE rote Datei eingeordnet, ein Skeptiker jede
+# Behauptung angegriffen. Ergebnis: 7 Rüstzeug, 6 gemischt, 4 veraltet, und
+# **KEIN EINZIGER echter Defekt der laufenden Kasse.**
+#
+# Die Wurzel ist bei allen dieselbe: diese Tests frieren die Datenbank per
+# `applyMigrations(sql, 9)` bei Wanderung 9 ein und fahren sie mit Code vom
+# KOPF des Baumes an. Sie messen ein Schema, das es seit den Wanderungen
+# 0045 (blind_index/hmac), 0055 (lower(enum) im Ausloeser), 0067
+# (WEB_RESERVATION) und 0118 (transactions.erfasst_am) nicht mehr gibt. Zur
+# Gegenprobe wurden alle 141 Wanderungen in ein Wegwerf-Postgres gefahren:
+# Bilanzgleichung, beide Storno-Regeln, kein Loeschrecht auf `transactions`,
+# Geldspalten fuer die App nicht schreibbar. Alles steht.
+#
+# ── WAS DARAUS FOLGT, UND WAS DESHALB GEBAUT WURDE ───────────────────────
+#
+# Der eigentliche Mangel war nicht die Bitfaeule, sondern dass die fiskal
+# TRAGENDEN Riegel NUR in diesem eingefrorenen Museum gemessen wurden. Fuer
+# den heutigen Stand gab es keine Messung. Diese Luecke schliesst jetzt
+#
+#     apps/api-cloud/tests/integration/fiskale-riegel-am-kopf.test.ts
+#
+# Sie faehrt im Fiskaltor auf JEDEN push, gegen ein echtes Postgres nach
+# ALLEN Wanderungen, und misst das VERHALTEN statt der Namen: kein Loeschen,
+# keine Geldspalte aenderbar, keine unstimmige Bilanz. Dreifach rot-gruen
+# gefahren (GRANT DELETE, GRANT UPDATE(total_eur), die drei Bilanzausloeser
+# gedroppt).
+#
+# Wer diesen Auftrag hier zu einem echten Tor machen will, braucht ausser der
+# Baseline aus Schritt 1 bis 3 also VOR ALLEM einen `push`-Ausloeser. Ohne
+# ihn ist jede weitere Arbeit daran unsichtbar.
+# ──────────────────────────────────────────────────────────────────────────
+name: db-suites
+
+on:
+  pull_request:
+    paths:
+      - 'packages/db/**'
+      - 'packages/audit/**'
+      - 'packages/inventory-lock/**'
+      - 'apps/api-cloud/**'
+      - '.github/workflows/db-suites.yml'
+
+# Don't pile up runs on a busy PR.
+concurrency:
+  group: db-suites-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest # Docker is preinstalled → testcontainers works
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # The migration chain + db-backed suites (testcontainers manages Postgres).
+      # continue-on-error keeps this informational until the baseline allowlist
+      # (see header) is in place.
+      - name: db integration + migration suites
+        continue-on-error: true
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: 'true'
+        run: pnpm --fail-if-no-match --filter @norns/db test:integration

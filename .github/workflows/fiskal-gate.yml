@@ -1,0 +1,217 @@
+# ──────────────────────────────────────────────────────────────────────────
+# fiskal-gate, die EINE fiskale Kette, die wirklich blockiert.
+#
+# ── WARUM ES DIESE DATEI GIBT (26.07.2026) ────────────────────────────────
+# `apps/api-cloud/package.json` schliesst die Integrationstests aus:
+#
+#     "test": "vitest run --passWithNoTests --exclude '**/tests/integration/**'"
+#
+# und kein Arbeitsablauf rief sie auf. Jede Aussage „die Steuer-Exporte sind
+# grün" betraf damit ausschliesslich die Unit-Suite. Der einzige Test, der eine
+# echte DATEV-Datei über HTTP zu sehen bekommt, lief nirgends, und schrieb bis
+# heute die zwölfspaltige Anordnung als Sollzustand fest.
+#
+# ── WAS HIER BLOCKIERT (Stand 12.08.2026, gemessen) ──────────────────────
+# Dieser Auftrag ist ein ECHTES Tor, ohne `continue-on-error`. Er fuehrt die
+# GESAMTE Integrationsmappe gegen ein echtes Postgres aus. Stand 14.08.2026
+# nach der Trennung von warehouse14: 44 Dateien (day19-storefront,
+# day20-stripe-real, whatsapp-send-record-intent, integrations, das oeffentliche
+# Netz-Terminbuchen und der Foto-Eingangs-Wettlauf sind mit ihren
+# Gegenstaenden entfallen), lokal in rund zwei Minuten.
+#
+# ── WARUM DIE GANZE MAPPE UND KEINE LISTE MEHR (12.08.2026) ───────────────
+# Bis heute fuhr das Tor 13 namentlich aufgezaehlte Dateien. Der Absatz, der
+# das begruendete, behauptete: acht der uebrigen seien rot (appointments-
+# booking, b2b-checkout, day15 bis day19, pii-teardown, sse-ledger). Diese
+# Messung stammte vom 26.07. und stimmte laengst nicht mehr, am 11.08. und
+# 12.08. je zweimal unabhaengig gemessen: ALLE Dateien gruen, „Test Files 46
+# passed", „371 passed | 1 skipped". Draussen blieben damit ohne jeden Grund
+# unter anderem der VERKAUFSWEG selbst (transactions-finalize, 16 Saetze),
+# die Lade und die Schicht (8), die Z-Nummer, und seit heute der ANKAUFWEG.
+# Eine Namensliste veraltet still; die Mappe kann es nicht.
+#
+# ── DIE FALLE, DIE DIESES TOR FAST WERTLOS GEMACHT HAETTE ─────────────────
+# Der Lauf MUSS mit `-c vitest.integration.config.ts` fahren (gemessen am
+# 26.07.2026: die Vorgabe-Einstellung teilt einen Prozess und meldet gruen
+# bei uebersprungenen Tests). ⚠️ 14.08.2026 nachgemessen: auch MIT dieser
+# Config teilen sich Dateien einen Fork (vitest verwendet Prozesse wieder),
+# und prom-client kollidierte erneut („metric already registered", 39 von 46
+# Dateien uebersprungen). Der echte Riegel sitzt seitdem im Motor selbst:
+# `plugins/metrics.ts` leert das prozessweite Register beim Start
+# (clearRegisterOnInit), damit buildApp in JEDEM Laufmodell wiederholbar ist.
+# ──────────────────────────────────────────────────────────────────────────
+name: fiskal-gate
+
+on:
+  pull_request:
+    paths:
+      - 'apps/api-cloud/src/lib/datev-*'
+      # ⚠️ `kontenrahmen.ts` faengt NICHT mit `datev-` an. Ohne diese eigene
+      # Zeile haette ein Zug, der nur eine Kontonummer verstellt, das Tor gar
+      # nicht erst geweckt, und genau diese Datei traegt seit dem 26.07.2026
+      # jede einzelne Kontonummer beider Rahmen.
+      - 'apps/api-cloud/src/lib/kontenrahmen.ts'
+      - 'apps/api-cloud/src/routes/settings.ts'
+      - 'apps/api-cloud/src/lib/kassenbericht-*'
+      - 'apps/api-cloud/src/lib/dsfinvk-*'
+      - 'apps/api-cloud/src/routes/closing-export.ts'
+      - 'apps/api-cloud/src/routes/closings-finalize.ts'
+      - 'apps/api-cloud/src/lib/transaction-math.ts'
+      # ⚠️ 12.08.2026: hier standen nur storno und return. Ein Zug, der NUR den
+      # Verkaufsschreiber, den Ankaufschreiber, die Kassenpflicht oder den
+      # Schichtweg anfasste, weckte das Tor gar nicht erst, es war ein Bericht
+      # nach dem Zusammenfuehren, kein Riegel davor.
+      - 'apps/api-cloud/src/routes/transactions-*.ts'
+      - 'apps/api-cloud/src/routes/shifts.ts'
+      - 'apps/api-cloud/src/lib/kassenpflicht.ts'
+      - 'apps/api-cloud/src/lib/tagessperre.ts'
+      # Seit dem 12.08.2026 faehrt der Laufbefehl die GANZE Mappe, also weckt
+      # auch jede Testdatei das Tor. Frueher standen hier dreizehn Namen, und
+      # eine neue Datei musste in BEIDE Listen; das ist zweimal vergessen
+      # worden.
+      - 'apps/api-cloud/tests/integration/**'
+      - 'apps/api-cloud/src/lib/beleg-identitaet.ts'
+      - 'apps/api-cloud/src/lib/einrichtung.ts'
+      - 'apps/api-cloud/tests/helfer/**'
+      - 'apps/api-cloud/tests/unit/datev-*'
+      - 'apps/api-cloud/tests/unit/storno-*'
+      - 'apps/api-cloud/tsconfig.fiskal.json'
+      - 'apps/api-cloud/vitest.integration.config.ts'
+      - 'apps/api-cloud/tests/vorlagen/**'
+      - 'packages/db/migrations/**'
+      - '.github/workflows/fiskal-gate.yml'
+  push:
+    branches: [main]
+
+concurrency:
+  group: fiskal-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fiskale-kette:
+    name: Die fiskale Kette gegen ein echtes Postgres
+    runs-on: ubuntu-latest # Docker ist vorinstalliert, testcontainers laeuft
+    # 30 statt 20: die ganze Mappe laeuft lokal in ~2 Minuten, auf dem
+    # Laeufer mit Behaelter-Ziehen eher 8 bis 12. Luft ist billiger als ein
+    # Tor, das an einem langsamen Tag wegen Zeitueberschreitung rot wird.
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Der Server liest @norns/db als GEBAUTES Paket, nicht als Quelle.
+      # Ohne diesen Schritt scheitert der Lauf an einer fehlenden dist,
+      # dieselbe Falle, die in diesem Haus schon mehrfach zugeschlagen hat.
+      # VOLLSTAENDIG (30.07.2026). Hier standen DREI Pakete, api-cloud
+      # importiert aber ZEHN. Der Typpruefer starb an „Cannot find module
+      # '@norns/domain'" und kam nie bis zu den fiskalen Tests: das Tor
+      # ueber dem empfindlichsten Code des Hauses war offen, und zwar so, dass
+      # es aussah, als stuende es. Dahinter wartete ein echter Fehler (TxRow
+      # war nicht exportiert), den niemand sah.
+      #
+      # Reihenfolge: ein Paket kommt NACH allem, was es importiert.
+      #
+      # 14.08.2026: hier stand als ERSTE Zeile `--filter @norns/config
+      # build`, mit dem Satz "config zuerst, alle anderen haengen daran".
+      # Beides war falsch. `packages/config` ist eine reine Ablage: es
+      # exportiert tsconfig-Dateien, hat KEIN einziges Skript, kein `main`
+      # und kein `dist`. Der Aufruf gab aus "None of the selected packages
+      # has a build script" und beendete sich mit RUECKGABEWERT 0.
+      #
+      # Er hat also nie geschadet, und genau das ist das Gefaehrliche: eine
+      # Zeile, die aussieht wie ein Bauschritt, nichts tut und gruen meldet.
+      # `--fail-if-no-match` faengt DIESEN Fall nicht, denn das Paket gibt
+      # es ja, nur das Skript nicht.
+      #
+      # Der Waechter `ein-filter-ohne-treffer-muss-rot-werden` misst das jetzt.
+      - name: Die Pakete bauen, die der Server als dist liest
+        run: |
+          pnpm --fail-if-no-match --filter @norns/db build
+          pnpm --fail-if-no-match --filter @norns/audit build
+          pnpm --fail-if-no-match --filter @norns/inventory-lock build
+          pnpm --fail-if-no-match --filter @norns/domain build
+          pnpm --fail-if-no-match --filter @norns/auth-pin build
+          pnpm --fail-if-no-match --filter @norns/email build
+          pnpm --fail-if-no-match --filter @norns/appointments build
+
+      # ── Der Typpruefer sieht die Tests ueberhaupt erst seit dem 26.07.2026 ──
+      # `apps/api-cloud/tsconfig.json` hat "include": ["src"] und schliesst
+      # "tests" ausdruecklich aus. Der ganze Testbaum lag damit ausserhalb
+      # jeder Typpruefung: als an diesem Tag eine Funktionssignatur um einen
+      # Parameter wuchs, blieb `tsc` still, und neun falsche Aufrufe fielen
+      # erst zur Laufzeit auf.
+      #
+      # `tsconfig.fiskal.json` zieht die FISKALEN Testdateien zusaetzlich in
+      # den Blick: seit dem 26.07.2026 auch die gemeinsame Buehne
+      # (`tests/helfer/fiskal-buehne.ts`) und die fuenf Szenariodateien.
+      # Gemessen am selben Tag: Ausgang 0, keine Ausgabe.
+      #
+      # ⚠️ NACHGEMESSEN AM 13.08.2026, und der Absatz, der hier stand, war
+      # gleich zweimal falsch.
+      #
+      # Er sagte „die uebrigen 23 Integrationsdateien" und begruendete das
+      # Fehlen einer Zahl damit, `tsconfig.tests.json` existiere „seit 45ba358
+      # nicht mehr". Gemessen:
+      #
+      #     ls tests/integration/*.test.ts                       49
+      #     tsc -p tsconfig.fiskal.json --listFiles | grep …     14
+      #     also ungeprueft                                      35
+      #     ls apps/api-cloud/tsconfig.tests.json                EXISTIERT
+      #
+      # Die Datei gibt es also sehr wohl, sie deckt nur `src` und `tests/unit`
+      # ab und KEINE einzige Integrationsdatei. Und aus 23 sind laengst 35
+      # geworden, weil die Mappe waechst und diese Zahl von Hand getippt war.
+      #
+      # Dass dieser Schritt „Die fiskalen Tests typpruefen" heisst und dabei
+      # 35 von 49 Dateien nicht ansieht, ist die Luecke, die in diesem Haus
+      # schon einmal dazu fuehrte, dass ein Testlauf einen ECHTEN Netzaufruf
+      # gegen fiskaly machte: eine Signatur waechst um einen Wert, der Aufruf
+      # im Test bleibt alt, und `tsc` schweigt, weil er die Datei nie sieht.
+      # Das Schliessen dieser Luecke ist eigene Arbeit (die 35 Dateien tragen
+      # veraltete Umgebungsvorlagen und muessen einzeln nachgezogen werden).
+      # Bis dahin steht die Zahl hier, statt dass sie jemand neu entdecken muss.
+      - name: Die fiskalen Tests typpruefen
+        run: pnpm --fail-if-no-match --filter @norns/api-cloud exec tsc -p tsconfig.fiskal.json
+
+      # ⚠️ `-c vitest.integration.config.ts` ist TRAGEND, kein Beiwerk. Ohne
+      # diese Vorgabe teilen sich alle sieben Dateien einen Prozess, und der
+      # Lauf meldet „5 failed | 1 passed" mit 70 uebersprungenen Tests. Siehe
+      # den Kopf dieser Datei.
+      # ⚠️ KEINE Dateiliste mehr: die ganze Mappe. Eine Namensliste hier hat
+      # zweimal Dateien verloren (neue Datei nur im Ausloeser ODER nur im
+      # Lauf), und ihr Begruendungsabsatz trug eine Messung vom 26.07., die
+      # am 11.08. schon falsch war. `-c vitest.integration.config.ts` bleibt
+      # TRAGEND: eine Datei, ein Prozess, siehe Kopf.
+      - name: Die fiskale Kette
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: 'true'
+        run: |
+          pnpm --fail-if-no-match --filter @norns/api-cloud exec vitest run \
+            -c vitest.integration.config.ts
+
+      # Die reinen Wächter laufen ohnehin in `ci`, hier aber noch einmal
+      # zusammen mit der Kette: die Formatprüfung gegen DATEVs eigene Datei
+      # gehoert zum selben Tor wie der HTTP-Weg. `datev-treatment-mapping`
+      # kam am 26.07.2026 dazu: die Zuordnung Steuerbehandlung auf Erloeskonto
+      # und BU-Schluessel ist genau die Stelle, an der die Gegenproben eine
+      # eingesetzte Mutation nachgewiesen haben.
+      - name: Die Formatwaechter
+        run: |
+          pnpm --fail-if-no-match --filter @norns/api-cloud exec vitest run \
+            tests/unit/datev-format.test.ts \
+            tests/unit/datev-kontierung.test.ts \
+            tests/unit/datev-pruefer.test.ts \
+            tests/unit/datev-mandant.test.ts \
+            tests/unit/datev-treatment-mapping.test.ts \
+            tests/unit/datev-kontenrahmen.test.ts \
+            tests/unit/storno-macht-den-tag-nicht-unabschliessbar.test.ts

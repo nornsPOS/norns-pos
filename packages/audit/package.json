@@ -1,0 +1,30 @@
+{
+  "name": "@norns/audit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Append-only ledger emit + chain verification for Warehouse14. The single discipline boundary for ledger_events INSERTs.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist .tsbuildinfo"
+  },
+  "dependencies": {
+    "@norns/db": "workspace:*",
+    "drizzle-orm": "0.36.4"
+  },
+  "devDependencies": {
+    "@norns/config": "workspace:*",
+    "typescript": "5.7.2"
+  }
+}

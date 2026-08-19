@@ -1,0 +1,15 @@
+{
+  "name": "@norns/config",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "files": ["tsconfig", "biome"],
+  "exports": {
+    "./tsconfig/base.json": "./tsconfig/base.json",
+    "./tsconfig/library.json": "./tsconfig/library.json",
+    "./tsconfig/app.json": "./tsconfig/app.json",
+    "./tsconfig/react-library.json": "./tsconfig/react-library.json",
+    "./tsconfig/react-app.json": "./tsconfig/react-app.json",
+    "./biome/base.json": "./biome/base.json"
+  }
+}

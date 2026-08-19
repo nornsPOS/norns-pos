@@ -1,0 +1,29 @@
+{
+  "name": "@norns/email",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Transaktionale Briefe: Wortlaut je Sprache, Gestalt des Briefes, und das Einreihen in email_outbox. Geteilt, damit api-cloud und worker denselben Brief schreiben statt zwei zu pflegen.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist .tsbuildinfo"
+  },
+  "dependencies": {
+    "drizzle-orm": "0.36.4"
+  },
+  "devDependencies": {
+    "@norns/config": "workspace:*",
+    "typescript": "5.7.2"
+  }
+}

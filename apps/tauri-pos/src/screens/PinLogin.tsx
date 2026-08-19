@@ -1,0 +1,559 @@
+/**
+ * PinLogin — first screen on cold start when no session is alive.
+ *
+ * Corrected 2026-05-26 (memory.md #76) to match the real server contract:
+ * `POST /api/auth/pin-login` with `{ pin }` only. mTLS resolves the user
+ * via the device cert; the operator never types an email.
+ *
+ * Error handling maps the stable `ApiError.code` enum to brand-themed
+ * messages (memory.md §10.6 voice). `PIN_LOCKED` carries a `lockedUntil`
+ * ISO timestamp in `details`, parsed once and used to drive a live
+ * countdown.
+ *
+ * Visual: Seal + wordmark + italic motto + PinPad + retry counter
+ * (Roman numerals in wax-red as wax-seal failure marks).
+ */
+
+import { useEffect, useMemo, useState } from 'react';
+
+import { type AnmeldbarePerson, ApiError, authPin } from '@norns/api-client';
+import { Zwischentitel, NornsZeichen, Hourglass, Icon, ParchmentCard, PinPad, RomanIndex } from '@norns/ui-kit';
+
+import { ThemeToggle } from '../app/chrome/ThemeToggle.js';
+import { useApiClient } from '../lib/api-context.js';
+import { setSessionToken } from '../lib/session-token.js';
+import { useSessionStore } from '../state/session-store.js';
+import { describeError } from '@norns/i18n-de';
+import { ohneApiFehlerSatz } from '../lib/eingereiht.js';
+
+/**
+ * Genau sechs Ziffern — die Regel des Servers, hier gespiegelt.
+ *
+ * ⚠️ 18.08.2026: Basels Anweisung hebt seine eigene vom 30.07. auf (sechs
+ * bis zwölf). Er hat sich mit der Spanne selbst vertippt und verheddert;
+ * die feste Länge macht die Eingabe eindeutig, und die Tastatur schickt
+ * beim sechsten Zeichen von selbst ab. Ein VOR dem 18.08. gesetzter
+ * längerer Code lässt sich hier nicht mehr eintippen; sein Ausgang ist
+ * der Löschweg (Satz unter der Tastatur).
+ *
+ * Sie steht bewusst als eigene Funktion da: sie gilt für die Anmeldung UND
+ * für die Einrichtung, und zwei Kopien derselben Zahl laufen irgendwann
+ * auseinander. Die Wahrheit steht auf dem Server; das hier erspart dem
+ * Händler nur die vergebliche Reise.
+ */
+function laengeStimmt(pin: string): boolean {
+  return /^\d{6}$/.test(pin);
+}
+
+export function PinLogin({ onUseGoogle }: { onUseGoogle?: () => void }): JSX.Element {
+  const api = useApiClient();
+  const setFromLogin = useSessionStore((s) => s.setFromLogin);
+
+  const [pin, setPin] = useState<string>('');
+  const [failedAttempts, setFailedAttempts] = useState<number>(0);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [lockedUntilIso, setLockedUntilIso] = useState<string | null>(null);
+  const [now, setNow] = useState<number>(() => Date.now());
+  const [submitting, setSubmitting] = useState<boolean>(false);
+  /** Diese Kasse hat noch keinen Code — der Händler setzt ihn jetzt. */
+  const [einrichtung, setEinrichtung] = useState<boolean>(false);
+
+  /**
+   * ── WER MELDET SICH AN (02.08.2026) ────────────────────────────────────
+   *
+   * Bis heute konnte diese Maske gar nicht fragen: der Server löste den
+   * Menschen allein über das GERÄT auf, ein Gerät, ein Mensch, für immer.
+   * Jeder angelegte Mitarbeiter konnte sich strukturell nie anmelden, und
+   * jede fiskalische Zeile trug denselben Menschen — Bedienerzuordnung nach
+   * § 146a AO war damit unmöglich.
+   *
+   * `null` heisst „noch nicht geladen", ein leeres Feld „geladen, aber die
+   * Kasse kennt nur einen Menschen". Beides ist NICHT dasselbe, und die
+   * Fläche darf die Wahl erst zeigen, wenn es wirklich etwas zu wählen gibt.
+   */
+  const [personen, setPersonen] = useState<AnmeldbarePerson[] | null>(null);
+  const [gewaehlt, setGewaehlt] = useState<string | null>(null);
+
+  /** Den Code setzen. Danach meldet sich der Händler damit normal an. */
+  // Die Personen einmal holen. Scheitert es, bleibt die Maske genau die, die
+  // sie vorher war: eine Tastatur. Ein Ladefehler darf die Anmeldung nie
+  // versperren — der Weg ohne Wahl funktioniert weiterhin.
+  useEffect(() => {
+    let lebt = true;
+    void authPin
+      .anmeldbarePersonen(api)
+      .then((a) => {
+        if (lebt) setPersonen(a.personen);
+      })
+      .catch(() => {
+        if (lebt) setPersonen([]);
+      });
+    return () => {
+      lebt = false;
+    };
+  }, [api]);
+
+  /**
+   * Die Wahl erscheint nur, wenn es WIRKLICH etwas zu wählen gibt.
+   *
+   * Eine Liste mit einem einzigen Namen ist keine Wahl, sondern ein Klick
+   * mehr auf dem Weg zur Kasse — jeden Morgen, für nichts.
+   */
+  const zeigeWahl = (personen?.length ?? 0) > 1;
+  const gewaehltePerson = personen?.find((p) => p.id === gewaehlt) ?? null;
+
+  async function handleEinrichten(): Promise<void> {
+    if (submitting || !laengeStimmt(pin)) return;
+    setSubmitting(true);
+    setErrorMsg(null);
+    try {
+      await authPin.setzeCode(api, { pin, ...(gewaehlt ? { userId: gewaehlt } : {}) });
+      // Kein Sonderweg: ab hier ist es die gewöhnliche Anmeldung.
+      const res = await authPin.loginSafe(api, { pin, ...(gewaehlt ? { userId: gewaehlt } : {}) });
+      setSessionToken(res.token);
+      setFromLogin(res);
+    } catch (err) {
+      // ⚠️ 31.07.2026: hier wurde JEDES `UNAUTHORIZED` zu „Dieser Code ist zu
+      // leicht zu erraten" gemacht. Der Server benutzt denselben Code aber für
+      // DREI verschiedene Gründe (`routes/auth-pin.ts:677`): Sperrliste,
+      // falsche Länge, keine Ziffern — und er schickt seinen Grund als Satz
+      // mit. Basel suchte deshalb stundenlang nach einem besseren Code,
+      // während in Wahrheit die Länge scheiterte.
+      //
+      // Jetzt entscheidet der SERVER, nicht wir. Nur wenn seine Auskunft
+      // wirklich von der Sperrliste spricht, sagen wir das auch.
+      const auskunft = err instanceof ApiError ? (err.message ?? '') : '';
+      const istGassenhauer = /blacklist|weak/i.test(auskunft);
+      setErrorMsg(
+        err instanceof ApiError
+          ? istGassenhauer
+            ? 'Dieser Code steht auf der Liste der zu einfachen Codes. Bitte einen anderen wählen.'
+            : /genau sechs|6 to 12|6 bis 12/i.test(auskunft)
+              ? 'Der Kassencode hat genau sechs Ziffern.'
+              : describeError(err)
+          : 'Der Code konnte nicht gesetzt werden.',
+      );
+      setPin('');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  // Re-render once a second while locked so the countdown ticks.
+  useEffect(() => {
+    if (!lockedUntilIso) return;
+    const t = window.setInterval(() => setNow(Date.now()), 1_000);
+    return () => window.clearInterval(t);
+  }, [lockedUntilIso]);
+
+  const lockoutSecondsLeft = useMemo(() => {
+    if (!lockedUntilIso) return 0;
+    const target = new Date(lockedUntilIso).getTime();
+    return Math.max(0, Math.ceil((target - now) / 1_000));
+  }, [lockedUntilIso, now]);
+
+  const locked = lockoutSecondsLeft > 0;
+
+  // Clear the lockout silently once the countdown finishes.
+  useEffect(() => {
+    if (lockedUntilIso && lockoutSecondsLeft === 0) {
+      setLockedUntilIso(null);
+      setErrorMsg(null);
+    }
+  }, [lockedUntilIso, lockoutSecondsLeft]);
+
+  async function handleSubmit(): Promise<void> {
+    // ⚠️ 30.07.2026. Hier stand `pin.length !== 4`. Der Server verlangte ab
+    // da SECHS bis ZWÖLF Ziffern — ein korrekter sechsstelliger Code wäre
+    // also nie abgeschickt worden, und der Händler hätte getippt und getippt,
+    // ohne dass je etwas passiert. Sitzung A hat davor gewarnt, bevor es
+    // jemanden traf. Seit dem 18.08.2026 gilt: GENAU sechs (laengeStimmt).
+    if (locked || submitting || !laengeStimmt(pin)) return;
+    setSubmitting(true);
+    setErrorMsg(null);
+    try {
+      const res = await authPin.loginSafe(api, { pin, ...(gewaehlt ? { userId: gewaehlt } : {}) });
+      // Store the token for the Bearer-header auth path (Windows WebView2 drops
+      // the cross-site session cookie) before flipping the session state.
+      setSessionToken(res.token);
+      setFromLogin(res);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        switch (err.code) {
+          case 'UNAUTHORIZED':
+            setFailedAttempts((n) => n + 1);
+            setErrorMsg('Falsche PIN.');
+            break;
+          case 'PIN_LOCKED':
+            {
+              const details = err.details as { lockedUntil?: string } | undefined;
+              if (details?.lockedUntil) setLockedUntilIso(details.lockedUntil);
+              setErrorMsg('Konto gesperrt. Bitte Geduld.');
+            }
+            break;
+          case 'PIN_NOT_SET':
+            // Kein Fehler, sondern ein anderer Zustand: diese Kasse ist neu
+            // und hat noch keinen Code. Ohne diesen Zweig sähe der Händler
+            // beim allerersten Start „Falsche PIN" für etwas, das er nie
+            // gesetzt hat, und käme nie hinein.
+            setEinrichtung(true);
+            setErrorMsg(null);
+            break;
+          case 'DEVICE_NOT_AUTHORIZED':
+            setErrorMsg('Dieses Gerät ist nicht autorisiert.');
+            break;
+          case 'RATE_LIMITED':
+            setErrorMsg('Zu viele Versuche, kurz innehalten.');
+            break;
+          /**
+           * ⛔ 12.08.2026, IN DER VORSCHAU BEGANGEN: „Datensatz nicht gefunden."
+           *
+           * Ohne diesen Zweig fiel NOT_FOUND auf `describeError` und der
+           * Kassierer las am Tresen „Datensatz nicht gefunden." — er hielt sein
+           * KONTO für unbekannt, tippte die PIN noch einmal, und noch einmal.
+           *
+           * Diese Auskunft ist nicht nur unfreundlich, sie ist UNMÖGLICH:
+           * `routes/auth-pin.ts` wirft nie NOT_FOUND. Ein unbekannter Mensch
+           * bekommt dort mit Absicht `UnauthorizedError` („Invalid PIN"), damit
+           * sich die Namensliste nicht abfragen lässt. Ein 404 auf diesem
+           * Bildschirm kann deshalb NUR heissen: die Anmeldung des Motors ist
+           * gar nicht erreichbar — er läuft noch nicht, oder das Programm ruft
+           * einen Weg, den seine Fassung nicht kennt (Fassungsversatz nach
+           * einer Aktualisierung).
+           *
+           * Der Satz sagt jetzt, was wirklich los ist, und nennt den Weg.
+           */
+          case 'NOT_FOUND':
+            setErrorMsg(
+              'Die Kasse erreicht ihren Motor gerade nicht. Das liegt nicht an Ihrer PIN. ' +
+                'Bitte einen Augenblick warten und erneut versuchen; bleibt es dabei, die ' +
+                'Kasse neu starten.',
+            );
+            break;
+          default:
+            setErrorMsg(describeError(err));
+        }
+      } else {
+        setErrorMsg(ohneApiFehlerSatz(err));
+      }
+      setPin('');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const lockoutLabel = useMemo(() => {
+    if (!locked) return null;
+    const m = Math.floor(lockoutSecondsLeft / 60);
+    const s = lockoutSecondsLeft % 60;
+    return `${m}:${String(s).padStart(2, '0')}`;
+  }, [locked, lockoutSecondsLeft]);
+
+  return (
+    <div
+      style={{
+        minHeight: '100dvh',
+        display: 'grid',
+        placeItems: 'center',
+        padding: 'var(--w14-abstand-24)',
+        background: 'var(--w14-parchment)',
+      }}
+      className="w14-paper-noise"
+    >
+      <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 'var(--w14-z-klebend)' }}>
+        <ThemeToggle />
+      </div>
+      <ParchmentCard padding="lg" style={{ width: 'min(440px, 100%)', textAlign: 'center' }}>
+        {/* ⚠️ 31.07.2026: HIER STAND DAS WAPPEN DES FREMDEN HAUSES.
+            300 Pixel breit, als Erstes und Grösstes auf der Anmeldekarte:
+            Medaillon mit der Ziffer 14, Schriftzug WAREHOUSE, darunter
+            ANTIQUITÄTEN · BRIEFMARKEN · MÜNZEN. Daneben stand alt="Norns POS",
+            die Fläche gab dem fremden Wappen also den Namen dieses Hauses.
+
+            Kein Textgrep konnte es finden: die Datei ist reine Pfadgrafik,
+            jeder Buchstabe zu Kurven ausgezogen. Nur Rastern und Hinsehen.
+
+            Es kommt NICHT als Bilddatei zurück. Hier steht die Wortmarke
+            dieses Hauses, gesetzt wie auf der Startfläche (`Motorstart.tsx`),
+            damit die Kasse von der ersten Sekunde an DIESELBE Identität
+            trägt. Den Namen des Ladens kann diese Fläche nicht zeigen: sie
+            steht VOR der Anmeldung, und die Ladendaten hängen an einer
+            Sitzung, die es hier noch nicht gibt. Etwas zu zeigen, das erst
+            nach dem Anmelden stimmt, wäre wieder eine Fläche, die rät. */}
+        {/* ⚠️ DAS ZEICHEN DES HAUSES, an seinem Platz.
+            Es lag nur als Rasterbild fuer die Fensterleiste vor. IN der Kasse
+            stand an seiner Stelle nur der Name als Textzeile: der Haendler sah
+            die Marke also nirgends, wo er arbeitet. Der Schriftzug darunter
+            bleibt unveraendert. */}
+        <NornsZeichen faden="var(--w14-weinrot, #9c2630)"
+          size={92}
+          tinte="var(--w14-ink)"
+          titel="Norns"
+          style={{ display: 'block', margin: '0 auto var(--w14-abstand-12)' }}
+        />
+        <p
+          style={{
+            margin: '0 0 4px',
+            fontFamily: 'var(--w14-font-display)',
+            fontSize: 'var(--w14-step-3)',
+            fontWeight: 500,
+            letterSpacing: '0.34em',
+            textIndent: '0.34em',
+            lineHeight: 1.15,
+            color: 'var(--w14-ink)',
+          }}
+        >
+          NORNS
+        </p>
+        <p
+          style={{
+            fontFamily: 'var(--w14-font-display)',
+            fontStyle: 'italic',
+            margin: 0,
+            color: 'var(--w14-ink-faded)',
+          }}
+        >
+          Was lange ruht, spricht leise.
+        </p>
+        {/* Beim ERSTEN Start heisst die Tür anders, weil sie etwas anderes
+            tut: der Händler meldet sich nicht an, er nimmt die Kasse in
+            Besitz. Dieselbe Tastatur, ein anderer Satz darüber. */}
+        <Zwischentitel label={einrichtung ? 'Kasse einrichten' : 'Anmelden'} />
+
+        {/* ── WER STEHT HIER? ─────────────────────────────────────────────
+            Erscheint NUR, wenn es wirklich etwas zu wählen gibt. Eine Liste
+            mit einem einzigen Namen ist keine Wahl, sondern ein Klick mehr
+            auf dem Weg zur Kasse — jeden Morgen, für nichts. */}
+        {zeigeWahl && (
+          <div
+            role="radiogroup"
+            aria-label="Wer meldet sich an"
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              justifyContent: 'center',
+              gap: 'var(--w14-abstand-8)',
+              marginTop: 'var(--w14-abstand-14)',
+            }}
+          >
+            {(personen ?? []).map((person) => {
+              const aktiv = person.id === gewaehlt;
+              return (
+                <button
+                  key={person.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={aktiv}
+                  onClick={() => {
+                    setGewaehlt(aktiv ? null : person.id);
+                    // Der Code des einen gehört nicht zum anderen. Bei jedem
+                    // Wechsel wird die Tastatur geleert, sonst wanderten
+                    // getippte Ziffern still auf einen anderen Menschen.
+                    setPin('');
+                    setErrorMsg(null);
+                    // Ein Mensch ohne Code kommt zum Einrichten, nicht zur
+                    // Anmeldung. Die Maske sagt es dann selbst.
+                    setEinrichtung(!aktiv && !person.hatCode);
+                  }}
+                  style={{
+                    minHeight: 44,
+                    padding: '0 var(--w14-abstand-14)',
+                    border: `1px solid ${aktiv ? 'var(--w14-gold)' : 'var(--w14-rule)'}`,
+                    borderRadius: 'var(--w14-radius-button)',
+                    background: aktiv ? 'var(--w14-parchment-3)' : 'transparent',
+                    color: 'var(--w14-ink)',
+                    fontFamily: 'var(--w14-font-body)',
+                    fontSize: 'var(--w14-schrift-text)',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 'var(--w14-abstand-6)',
+                  }}
+                >
+                  {person.name}
+                  {!person.hatCode && (
+                    <span
+                      className="w14-smallcaps"
+                      style={{
+                        fontSize: 'var(--w14-schrift-kuerzel)',
+                        letterSpacing: '0.06em',
+                        color: 'var(--w14-ink-faded)',
+                      }}
+                    >
+                      noch ohne Code
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Ein gewählter Mensch ohne Code bekommt den Grund zu lesen, statt
+            sich zu wundern, warum die Überschrift plötzlich anders heisst. */}
+        {zeigeWahl && gewaehltePerson !== null && !gewaehltePerson.hatCode && (
+          <p
+            style={{
+              margin: 'var(--w14-abstand-10) 0 0',
+              maxWidth: '46ch',
+              textAlign: 'center',
+              lineHeight: 1.6,
+              color: 'var(--w14-ink-aged)',
+              fontSize: 'var(--w14-schrift-feld)',
+              textWrap: 'pretty',
+            }}
+          >
+            {gewaehltePerson.name} hat noch keinen Kassencode. Jetzt einen wählen, genau sechs
+            Ziffern. Niemand sonst erfährt ihn, auch der Inhaber nicht.
+          </p>
+        )}
+        {einrichtung && (
+          <p
+            style={{
+              margin: 'var(--w14-abstand-12) 0 0',
+              maxWidth: '46ch',
+              textAlign: 'center',
+              lineHeight: 1.6,
+              color: 'var(--w14-ink-aged)',
+              textWrap: 'pretty',
+            }}
+          >
+            Diese Kasse ist neu. Wählen Sie einen Code aus genau sechs
+            Ziffern. Er wird nicht vorgegeben, und niemand ausser Ihnen kennt
+            ihn. Notieren Sie ihn an einem sicheren Ort.
+          </p>
+        )}
+
+        <PinPad
+          // Genau sechs Ziffern (18.08.2026). Feste Laenge heisst: die
+          // Tastatur zeigt sechs Felder und schickt beim sechsten Zeichen
+          // von selbst ab; kein Abschicken-Knopf, kein Verzaehlen.
+          pinLength={6}
+          value={pin}
+          onChange={setPin}
+          onSubmit={() => void (einrichtung ? handleEinrichten() : handleSubmit())}
+          disabled={locked || submitting}
+          bindKeyboard
+        />
+
+        {/* Während der Prüfung schluckt die gesperrte Tastatur jede Eingabe
+            STUMM — wer schnell tippt, verliert Ziffern ins Leere und wundert
+            sich über den nächsten Fehlversuch. Die eine Zeile benennt das
+            Fenster ehrlich, statt es zu verstecken. */}
+        {submitting && (
+          <p
+            role="status"
+            style={{
+              color: 'var(--w14-ink-faded)',
+              margin: '14px 0 0',
+              fontFamily: 'var(--w14-font-display)',
+              fontStyle: 'italic',
+            }}
+          >
+            Wird geprüft …
+          </p>
+        )}
+        {errorMsg && (
+          <p
+            role="alert"
+            style={{
+              color: 'var(--w14-wax-red)',
+              margin: '14px 0 0',
+              fontSize: 'var(--w14-schrift-betont)',
+            }}
+          >
+            {errorMsg}
+          </p>
+        )}
+
+        {/* Der Ausgang, wenn der Code weg ist. Er benennt den WIRKLICH
+            gebauten Weg (Team, kassencode-loeschen): der Inhaber loescht,
+            der Mensch waehlt am Tresen selbst neu. Kommt der Inhaber selbst
+            nicht mehr hinein, traegt ihn die Google-Anmeldung, die frischt
+            den Step-up (admin-auth-google.ts). Derselbe Weg fuehrt auch
+            einen VOR dem 18.08.2026 gesetzten laengeren Code heraus, der
+            in die sechs Felder nicht mehr passt. */}
+        {!einrichtung && !(zeigeWahl && gewaehltePerson !== null && !gewaehltePerson.hatCode) && (
+          <p
+            style={{
+              margin: 'var(--w14-abstand-12) 0 0',
+              maxWidth: '46ch',
+              textAlign: 'center',
+              lineHeight: 1.6,
+              color: 'var(--w14-ink-faded)',
+              fontSize: 'var(--w14-schrift-zeile)',
+              textWrap: 'pretty',
+            }}
+          >
+            Code vergessen? Der Inhaber löscht ihn unter Team, danach wählen Sie
+            hier einen neuen. Der Inhaber selbst meldet sich dafür mit Google an.
+          </p>
+        )}
+
+        {failedAttempts > 0 && !locked && (
+          <p style={{ margin: '12px 0 0', color: 'var(--w14-wax-red-soft)' }}>
+            <RomanIndex value={failedAttempts} variant="lower" tone="wax-red" />
+            &nbsp;
+            <span style={{ fontFamily: 'var(--w14-font-display)', fontStyle: 'italic' }}>
+              Fehlversuch{failedAttempts === 1 ? '' : 'e'}
+            </span>
+          </p>
+        )}
+
+        {locked && lockoutLabel && (
+          <p
+            style={{
+              color: 'var(--w14-wax-red)',
+              margin: '14px 0 0',
+              fontFamily: 'var(--w14-font-mono)',
+              fontSize: 'var(--w14-schrift-titel)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 'var(--w14-abstand-6)',
+            }}
+          >
+            {/* Sanduhr als Strich-Icon — das ⌛ rendert auf Windows als
+                buntes Segoe-Emoji (Dekret „Symbole statt Emoji", 26.07.2026). */}
+            <Icon icon={Hourglass} size={16} />
+            {lockoutLabel}
+          </p>
+        )}
+
+        <Zwischentitel />
+        <p
+          style={{
+            fontSize: 'var(--w14-schrift-zeile)',
+            color: 'var(--w14-ink-faded)',
+            fontFamily: 'var(--w14-font-display)',
+            fontStyle: 'italic',
+            margin: 0,
+          }}
+        >
+          {/* ⚠️ 31.07.2026: hier stand „Antiquitäten · Briefmarken · Münzen",
+              die Geschäftsfelder des FREMDEN Hauses, auf der Anmeldekarte
+              eines Schmuck- und Edelmetallhändlers. */}
+          Kasse
+        </p>
+        {onUseGoogle && (
+          <button
+            type="button"
+            onClick={onUseGoogle}
+            style={{
+              marginTop: 12,
+              background: 'none',
+              border: 'none',
+              color: 'var(--w14-ink-faded)',
+              fontFamily: 'var(--w14-font-display)',
+              fontStyle: 'italic',
+              cursor: 'pointer',
+              fontSize: 'var(--w14-schrift-text)',
+            }}
+          >
+            Mit Google anmelden
+          </button>
+        )}
+      </ParchmentCard>
+    </div>
+  );
+}

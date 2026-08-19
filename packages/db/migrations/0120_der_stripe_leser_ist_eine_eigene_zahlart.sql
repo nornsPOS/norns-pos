@@ -1,0 +1,28 @@
+-- ═══════════════════════════════════════════════════════════════════════════
+--  0120 — DER STRIPE-LESER IST EINE EIGENE ZAHLART
+-- ═══════════════════════════════════════════════════════════════════════════
+--
+-- ── WARUM (26.07.2026, Koordination §9) ────────────────────────────────────
+--
+-- Kartenzahlung im Laden laeuft heute ueber ZVT (`ZVT_CARD`) und beruehrt
+-- Stripe nie. Der neue servergesteuerte Weg ueber Stripe Terminal (Leser
+-- S700) steht NEBEN dem ZVT-Weg — er ersetzt ihn nicht.
+--
+-- Er darf auch den Wert `STRIPE` nicht mitbenutzen: der ist vom Web-Shop
+-- belegt. Teilten sich beide Kanaele einen Wert, waeren sie in JEDEM Export
+-- ununterscheidbar — DATEV buchte Terminal- und Shop-Geld auf EIN
+-- Durchgangskonto, und der Berater koennte die getrennten Auszahlungs-
+-- stroeme desselben Anbieters nicht mehr gegen den Bankauszug abstimmen.
+-- Deshalb ein EIGENER Wert; das eigene Konto (SKR03 1366 / SKR04 1466,
+-- fortgefuehrte Reihe 1361 ff.) haengt im Quelltext daran
+-- (`kontenrahmen.ts`, `datev-kontierung.ts`).
+--
+-- MANDANTENNEUTRAL (Doktrin §7): nur der Aufzaehlungswert. Kein INSERT,
+-- keine Leser-Kennung, kein Stripe-Konto — das sind Mandantendaten und
+-- kommen ueber die API in die Datenbank des Haendlers.
+--
+-- Enum-Erweiterungen duerfen nicht in einem Transaktionsblock laufen,
+-- deshalb eine nackte, selbstbestaetigende Anweisung (Muster: 0019/0047).
+-- ═══════════════════════════════════════════════════════════════════════════
+
+ALTER TYPE payment_method ADD VALUE IF NOT EXISTS 'STRIPE_TERMINAL';

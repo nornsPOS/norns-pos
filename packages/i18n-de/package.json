@@ -1,0 +1,32 @@
+{
+  "name": "@norns/i18n-de",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The platform-neutral German text spine — describeError + the exhaustive enum/status label registries + germanLabel. Shared by mobile and the desktop cashier so doctrine (a) has one source of truth.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist .tsbuildinfo"
+  },
+  "dependencies": {
+    "@norns/api-client": "workspace:*"
+  },
+  "devDependencies": {
+    "@norns/config": "workspace:*",
+    "typescript": "5.7.2",
+    "vitest": "2.1.8"
+  }
+}

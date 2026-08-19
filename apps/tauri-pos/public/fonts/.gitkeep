@@ -1,0 +1,3 @@
+# Local fonts live here.
+# Run `scripts/download-fonts.sh` once to fetch the .woff2 files.
+# Memory.md #74-C enforces "no Google Fonts" — this directory is the source.

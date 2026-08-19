@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  macOS Info.plist additions for Warehouse14 POS.
+
+  Tauri 2's bundler MERGES this file into the generated app bundle's
+  Info.plist (it does not replace the auto-generated one). We only declare
+  the privacy usage strings the WKWebview needs.
+
+  Why this is required for the in-app camera (Foto-Werkstatt):
+    The WKWebview only exposes `navigator.mediaDevices` / `getUserMedia`
+    once the host app declares a camera usage description. Without
+    NSCameraUsageDescription the packaged macOS build leaves
+    `navigator.mediaDevices` UNDEFINED (the exact "MediaDevices API nicht
+    verfügbar" symptom) and, if it were reached, TCC would hard-kill the
+    process. wry >= 0.37 auto-grants the WKWebview media-capture request,
+    so once this string is present the OS shows the standard one-time
+    camera-permission prompt on first use and the live viewfinder works.
+
+  The strings are shown verbatim by macOS in the permission dialog, so
+  they are written in professional German (Sie-Form) for the operator.
+-->
+<plist version="1.0">
+  <dict>
+    <key>NSCameraUsageDescription</key>
+    <string>Norns POS benötigt Zugriff auf die Kamera, um in der Foto-Werkstatt Produkt- und Ausweisfotos aufzunehmen.</string>
+    <!-- 01.08.2026: NSMicrophoneUsageDescription stand hier, für den
+         Sprachassistenten. Der ist ausgezogen (er kann auf einer Norns-Kasse
+         nie verbinden, siehe src/app/chrome/SupportButton.tsx), und keine
+         andere Fläche öffnet das Mikrofon — gemessen: getUserMedia({audio})
+         kommt in der Kasse null mal vor.
+
+         Ein Recht, das nie gebraucht wird, ist keine Kleinigkeit: macOS
+         zeigt der Kundschaft in den Systemeinstellungen, dass diese Kasse
+         das Mikrofon anfordert. Eine Kasse, die im Verkaufsraum steht und
+         ohne Grund nach dem Mikrofon fragt, muss sich das nicht nachsagen
+         lassen. -->
+    <!-- ══════════════════════════════════════════════════════════════
+         08.08.2026: die Ordner-Begründungen fehlten.
+
+         Gemessen: TCC trägt für `de.norns.pos` bereits eine erteilte
+         Erlaubnis für den Downloads-Ordner (vom 08.08.2026), das Paket
+         enthielt aber NUR die Kamerazeile. Der Dialog erschien also ohne
+         einen Satz, der dem Händler sagt, wofür — und ein Dialog ohne
+         Begründung wird weggeklickt oder abgelehnt.
+
+         Es geht dabei nicht um Bequemlichkeit: § 147 Abs. 1 AO verlangt
+         zehn Jahre Aufbewahrung, und die Sicherung der Bücher schreibt in
+         genau diese Ordner.
+         ══════════════════════════════════════════════════════════════ -->
+    <key>NSDocumentsFolderUsageDescription</key>
+    <string>Norns POS legt die gesetzlich vorgeschriebene Sicherung Ihrer Bücher in diesem Ordner ab. Ohne diesen Zugriff kann die Kasse keine Sicherung schreiben.</string>
+    <key>NSDownloadsFolderUsageDescription</key>
+    <string>Norns POS speichert hier die Auszüge für Ihr Finanzamt und Ihren Steuerberater, etwa das Prüferpaket und den Buchungsstapel.</string>
+    <key>NSDesktopFolderUsageDescription</key>
+    <string>Norns POS speichert hier Auszüge und Sicherungen, wenn Sie den Schreibtisch als Ablageort wählen.</string>
+  </dict>
+</plist>

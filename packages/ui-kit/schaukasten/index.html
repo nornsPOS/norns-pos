@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Norns · Themenblatt</title>
+<!--
+  ═══════════════════════════════════════════════════════════════════════
+   DAS THEMENBLATT — das Haus sieht sich selbst an, in beiden Lagen
+  ═══════════════════════════════════════════════════════════════════════
+
+  Basels Befund vom 19.08.2026: „beide Themen ohne Seele, keine
+  Lebendigkeit, kein Wuerzen."
+
+  Bis heute gab es keinen Ort, an dem man das PRUEFEN konnte. Der
+  Schaukasten (storybook) steht in package.json, ist aber nicht
+  installiert; 34 der 41 Bauteile haben ohnehin keine Geschichte. Wer
+  eine Farbe aendern wollte, aenderte sie und hoffte.
+
+  Diese Seite laedt die ECHTE tokens.css — keine Nachbildung — und zeigt
+  beide Lagen NEBENEINANDER, mit dem gemessenen Kontrast an jeder Marke.
+  Sie oeffnet sich mit einem Doppelklick, ohne Bau, ohne Server.
+-->
+<link rel="stylesheet" href="../src/tokens.css" />
+<script>
+/*
+ * ⚠️ WARUM ZWEI RAHMEN UND KEIN UMSCHREIBEN (19.08.2026, selbst hineingefallen)
+ *
+ * Der erste Wurf schrieb die `:root[data-theme="dark"]`-Regeln auf
+ * `[data-theme="dark"]` um und stempelte die rechte SPALTE. Das lieferte eine
+ * FALSCHE Messung: `--w14-accent: var(--w14-weinrot)` ist ein Verweis, und
+ * Verweise in eigenen Eigenschaften werden JE ELEMENT aufgeloest — das
+ * Wurzelelement loest den Akzent noch mit dem HELLEN Weinrot auf, die Spalte
+ * erbt den fertig aufgeloesten Wert, und ihre eigene dunkle Weinrot-Marke
+ * greift ins Leere. Das Blatt zeigte 2,40:1 fuer einen Akzent, der im
+ * Erzeugnis wirklich 3,41:1 traegt.
+ *
+ * Das Erzeugnis stempelt `data-theme` auf <html>. Also tut das Blatt es
+ * genauso: je Lage ein eigener Rahmen, der DIESELBE Datei mit ?lage=dunkel
+ * laedt und auf SEINEM Wurzelelement stempelt. Gemessen wird in der echten
+ * Aufloesungsreihenfolge, nicht in einer nachgebauten.
+ */
+const LAGE = new URLSearchParams(location.search).get('lage');
+if (LAGE === 'dunkel') document.documentElement.dataset.theme = 'dark';
+if (LAGE === 'hell') document.documentElement.dataset.theme = 'light';
+</script>
+<style>
+  body { margin: 0; font-family: ui-sans-serif, system-ui, sans-serif; background: #6b6b6b; }
+  /* `hidden` verliert sonst gegen `.paar { display:grid }` — der leere
+     Rahmenhalter nahm IM Rahmen 100vh ein und schob die Lage unter die
+     Falz. Gemessen am eigenen Blatt, 19.08.2026. */
+  [hidden] { display: none !important; }
+  .paar { display: grid; grid-template-columns: 1fr 1fr; gap: 0; height: 100vh; }
+  .paar iframe { width: 100%; height: 100%; border: 0; }
+  .lage { padding: 28px 26px 60px; background: var(--w14-parchment); color: var(--w14-ink); }
+  h1 { font-size: 15px; letter-spacing: .14em; text-transform: uppercase; margin: 0 0 4px;
+       color: var(--w14-ink-faded); font-weight: 600; }
+  h2 { font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+       color: var(--w14-ink-faded); margin: 26px 0 10px; font-weight: 600; }
+  .karte { background: var(--w14-parchment-2); border: 1px solid var(--w14-tabellenlinie);
+           border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; }
+  .reihe { display: flex; align-items: center; gap: 10px; padding: 5px 0; font-size: 13px; }
+  .tupf { width: 26px; height: 26px; border-radius: 6px; flex: 0 0 auto;
+          border: 1px solid rgb(var(--w14-ink-rgb) / .18); }
+  .name { font-family: ui-monospace, monospace; font-size: 11.5px; color: var(--w14-ink-aged); flex: 1; }
+  .wert { font-family: ui-monospace, monospace; font-size: 11px; color: var(--w14-ink-faded); }
+  .quote { font-family: ui-monospace, monospace; font-size: 11px; padding: 1px 6px; border-radius: 4px; }
+  .gut { background: rgb(var(--w14-verdigris-rgb) / .18); color: var(--w14-ink); }
+  .schwach { background: rgb(var(--w14-wax-red-rgb) / .22); color: var(--w14-ink); }
+  .knopf { border: 1px solid var(--w14-feldlinie); border-radius: 8px; padding: 7px 14px;
+           font: inherit; font-size: 13px; cursor: pointer; margin-right: 8px; }
+  .primaer { background: var(--w14-accent); color: var(--w14-accent-ink); border-color: transparent; }
+  .geist { background: transparent; color: var(--w14-ink); }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th { text-align: left; font-weight: 600; color: var(--w14-ink-aged);
+       border-bottom: 1px solid var(--w14-tabellenlinie); padding: 6px 4px; }
+  td { padding: 6px 4px; border-bottom: 1px solid var(--w14-rule); }
+  tr:nth-child(even) td { background: rgb(var(--w14-ink-rgb) / .03); }
+  .zeichen { display: inline-flex; gap: 14px; align-items: center; font-size: 12px; }
+  .zeichen span { display: inline-flex; flex-direction: column; align-items: center; gap: 4px;
+                  color: var(--w14-ink-faded); font-size: 10px; }
+  .zeichen i { width: 20px; height: 20px; border-radius: 4px; display: block; }
+</style>
+</head>
+<body>
+<div class="paar" id="rahmenhalter" hidden>
+  <iframe src="?lage=hell" title="Helles Thema"></iframe>
+  <iframe src="?lage=dunkel" title="Dunkles Thema"></iframe>
+</div>
+<section class="lage" id="einzel" hidden></section>
+
+<script>
+/* ── Die Marken, nach Aufgabe geordnet — genau wie das Haus sie fuehrt ── */
+const GRUPPEN = [
+  ['Flächen', ['--w14-parchment', '--w14-parchment-2', '--w14-parchment-3']],
+  ['Schrift', ['--w14-ink', '--w14-ink-aged', '--w14-ink-faded']],
+  ['Linien', ['--w14-rule', '--w14-tabellenlinie', '--w14-feldlinie']],
+  ['Akzent', ['--w14-accent', '--w14-accent-ink', '--w14-weinrot', '--w14-weinrot-tief']],
+  ['Bedeutung', ['--w14-verdigris', '--w14-wax-red', '--w14-gilt', '--w14-terra', '--w14-gold']],
+];
+
+/* Zeichenfarbe nach Taetigkeit — dieselbe Ordnung wie in symbolfarbe.ts. */
+const TAETIGKEIT = [
+  ['Aufsicht', '--w14-verdigris'], ['Geld', '--w14-gilt'], ['Ware', '--w14-terra'],
+  ['Kundschaft', '--w14-weinrot'], ['Haus', '--w14-ink-faded'],
+];
+
+const kanal = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+const leuchte = ([r, g, b]) => 0.2126 * kanal(r) + 0.7152 * kanal(g) + 0.0722 * kanal(b);
+const quote = (a, b) => { const [x, y] = [leuchte(a), leuchte(b)].sort((p, q) => q - p);
+                          return (x + 0.05) / (y + 0.05); };
+
+function rgbVon(el, marke) {
+  const probe = document.createElement('div');
+  probe.style.color = `var(${marke})`;
+  el.appendChild(probe);
+  const roh = getComputedStyle(probe).color;
+  probe.remove();
+  const m = roh.match(/\d+/g);
+  return m ? m.slice(0, 3).map(Number) : [0, 0, 0];
+}
+
+function malen(el, titel) {
+  const grund = rgbVon(el, '--w14-parchment');
+  let html = `<h1>${titel}</h1>`;
+
+  for (const [name, marken] of GRUPPEN) {
+    html += `<h2>${name}</h2><div class="karte">`;
+    for (const m of marken) {
+      const f = rgbVon(el, m);
+      const q = quote(f, grund);
+      const gutGenug = q >= 4.5;
+      html += `<div class="reihe">
+        <span class="tupf" style="background: var(${m})"></span>
+        <span class="name">${m.replace('--w14-', '')}</span>
+        <span class="wert">rgb(${f.join(' ')})</span>
+        <span class="quote ${gutGenug ? 'gut' : 'schwach'}">${q.toFixed(2)}:1</span>
+      </div>`;
+    }
+    html += `</div>`;
+  }
+
+  html += `<h2>Zeichenfarbe nach Tätigkeit</h2><div class="karte"><div class="zeichen">`;
+  for (const [n, m] of TAETIGKEIT) {
+    html += `<span><i style="background: var(${m})"></i>${n}</span>`;
+  }
+  html += `</div></div>`;
+
+  html += `<h2>Bedienelemente</h2><div class="karte">
+    <button class="knopf primaer">Bezahlen</button>
+    <button class="knopf geist">Abbrechen</button>
+  </div>`;
+
+  html += `<h2>Tabelle</h2><div class="karte"><table>
+    <tr><th>Beschreibung</th><th>Menge</th><th>Summe</th></tr>
+    <tr><td>Goldmünze Krügerrand</td><td>1</td><td>2.410,00 €</td></tr>
+    <tr><td>Herrenuhr, gebraucht</td><td>1</td><td>3.200,00 €</td></tr>
+    <tr><td>Altgold 585</td><td>1</td><td>148,50 €</td></tr>
+  </table></div>`;
+
+  el.innerHTML = html;
+}
+
+if (LAGE === null) {
+  document.getElementById('rahmenhalter').hidden = false;
+} else {
+  const einzel = document.getElementById('einzel');
+  einzel.hidden = false;
+  malen(einzel, LAGE === 'dunkel' ? 'Dunkles Thema' : 'Helles Thema');
+}
+</script>
+</body>
+</html>

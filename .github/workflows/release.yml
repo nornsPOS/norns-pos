@@ -1,0 +1,777 @@
+# ──────────────────────────────────────────────────────────────────────
+# Norns POS, Freigabeweg.
+#
+# ⚠️ DIESER KOPF MUSS ZUR MATRIX PASSEN. Am 13.08.2026 tat er es nicht: Zeile 2
+# sagte „nur Windows", drei Zeilen darunter standen DREI Laeufer samt Intel-Mac,
+# und gebaut wurden in Wahrheit zwei. Wer nach einem fehlenden Buendel sucht,
+# liest zuerst hier. Ein Kopf, der etwas anderes verspricht als die Matrix,
+# schickt ihn in die falsche Richtung. Beim Aendern der Matrix diesen Absatz
+# mit aendern.
+#
+# Triggers on a SemVer tag push (`v0.1.0`, `v1.2.3`, etc.) and:
+#   1. Builds the desktop bundle on the GEMESSENEN native runners
+#      simultaneously. Diese eine Zeile ist die Wahrheit, und ein Waechter
+#      haelt sie gegen die Matrix (`freigabekopf-nennt-die-gebauten-
+#      plattformen.test.ts`), damit Kopf und Matrix nie wieder auseinander-
+#      laufen koennen:
+#
+#        GEBAUT: windows-latest, macos-14
+#
+#      Die Begruendung je Laeufer steht an der Matrix selbst. Wer dort etwas
+#      hinzufuegt oder wegnimmt, wird von diesem Waechter daran erinnert, die
+#      Zeile oben mitzufuehren. Intel-Macs und Linux sind bewusst draussen:
+#      beide braeuchten einen eigenen Laeufer und einen eigenen Satz
+#      Postgres-Binaerdateien, und beides ist nicht gefahren.
+#   2. Each runner signs its bundle with TAURI_SIGNING_PRIVATE_KEY
+#      (held in repo secrets). Tauri emits matching `.sig` files
+#      next to every artifact for the updater's minisign verification.
+#   3. `tauri-apps/tauri-action` aggregates artifacts into a single
+#      GitHub Release and generates `latest.json`, the manifest the
+#      auto-updater (configured in tauri.conf.json) polls.
+#   4. The next time any installed copy of the POS checks for updates,
+#      it pulls `latest.json` from this release, verifies the signature
+#      against the embedded public key, downloads the right bundle for
+#      its platform, and prompts the operator to install.
+#
+# Operator action required:
+#   • Set the two repo secrets:
+#       TAURI_SIGNING_PRIVATE_KEY          ← contents of warehouse14_updater.key
+#       TAURI_SIGNING_PRIVATE_KEY_PASSWORD ← empty string (we generated no-pw)
+#   • Tag + push:
+#       git tag v0.1.0 && git push --tags
+# ──────────────────────────────────────────────────────────────────────
+
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  # Manual trigger for testing, won't create a release, only artifacts.
+  workflow_dispatch:
+
+permissions:
+  contents: write    # required to create the GitHub Release
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # ── NUR WINDOWS (30.07.2026, Basels Reihenfolge) ──────────────────
+          #
+          # Norns POS bringt seinen Server mit. Dafür muss auf JEDER Plattform
+          # ein eigener Läufer (node) und ein eigener Satz Postgres-Binärdateien
+          # ins Bündel. Sitzung A hat das für Windows bewiesen: initdb läuft
+          # vollständig durch, die VC-Laufzeit trägt.
+          #
+          # Für macOS wäre derselbe Aufbau nötig, ist aber NICHT gemessen. Eine
+          # Mac-Fassung mitzubauen, die nie gestartet wurde, hiesse ein Paket
+          # auszuliefern, das vielleicht nie hochkommt. Sie kommt, wenn sie
+          # gefahren ist, nicht vorher.
+          - platform: windows-latest
+            rust-target: x86_64-pc-windows-msvc
+            label: windows-x64
+
+          # ── APPLE SILICON, seit 30.07.2026 GEMESSEN ──────────────────────
+          #
+          # Der Absatz darueber sagte: macOS kommt, wenn es GEFAHREN ist,
+          # nicht vorher. Es ist jetzt gefahren, auf Basels eigenem M-Gerät,
+          # und zwar in einem Ordner AUSSERHALB des Repos, damit kein
+          # gehisstes node_modules die Messung schoenfaerbt:
+          #
+          #   Modulkette   : ABBRUCH-Satz des Dienstes kam sauber durch
+          #   Postgres     : initdb lief vollstaendig, 6 Rollen, Saat
+          #   Schema       : angelegt, zwei Nachzuegler eingespielt
+          #   Bereitschaft : NORNS_BEREIT {"port":51606,…}
+          #   Der Server   : auf /health mit {"ok":true} geantwortet
+          #
+          # Intel-Macs bleiben draussen: dafuer waere ein eigener Laeufer und
+          # ein eigener Satz Postgres-Binaerdateien noetig, und die sind NICHT
+          # gemessen. Dieselbe Regel wie vorher, nur diesmal zu unseren
+          # Ungunsten angewandt.
+          - platform: macos-14
+            rust-target: aarch64-apple-darwin
+            label: macos-arm64
+
+    runs-on: ${{ matrix.platform }}
+    name: build (${{ matrix.label }})
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ─────────────────────────────────────────────────────────────────────
+      # ⛔ DER TAG MUSS DIE FASSUNG DES PROGRAMMS SEIN, VOR ALLEM ANDEREN
+      #
+      # ── DER BEFUND VOM 12.08.2026 ────────────────────────────────────────
+      #
+      # `scripts/set-version.mjs` trägt seit jeher den Satz „Phase 8.5 wires
+      # `--check "$TAG"` as a required status check on the release workflow so
+      # a mismatched tag can never publish." Gemessen: `grep set-version` in
+      # `.github/` fand NICHTS. Der Riegel war nie verdrahtet, ein Kommentar
+      # ist kein Riegel.
+      #
+      # Der einzige Fassungswächter (`eine-fassung-nicht-drei.test.ts`) ruft
+      # `--check` OHNE Tag: er prüft nur, dass die drei Dateien EINANDER
+      # gleichen. Bei `git tag v0.3.0` auf einem Baum mit 0.2.0 sind sie das,
+      # und der Wächter bleibt grün.
+      #
+      # ── WAS DANN PASSIERT ────────────────────────────────────────────────
+      #
+      # Gebaut wird ein Programm, das intern 0.2.0 meldet. `latest.json`
+      # bekommt aber die Fassung aus dem TAG, also 0.3.0. Jede installierte
+      # Kasse sieht 0.3.0 > 0.2.0, lädt, installiert, und meldet danach
+      # weiter 0.2.0. Die nächste stündliche Prüfung sieht wieder 0.3.0 >
+      # 0.2.0: eine DAUERSCHLEIFE aus Herunterladen und Installieren, auf
+      # jedem Gerät im Laden, bis jemand von Hand eingreift.
+      #
+      # Deshalb steht dieser Schritt GANZ VORNE: er kostet zwei Sekunden und
+      # bricht den Lauf ab, bevor irgendetwas gebaut oder veröffentlicht wird.
+      # ─────────────────────────────────────────────────────────────────────
+      - name: Wächter, der Tag muss der Fassung des Programms entsprechen
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! node scripts/set-version.mjs --check "${GITHUB_REF_NAME}"; then
+            echo ""
+            echo "::error::Der Tag ${GITHUB_REF_NAME} passt nicht zur Fassung in tauri.conf.json."
+            echo ""
+            echo "   Würde dieser Lauf durchgehen, bekäme jede installierte Kasse ein"
+            echo "   Verzeichnis mit der Tag-Fassung, während das installierte Programm"
+            echo "   weiter die alte meldet, eine Dauerschleife aus Herunterladen und"
+            echo "   Installieren auf jedem Gerät im Laden."
+            echo ""
+            echo "   Der Weg: node scripts/set-version.mjs ${GITHUB_REF_NAME#v}, einchecken, Tag neu setzen."
+            exit 1
+          fi
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust-target }}
+
+      - name: Cache Cargo registry + build target
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            apps/tauri-pos/src-tauri/target
+          key: cargo-${{ matrix.rust-target }}-${{ hashFiles('apps/tauri-pos/src-tauri/Cargo.lock') }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      # ⚠️ `node-version-file` und KEINE feste Zahl. Hier stand `'20'`, waehrend
+      # der Pruefstand 20.18.0 fuhr und die Kasse selbst Node 22.14.0
+      # MITLIEFERT (die zwei Schritte weiter unten geladene `node.exe` IST der
+      # Beipack). Drei Fassungen fuer dieselbe Sache, und die Freigabe baute das
+      # ausgelieferte Programm mit der Laufzeit, gegen die NIEMAND geprueft hat.
+      # `pruefstand-faehrt-was-die-kasse-ausliefert.test.ts` haelt jetzt alle
+      # drei Orte gegeneinander.
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install Linux build deps
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Build all internal packages tauri-pos imports (dist-based workspace deps)
+        # tauri-pos imports these as built packages (main -> ./dist). Vite fails
+        # to resolve any that is not built. i18n-de + appointments were extracted
+        # after v0.4.33, so they MUST be built here alongside the original four.
+        run: |
+          pnpm --fail-if-no-match --filter @norns/inventory-lock build
+          pnpm --fail-if-no-match --filter @norns/db build
+          pnpm --fail-if-no-match --filter @norns/audit build
+          pnpm --fail-if-no-match --filter @norns/ui-kit build
+          pnpm --fail-if-no-match --filter @norns/api-client build
+          pnpm --fail-if-no-match --filter @norns/i18n-de build
+          pnpm --fail-if-no-match --filter @norns/appointments build
+          pnpm --fail-if-no-match --filter @norns/domain build
+          pnpm --fail-if-no-match --filter @norns/auth-pin build
+          pnpm --fail-if-no-match --filter @norns/email build
+
+      # ─────────────────────────────────────────────────────────────────────
+      # DER MOTOR REIST MIT. Ohne diese vier Schritte baut der Lauf eine Kasse
+      # OHNE Server, sie startet, findet nichts und sagt „unvollständig
+      # installiert". Nichts davon liegt im Verzeichnis: der Läufer ist rund
+      # 80 MB, die Postgres-Binärdateien 109 MB, und kein Mensch schreibt sie.
+      # ─────────────────────────────────────────────────────────────────────
+
+      - name: Der Läufer, eine umbenannte node.exe
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          # Tauri erwartet den Namen mit angehängter Zielkennung, GENAU so.
+          $ziel = "apps/tauri-pos/src-tauri/binaries"
+          New-Item -ItemType Directory -Force -Path $ziel | Out-Null
+          $url = "https://nodejs.org/dist/v22.14.0/node-v22.14.0-win-x64.zip"
+          Invoke-WebRequest -Uri $url -OutFile node.zip
+          Expand-Archive node.zip -DestinationPath nodetmp -Force
+          Copy-Item "nodetmp/node-v22.14.0-win-x64/node.exe" `
+                    "$ziel/norns-sidecar-x86_64-pc-windows-msvc.exe"
+          Write-Host "Laeufer bereit:"
+          Get-Item "$ziel/norns-sidecar-x86_64-pc-windows-msvc.exe" | Select-Object Length
+
+      - name: Der Läufer, ein umbenanntes node für Apple Silicon
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Dasselbe wie unter Windows, nur ohne .exe und aus dem Tar-Archiv.
+          # Tauri haengt die Zielkennung an den Namen an, GENAU so.
+          ziel="apps/tauri-pos/src-tauri/binaries"
+          mkdir -p "$ziel"
+          curl -sL https://nodejs.org/dist/v22.14.0/node-v22.14.0-darwin-arm64.tar.gz -o node.tgz
+          tar -xzf node.tgz
+          cp node-v22.14.0-darwin-arm64/bin/node "$ziel/norns-sidecar-aarch64-apple-darwin"
+          chmod +x "$ziel/norns-sidecar-aarch64-apple-darwin"
+          # Nicht nur „liegt da", sondern: ist es das RICHTIGE Format?
+          file "$ziel/norns-sidecar-aarch64-apple-darwin"
+          if ! file "$ziel/norns-sidecar-aarch64-apple-darwin" | grep -q "arm64"; then
+            echo "::error::Der Laeufer ist nicht arm64. Das Paket liefe auf keinem M-Gerät."
+            exit 1
+          fi
+          echo "Laeufer bereit: $(du -h "$ziel/norns-sidecar-aarch64-apple-darwin" | cut -f1)"
+
+      # ⚠️ Der Befehl liegt seit dem 13.08.2026 in `scripts/buendle-motor.mjs`
+      # und NICHT mehr hier. Grund: er stand nur in dieser Datei, also gab es
+      # das Buendel im Pruefauftrag nie, und `fehlerkennung.test.ts` (der misst,
+      # ob die Klassennamen das Buendeln ueberleben) konnte auf dem Laeufer
+      # NIEMALS gruen werden. Die tragenden Fahnen und ihre Begruendungen, alle
+      # am 30.07.2026 in einem leeren Ordner gemessen, stehen jetzt vollstaendig
+      # in diesem Skript.
+      - name: Das Bündel, der ganze Server in einer Datei
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/buendle-motor.mjs
+          ls -la apps/tauri-pos/src-tauri/resources/sidecar/start.mjs
+
+      - name: Postgres und die nativen Module daneben legen
+        shell: bash
+        run: |
+          set -euo pipefail
+          # npm zieht auf DIESEM Läufer die Windows-Plattformpakete von selbst
+          # (optionalDependencies), Sitzung A hat es auf echtem Windows
+          # gemessen: initdb läuft vollständig durch.
+          cd apps/api-cloud/sidecar && npm install --omit=dev && cd -
+          cp -R apps/api-cloud/sidecar/node_modules \
+                apps/tauri-pos/src-tauri/resources/sidecar/node_modules
+          cp -R apps/api-cloud/sidecar/erststart \
+                apps/tauri-pos/src-tauri/resources/sidecar/erststart
+          du -sh apps/tauri-pos/src-tauri/resources/sidecar || true
+
+      - name: Wächter, der Motor muss ANLAUFEN, nicht nur gebaut sein
+        # Haengt ein Waechter, frisst er sonst die Auftragsfrist von sechs
+        # Stunden. Genau das geschah am 30.07.2026 (Lauf 30577102145).
+        timeout-minutes: 8
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Der schaerfste Waechter dieses Weges. Er startet den gebuendelten
+          # Dienst OHNE Geheimnisse in seinem Auslieferungsordner. Erwartet wird
+          # sein eigener Abbruchsatz, der beweist, dass die GANZE Modulkette
+          # geladen hat. Kommt etwas anderes (ERR_MODULE_NOT_FOUND, „Dynamic
+          # require", eine nackte Node-Fassungszeile), ist das Paket tot, und
+          # zwar auf JEDEM Rechner.
+          # ⚠️ AUSSERHALB DES REPOS, und das ist der ganze Wert dieses Schritts.
+          #
+          # Node sucht Module den Verzeichnisbaum AUFWAERTS. Startet der Dienst
+          # INNERHALB des Arbeitsbereichs, findet er alles, was pnpm an die
+          # Wurzel gehisst hat, und meldet sich froh, waehrend dasselbe Paket
+          # auf dem nackten Windows des Haendlers tot waere. Genau so war eine
+          # Messung heute schon einmal wertlos.
+          #
+          # Der Auslieferungsordner wird deshalb an einen Ort kopiert, ueber dem
+          # KEIN node_modules mehr liegt. Das ist die Lage des Haendlers.
+          # ⚠️ Der Ort wird ueber `cd` + `pwd` geholt, NICHT aus $RUNNER_TEMP
+          # uebernommen. Auf Windows ist RUNNER_TEMP `D:\a\_temp`, mit
+          # RUECKSTRICHEN, und `dirname` kennt nur Schraegstriche. Es gab auf
+          # `D:\a\_temp` als Antwort `.`, und auf `.` wieder `.`: die
+          # Aufwaertsschleife unten erreichte NIE die Wurzel und lief ewig.
+          # Gemessen am 30.07.2026: Lauf 30577102145 hing knapp eine Stunde in
+          # genau diesem Schritt, bis ich ihn abbrach.
+          # `pwd` in Git-bash liefert `/d/a/_temp/...`, damit rechnet dirname.
+          mkdir -p "$RUNNER_TEMP/motorprobe"
+          PROBE=$(cd "$RUNNER_TEMP/motorprobe" && pwd)
+          rm -rf "$PROBE"
+          mkdir -p "$PROBE"
+          cp -R apps/tauri-pos/src-tauri/resources/sidecar/. "$PROBE"/
+          echo "Probe laeuft in: $PROBE"
+          echo "Ueber diesem Ort liegendes node_modules (muss LEER sein):"
+          ort="$PROBE"; gefunden=0
+          # Zusaetzlich GEDECKELT und mit Stillstandsabbruch: eine Schleife, die
+          # ihr Ende nur an einer Zeichenkette erkennt, darf nicht die einzige
+          # Bremse sein.
+          for _ in $(seq 1 40); do
+            eltern=$(dirname "$ort")
+            [ "$eltern" = "$ort" ] && break
+            ort="$eltern"
+            [ "$ort" = "/" ] && break
+            if [ -d "$ort/node_modules" ]; then echo "  GEFUNDEN: $ort/node_modules"; gefunden=1; fi
+          done
+          if [ "$gefunden" != "0" ]; then
+            echo "::error::Ueber der Probe liegt ein node_modules. Die Messung waere wertlos."
+            exit 1
+          fi
+          echo "  (keins, die Probe steht so nackt wie das Geraet des Haendlers)"
+          cd "$PROBE"
+          set +e
+          AUSGABE=$(node start.mjs 2>&1)
+          set -e
+          echo "$AUSGABE" | head -3
+          if echo "$AUSGABE" | grep -q "ABBRUCH:"; then
+            echo "OK, die Modulkette laedt, der Dienst meldet sich selbst."
+          else
+            echo "::error::Der Motor laeuft nicht an. Das Paket waere tot."
+            exit 1
+          fi
+
+      - name: Wächter, die Kasse zeigt auf keinen fremden Server
+        timeout-minutes: 12
+        shell: bash
+        run: |
+          # ⚠️ `set +e` UND NICHT `set -uo pipefail`.
+          #
+          # Der Laeufer ruft bash SELBST mit -e auf:
+          #   bash --noprofile --norc -e -o pipefail {0}
+          # `set -uo pipefail` ergaenzt nur u und pipefail, es NIMMT das -e
+          # nicht weg. Hier stand genau das, mit dem Kommentar „KEIN -e: der
+          # Waechter soll SELBST urteilen", eine behauptete Eigenschaft, die
+          # nie gemessen wurde.
+          #
+          # Gemessen am 30.07.2026, Lauf 30576382860: der vite-Bau scheiterte,
+          # das -e riss den Wachter im selben Atemzug, und der Schritt endete
+          # mit NULL Zeilen Ausgabe. Dieselbe leere Ausgabe wie bei Sitzung As
+          # Fund, nur eine Ebene tiefer: nicht die Pipeline riss, sondern der
+          # Aufruf des Laeufers.
+          set +e
+          # Selbstprobe, damit dieser Kommentar nie wieder nur behauptet ist:
+          # waere -e noch aktiv, staerbe das Skript HIER, stumm. Wer die
+          # naechste Zeile liest, hat den Beweis.
+          false
+          echo "Selbstprobe bestanden: der Waechter ueberlebt einen Fehlschlag und urteilt selbst."
+
+          # ⚠️ DIESER SCHRITT STEHT VOR DER VEROEFFENTLICHUNG, und das ist der
+          # ganze Punkt. Am 30.07.2026 stand er DAHINTER: der Lauf war rot, das
+          # Paket lag trotzdem als „Latest" im Netz. Ein Waechter nach dem
+          # Publish ist zahnlos.
+          #
+          # Er baut die Kasse SELBST, statt auf ein dist zu hoffen, das
+          # tauri-action spaeter erst anlegt oder verlegt.
+          export VITE_API_BASE_URL=""
+          # Die Ausgabe wird AUFGEHOBEN, nicht verworfen. Vorher ging sie nach
+          # /dev/null, und als der Bau dann wirklich scheiterte, stand nirgends,
+          # WARUM. Ein Waechter, der den Grund seines eigenen Scheiterns
+          # wegwirft, kostet einen ganzen Lauf.
+          BAUPROTOKOLL="$RUNNER_TEMP/vite-bau.log"
+          pnpm --fail-if-no-match --filter @norns/tauri-pos exec vite build >"$BAUPROTOKOLL" 2>&1
+          BAULAGE=$?
+          if [ "$BAULAGE" != "0" ]; then
+            echo "::group::Der vite-Bau scheiterte (Rueckgabewert $BAULAGE)"
+            tail -60 "$BAUPROTOKOLL"
+            echo "::endgroup::"
+            echo "::error::Die Kasse liess sich nicht bauen, die Pruefung konnte nicht laufen."
+            exit 1
+          fi
+          VERZ="apps/tauri-pos/dist/assets"
+          if [ ! -d "$VERZ" ]; then
+            echo "::error::Kein Kassen-Buendel gebaut, die Pruefung konnte nicht laufen."
+            exit 1
+          fi
+          # ALLE .js, nicht das erste (Vite zerlegt in Dutzende Teilbuendel),
+          # und KEINE .map (Quellkarten tragen die Kommentare mit, und meine
+          # Kommentare erklaeren genau diese behobenen Fehler).
+          rot=0
+          # 19.08.2026: das Muster des ausgezogenen Sprachdienst-Endpunkts ist
+          # gefallen — kein Quelltext kann ihn mehr rufen (Wanderung 0149).
+          for muster in "api\.warehouse14\.de" "chat\.warehouse14\.de"; do
+            n=$(find "$VERZ" -name "*.js" -exec grep -ao "$muster" {} + 2>/dev/null | wc -l | tr -d " ")
+            echo "  $muster : $n"
+            [ "$n" != "0" ] && rot=1
+          done
+          if [ "$rot" != "0" ]; then
+            echo "::error::Eine fremde Anschrift ist in die Kasse eingebacken."
+            exit 1
+          fi
+          echo "OK, die Kasse spricht nur mit dem Motor im Geraet."
+
+      - name: Patch updater endpoint with this repo's coordinates
+        # ⚠️ WAS HIER AM 05.08.2026 SCHIEFGING
+        #
+        # Die eingecheckte tauri.conf.json trug __GITHUB_OWNER__ und
+        # __GITHUB_REPO__ als Platzhalter, und NUR dieser Schritt ersetzte
+        # sie. Die Absicht war gut: ein oertlicher Bau sollte nie auf die
+        # Freigaben eines Fremden zeigen.
+        #
+        # Die Folge war eine andere. In Basels installierter Fassung 0.0.4
+        # stand woertlich
+        #     https://github.com/__GITHUB_OWNER__/__GITHUB_REPO__/…
+        # denn sie wurde oertlich gebaut. Die App fragte fuer immer eine
+        # Adresse, die es nicht gibt, die Luft-Aktualisierung konnte gar
+        # nicht ankommen, ganz gleich wie richtig alles andere war.
+        #
+        # Die echte Anschrift steht jetzt in der eingecheckten Datei. Dieser
+        # Schritt bleibt fuer Abspaltungen: wer das Lager kopiert, bekommt
+        # SEINE Koordinaten eingesetzt statt 963s. Bei uns ersetzt er nichts
+        # und aendert damit auch nichts.
+        shell: bash
+        run: |
+          # 14.08.2026: die Auslieferung wohnt im GETRENNTEN OEFFENTLICHEN
+          # Lager <owner>/norns-releases (nur Pakete + Verzeichnis, kein
+          # Quelltext). Der Quelltext bleibt privat, und der Updater fragt
+          # anonym — gegen das private Lager antwortete er 404, gemessen im
+          # Lauf 31766228380. Eine Abspaltung bekommt IHREN owner eingesetzt.
+          OWNER="${GITHUB_REPOSITORY%%/*}"
+          LIEFERLAGER="norns-releases"
+          CONF="apps/tauri-pos/src-tauri/tauri.conf.json"
+          sed -i.bak \
+            -e "s|https://github.com/[A-Za-z0-9_.-]*/[A-Za-z0-9_.-]*/releases/latest/download/latest.json|https://github.com/${OWNER}/${LIEFERLAGER}/releases/latest/download/latest.json|g" \
+            "$CONF"
+          rm -f "${CONF}.bak"
+          echo "Updater-Anschrift dieses Laufs:"
+          grep -A1 endpoints "$CONF" | head -3
+
+      - name: Assemble release notes from CHANGELOG.md
+        # The in-app „Was ist neu" list is the updater manifest's `notes`, which
+        # tauri-action fills from releaseBody. Pull this version's section out of
+        # CHANGELOG.md so each release carries its own German change list.
+        shell: bash
+        run: |
+          VER="${GITHUB_REF_NAME#v}"
+          NOTES=$(awk -v ver="$VER" '
+            index($0, "## [" ver "]") == 1 { grab=1; next }
+            grab && /^## \[/ { exit }
+            grab { print }
+          ' CHANGELOG.md | sed '/^[[:space:]]*$/d')
+          if [ -z "$NOTES" ]; then
+            NOTES="Neue Version ${GITHUB_REF_NAME}. Fehlerbehebungen und Verbesserungen."
+          fi
+          {
+            echo "RELEASE_NOTES<<__W14_EOF__"
+            echo "## Norns POS ${GITHUB_REF_NAME}"
+            echo ""
+            echo "${NOTES}"
+            echo ""
+            echo "Automatisches Update. Jede installierte Kopie holt sich diese Version."
+            echo "__W14_EOF__"
+          } >> "$GITHUB_ENV"
+          echo "Assembled release notes:"; echo "${NOTES}"
+
+      - name: Build + bundle + release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          # RELEASES_TOKEN statt GITHUB_TOKEN: die Freigabe entsteht im
+          # oeffentlichen Lieferlager norns-releases, und der eingebaute
+          # GITHUB_TOKEN reicht nur bis an dieses Quell-Lager.
+          GITHUB_TOKEN:                          ${{ secrets.RELEASES_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY:             ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD:    ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: apps/tauri-pos
+          args: --target ${{ matrix.rust-target }}
+          owner: ${{ github.repository_owner }}
+          repo: norns-releases
+          # ⚠️ NUR bei einem Tag wird veroeffentlicht.
+          #
+          # Oben in dieser Datei steht seit jeher „Manual trigger for testing,
+          # won't create a release, only artifacts". Das war NICHT wahr:
+          # `github.ref_name` ist bei einem Handstart der ZWEIGNAME, und
+          # tauri-action legt eine Freigabe an, sobald tagName gesetzt ist. Ein
+          # Probelauf haette also eine Freigabe namens „main" ins Netz gestellt.
+          #
+          # Leerer tagName heisst fuer tauri-action: bauen, nichts freigeben.
+          # Damit stimmt der Satz oben zum ersten Mal.
+          tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+          # ⚠️ Ohne diese Zeile stirbt das Anlegen im Lieferlager: tauri-action
+          # reicht als Zielcommit den QUELL-Commit aus norns-pos weiter, und den
+          # gibt es in norns-releases nicht („invalid target_commitish", gemessen
+          # am v0.5.0-Lauf 31791072236). Der Tag im Lieferlager wird deshalb aus
+          # dessen EIGENEM Hauptast geschnitten; er markiert dort nur die Ablage,
+          # die Quelle bleibt der Tag in norns-pos.
+          releaseCommitish: main
+          releaseName: ${{ startsWith(github.ref, 'refs/tags/') && format('Norns POS {0}', github.ref_name) || '' }}
+          releaseBody: ${{ env.RELEASE_NOTES }}
+          # ⚠️ ENTWURF, bis das FERTIGE Paket geprueft ist.
+          #
+          # Am 31.07.2026 lag eine oeffentliche v0.0.1 im Netz, deren Mac-Kasse
+          # beim Start starb. Alle Waechter davor waren gruen, sie hatten den
+          # Motor in einem ORDNER gemessen, nicht im signierten Programm. Genau
+          # dazwischen lag der Fehler.
+          #
+          # Der Entwurf wird erst im manifest-Auftrag oeffentlich gemacht, also
+          # nachdem BEIDE Plattformen gebaut, BEIDE geprueft und das
+          # Verzeichnis vollstaendig geschrieben ist.
+          releaseDraft: true
+          prerelease: false
+          includeUpdaterJson: true
+
+      # The bundle is adhoc-codesigned by Tauri (bundle.macOS.signingIdentity
+      # = "-") between .app assembly and DMG/updater-tar packaging, so BOTH
+      # shipped artifacts carry the SAME internally-consistent signature. This
+      # step is the regression gate: a fresh install must be "unidentified
+      # developer" (the documented xattr flow), never "damaged". It fails the
+      # job if the bundle has the linker-only adhoc Mach-O signature without a
+      # sealed _CodeSignature/CodeResources (the inconsistency that triggers
+      # "is damaged and can't be opened").
+      - name: Wächter, der Motor muss IM SIGNIERTEN PROGRAMM anlaufen (macOS)
+        if: runner.os == 'macOS'
+        timeout-minutes: 8
+        shell: bash
+        run: |
+          set +e
+          false
+          echo "Selbstprobe bestanden: dieser Waechter urteilt selbst."
+          # ── DER WAECHTER, DER HEUTE GEFEHLT HAT ────────────────────────────
+          #
+          # Alle bisherigen Proben starteten den Motor in einem ORDNER. Das
+          # ausgelieferte Programm ist aber SIGNIERT, und macOS verbietet einem
+          # selbst unterschriebenen Prozess, fremd unterschriebene Bibliotheken
+          # zu laden:
+          #
+          #   ERR_DLOPEN_FAILED ... different Team IDs
+          #
+          # Der Haendler sah davon nur „Die Kasse konnte nicht starten.
+          # Node.js v22.14.0", die letzte Zeile eines Absturzes.
+          #
+          # Dieser Schritt startet den Motor AUS DEM .app HERAUS, also mit
+          # genau der Signatur und den Rechten, die der Haendler bekommt.
+          # ⚠️ 08.08.2026, ABSOLUT, NICHT RELATIV.
+          #
+          # `find` gab hier einen RELATIVEN Pfad zurueck. Zwanzig Zeilen
+          # spaeter wechselt der Waechter mit `cd "$SC"` in das Buendel, und
+          # danach zeigte derselbe Pfad ins Leere:
+          #
+          #   .../Norns POS.app/Contents/MacOS/norns-sidecar: No such file
+          #
+          # Der Waechter meldete daraufhin „Der Motor laeuft NICHT an", eine
+          # Aussage ueber etwas, das er nie ausgefuehrt hat.
+          APP=$(find "$PWD/apps/tauri-pos/src-tauri/target" -name "*.app" -maxdepth 6 -type d | head -1)
+          if [ -z "$APP" ]; then
+            echo "::error::Kein gebautes Programm gefunden, die Pruefung konnte nicht laufen."
+            exit 1
+          fi
+          echo "Geprueft wird: $APP"
+          echo "--- Traegt der Laeufer die Erlaubnis? ---"
+          if ! codesign -d --entitlements - "$APP/Contents/MacOS/norns-sidecar" 2>/dev/null | grep -q "disable-library-validation"; then
+            echo "::error::Dem Laeufer fehlt disable-library-validation. Er kann sharp und argon2 NICHT laden."
+            exit 1
+          fi
+          echo "  ja"
+          SC="$APP/Contents/Resources/resources/sidecar"
+          LAEUFER="$APP/Contents/MacOS/norns-sidecar"
+
+          # ⛔ ERST PRUEFEN, OB DER WAECHTER UEBERHAUPT MESSEN KANN.
+          #
+          # Ohne diese zwei Zeilen wird JEDER Grund, aus dem der Aufruf
+          # scheitert, fehlender Pfad, fehlendes Ausfuehrungsrecht, ein
+          # Tippfehler im Waechter selbst, als „der Motor ist tot" gemeldet.
+          # Genau das ist am 08.08.2026 passiert und hat den Bau blockiert,
+          # obwohl das Programm in Ordnung war.
+          #
+          # Ein Waechter, der seinen eigenen Fehlschlag als Befund am Pruefling
+          # ausgibt, schickt die naechste Hand in die falsche Richtung.
+          if [ ! -f "$LAEUFER" ]; then
+            echo "::error::Der Waechter findet den Laeufer nicht: $LAEUFER. Das ist ein Fehler DIESER Pruefung, keine Aussage ueber den Motor."
+            exit 1
+          fi
+          if [ ! -x "$LAEUFER" ]; then
+            echo "::error::Der Laeufer ist nicht ausfuehrbar: $LAEUFER. Auch das ist ein Fehler DIESER Pruefung."
+            exit 1
+          fi
+
+          AUSGABE=$(cd "$SC" && "$LAEUFER" "$SC/start.mjs" 2>&1)
+          echo "$AUSGABE" | head -4
+          if echo "$AUSGABE" | grep -q "ABBRUCH:"; then
+            echo "OK, der Motor laedt seine GANZE Kette im signierten Programm."
+          else
+            echo "::error::Der Motor laeuft im signierten Programm NICHT an. Das Paket waere tot."
+            exit 1
+          fi
+
+      - name: Verify macOS bundle signature is consistent (not "damaged")
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUNDLE_DIR="apps/tauri-pos/src-tauri/target/${{ matrix.rust-target }}/release/bundle/macos"
+          APP="$(find "$BUNDLE_DIR" -maxdepth 1 -name '*.app' | head -1)"
+          echo "Bundle under test: $APP"
+          if [ -z "$APP" ]; then
+            echo "::error::no .app found under $BUNDLE_DIR"; exit 1
+          fi
+          if [ ! -f "$APP/Contents/_CodeSignature/CodeResources" ]; then
+            echo "::error::missing Contents/_CodeSignature/CodeResources, bundle was not codesigned; a fresh install will show 'is damaged and can't be opened'"
+            exit 1
+          fi
+          codesign --verify --deep --strict --verbose=4 "$APP"
+          echo "✓ codesign --verify --deep --strict passed AND _CodeSignature/CodeResources is present"
+
+  # ────────────────────────────────────────────────────────────────────────
+  # latest.json EINMAL schreiben, nachdem alle drei Bauläufe fertig sind.
+  #
+  # Warum das nötig ist (26.07.2026, v0.8.0): jeder Baulauf schrieb bisher
+  # sein eigenes `latest.json` und verliess sich darauf, das schon vorhandene
+  # zu lesen und zu ergänzen. Die beiden Mac-Läufe wurden zwei Sekunden
+  # auseinander fertig, lasen beide dasselbe Nichts und der zweite Schreib-
+  # vorgang gewann. Ergebnis: `darwin-x86_64` fehlte im Verzeichnis, obwohl
+  # das Paket sauber gebaut, signiert und hochgeladen war, jeder Intel-Mac
+  # im Laden hätte „Sie sind aktuell" gemeldet und wäre auf der alten Fassung
+  # geblieben.
+  #
+  # Dieser Auftrag liest die Freigabe, nicht das Verzeichnis: er nimmt die
+  # Pakete, die WIRKLICH daliegen, und baut das Verzeichnis vollständig neu.
+  # Kein Lesen-dann-Schreiben, also kein Wettlauf.
+  # ────────────────────────────────────────────────────────────────────────
+  manifest:
+    name: Verzeichnis vollstaendig schreiben
+    needs: build
+    # ⚠️ success(), NICHT always().
+    #
+    # Der Satz, der hier stand, stammt aus der Zeit von drei Plattformen: „auch
+    # wenn eine scheitert, sollen die anderen ihr Update bekommen".
+    #
+    # ⚠️ Und der Satz DANACH war seinerseits ueberholt: er nannte die Matrix
+    # „WINDOWS-ONLY" und sprach von „der EINZIGEN Plattform". Gemessen am
+    # 13.08.2026 baut sie ZWEI (windows-latest und macos-14, siehe die
+    # `# GEBAUT:` Zeile im Kopf). Am Schluss aendert das nichts: mit `always()`
+    # wuerde das Verzeichnis auch dann geschrieben, wenn EINE der beiden rot
+    # ist, und eine Kasse dieser Plattform bekaeme ein Verzeichnis, das auf ein
+    # Paket zeigt, das es nicht gibt. `success()` bleibt also richtig, nur die
+    # Begruendung stimmt jetzt wieder.
+    #
+    # Gemessen am 30.07.2026, Lauf 30576382860: der Bau brach beim Waechter ab,
+    # dieser Auftrag lief trotzdem los und starb an „release not found". Diesmal
+    # war es nur laut. Gaebe es eine aeltere Freigabe, haette er ein Verzeichnis
+    # geschrieben, das jede installierte Kasse auf ein Paket zeigt, das aus
+    # diesem Lauf nie entstanden ist.
+    if: ${{ success() && startsWith(github.ref, 'refs/tags/') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: latest.json aus allen Paketen der Freigabe bauen
+        env:
+          # Die Freigabe liegt im oeffentlichen Lieferlager, nicht hier.
+          #
+          # ⚠️ 14.08.2026: hier stand GITHUB_REPOSITORY. Das ist eine
+          # RESERVIERTE Actions-Variable — GitHub ueberschreibt sie still mit
+          # dem Quell-Lager, gh suchte die Freigabe in norns-pos und meldete
+          # „release not found" (Lauf 31793118861), waehrend beide Pakete
+          # laengst im Lieferlager lagen. Eigener Name, kein Vorbehalt.
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+          LIEFERLAGER: ${{ github.repository_owner }}/norns-releases
+        run: node .github/scripts/manifest-zusammenfuehren.mjs "${{ github.ref_name }}"
+
+      - name: Die Freigabe oeffentlich machen, erst JETZT
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+        run: |
+          # ── DER LETZTE SCHRITT, UND ER IST ABSICHT ────────────────────────
+          #
+          # Bis hierher war die Freigabe ein ENTWURF. Sie wird oeffentlich
+          # erst, wenn ALLES davor getragen hat:
+          #   · beide Plattformen gebaut
+          #   · der Motor IM SIGNIERTEN Programm angelaufen
+          #   · keine fremde Anschrift im Buendel
+          #   · das Verzeichnis vollstaendig, mit jeder gebauten Plattform
+          #
+          # Am 31.07.2026 lag eine oeffentliche Fassung im Netz, deren
+          # Mac-Kasse beim Start starb. Ein Entwurf haette den Haendler nie
+          # erreicht. Das ist der ganze Zweck dieser vier Zeilen.
+          gh release edit "${{ github.ref_name }}" --draft=false \
+            -R "${{ github.repository_owner }}/norns-releases"
+          echo "Freigabe ${{ github.ref_name }} ist jetzt oeffentlich (Lieferlager)."
+
+      - name: Waechter, kommt das Verzeichnis bei einer ECHTEN Kasse an?
+        run: |
+          # ── DER BEFUND VOM 09.08.2026 ───────────────────────────────────
+          #
+          # v0.2.0 lief hier vollstaendig gruen durch: beide Plattformen
+          # gebaut, beide Unterschriften ueber 400 Zeichen, das Verzeichnis
+          # mit drei Plattformen geschrieben. Und KEINE installierte Kasse
+          # bekam das Update, weil das Verzeichnis privat ist und die
+          # Aktualisierung OHNE Rechteausweis fragt:
+          #
+          #     curl .../releases/latest/download/latest.json  →  HTTP 404
+          #
+          # Jede Pruefung davor stand auf der Innenseite: baut es, ist es
+          # signiert, liegt die Datei da. Niemand ist den Weg gefahren, den
+          # der Haendler faehrt. Hausklasse „Waechter lesen den Bauplan statt
+          # anzuklopfen".
+          #
+          # ⚠️ Dieser Schritt benutzt mit ABSICHT weder GH_TOKEN noch gh.
+          # Ein Aufruf mit Rechteausweis waere genau der Fehler noch einmal:
+          # er gelingt immer und beweist nichts.
+          set -u
+          ADRESSE=$(node -e "
+            const k = require('./apps/tauri-pos/src-tauri/tauri.conf.json');
+            const e = ((k.plugins || {}).updater || {}).endpoints || [];
+            if (e.length === 0) { console.error('KEIN Endpunkt in tauri.conf.json'); process.exit(1); }
+            console.log(e[0].replace('{{target}}', 'windows-x86_64').replace('{{arch}}', 'x86_64'));
+          ")
+          echo "Die Kasse fragt: $ADRESSE"
+
+          # Bis zu fuenf Versuche: nach --draft=false braucht die Verteilung
+          # einen Augenblick. Ein einzelner Fehlschlag waere ein Fehlalarm.
+          CODE=000
+          for VERSUCH in 1 2 3 4 5; do
+            CODE=$(curl -sSL --max-time 30 -o /tmp/latest.json -w '%{http_code}' "$ADRESSE" || echo 000)
+            echo "  Versuch $VERSUCH: HTTP $CODE"
+            [ "$CODE" = "200" ] && break
+            sleep 10
+          done
+
+          if [ "$CODE" != "200" ]; then
+            echo ""
+            echo "⛔ DAS UPDATE ERREICHT KEINE EINZIGE KASSE."
+            echo ""
+            echo "   Die Dateien liegen in der Freigabe und sind signiert, aber"
+            echo "   die Adresse aus tauri.conf.json antwortet anonym mit $CODE."
+            echo "   Bei einem PRIVATEN Verzeichnis ist genau das der Grund."
+            echo ""
+            echo "   Zwei Auswege, beide sind eine Entscheidung des Inhabers:"
+            echo "     1. ein GETRENNTES OEFFENTLICHES Verzeichnis, das nur die"
+            echo "        ausfuehrbaren Dateien und das Verzeichnis traegt,"
+            echo "        ohne eine Zeile Quelltext"
+            echo "     2. das Verzeichnis und die Dateien auf der eigenen Domaene"
+            echo ""
+            echo "   Die Freigabe selbst bleibt bestehen. Rot ist hier nur die"
+            echo "   ehrliche Auskunft, dass sie niemanden erreicht."
+            exit 1
+          fi
+
+          # 200 allein genuegt nicht: eine Anmeldeseite antwortet auch mit 200.
+          node -e "
+            const d = require('/tmp/latest.json');
+            const p = d.platforms || {};
+            const namen = Object.keys(p);
+            if (namen.length === 0) throw new Error('Verzeichnis ohne Plattform');
+            for (const n of namen) {
+              const s = (p[n] || {}).signature || '';
+              if (s.length < 100) throw new Error(n + ': Unterschrift fehlt oder ist zu kurz (' + s.length + ')');
+            }
+            console.log('✅ Fassung ' + d.version + ', ' + namen.length + ' Plattformen, jede unterschrieben.');
+            console.log('   ' + namen.join('  '));
+          "
+

@@ -1,0 +1,33 @@
+-- ──────────────────────────────────────────────────────────────────────────
+-- Migration 0057 — grant the soft-hold trigger read access to `appointments`.
+--
+-- `create_viewing_hold_on_link()` (0012_appointments.sql §6/§7) runs as
+-- `warehouse14_security` (SECURITY DEFINER) and, on every INSERT into
+-- `appointment_linked_products`, does:
+--     SELECT * INTO appt_row FROM appointments WHERE id = NEW.appointment_id;
+-- to read the appointment's type / status / starts_at / customer_id before it
+-- creates the SOFT product_viewing_holds row.
+--
+-- 0012 granted `warehouse14_security` INSERT on `product_viewing_holds` (so the
+-- hold INSERT succeeds) but NEVER granted it SELECT on `appointments`. The
+-- `ALTER DEFAULT PRIVILEGES` in 0003 grants SELECT/INSERT to `warehouse14_app`
+-- only — NOT to `warehouse14_security` — so the security role has no implicit
+-- read on `appointments`.
+--
+-- Result: the FIRST real VIEWING booking that links a product (the primary
+-- VIEWING use case — apps/api-cloud/src/routes/appointments.ts §3, the
+-- `INSERT INTO appointment_linked_products` loop) fires the AFTER-INSERT
+-- trigger, which throws `permission denied for table appointments` (42501)
+-- inside the SECURITY DEFINER function — regardless of the caller's own rights.
+--
+-- This is the same latent class as 0056 (SECURITY DEFINER trigger reads a table
+-- the security role was never granted). The trigger does `SELECT *` into an
+-- `appointments%ROWTYPE` record, so it needs whole-row SELECT; column-scoping a
+-- `SELECT *` is not possible. Grant table-level SELECT only — read-only, no
+-- INSERT/UPDATE/DELETE — which is the least privilege that satisfies the read.
+--
+-- Append-only + idempotent: GRANT is a no-op if already held. The immutable
+-- 0012 file is NOT edited.
+-- ──────────────────────────────────────────────────────────────────────────
+
+GRANT SELECT ON appointments TO warehouse14_security;

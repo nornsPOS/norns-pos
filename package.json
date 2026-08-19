@@ -1,0 +1,43 @@
+{
+  "name": "norns-pos",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Hybrid Cloud/Desktop ERP & POS for gold, rare coins, and antiques — German GoBD compliant",
+  "type": "module",
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=22.14.0",
+    "pnpm": ">=9.15.0"
+  },
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "pnpm --fail-if-no-match --filter @norns/db build && pnpm -r build",
+    "test": "pnpm -r test",
+    "lint": "node scripts/lint-added.mjs",
+    "check:bytes": "node scripts/check-no-control-bytes.mjs",
+    "check:sql": "node scripts/check-sql-columns.mjs",
+    "check:doku": "node scripts/check-doku-quellverweise.mjs",
+    "schema:snapshot": "pnpm --fail-if-no-match --filter @norns/api-cloud exec tsx scripts/schema-momentaufnahme.ts",
+    "lint:all": "node scripts/check-no-control-bytes.mjs && node scripts/check-sql-columns.mjs && node scripts/check-doku-quellverweise.mjs && biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "typecheck": "pnpm --fail-if-no-match --filter @norns/db build && pnpm -r build && pnpm -r typecheck",
+    "clean": "turbo clean && rm -rf node_modules",
+    "test:tief": "pnpm -r --no-bail --workspace-concurrency=1 test:tief"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "1.9.4",
+    "esbuild": "0.19.12",
+    "turbo": "2.3.3",
+    "typescript": "5.7.2"
+  },
+  "pnpm": {
+    "allowNonAppliedPatches": true,
+    "overrides": {
+      "lightningcss": "1.30.1"
+    },
+    "patchedDependencies": {
+      "react-native-css@3.0.7": "patches/react-native-css@3.0.7.patch"
+    }
+  }
+}

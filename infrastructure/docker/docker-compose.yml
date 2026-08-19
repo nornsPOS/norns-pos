@@ -1,0 +1,54 @@
+name: warehouse14
+
+services:
+  postgres:
+    # pgvector/pgvector:pg17 ships PostgreSQL 17 with the `vector` extension
+    # pre-installed. The vanilla postgres:17-alpine does not include pgvector,
+    # which migration 0001_extensions.sql requires (ADR-0016 §6.bis).
+    image: pgvector/pgvector:pg17
+    container_name: warehouse14-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: warehouse14
+      POSTGRES_PASSWORD: warehouse14_dev_pw
+      POSTGRES_DB: warehouse14_dev
+      POSTGRES_INITDB_ARGS: '--locale=C --encoding=UTF8'
+    command:
+      # pg_stat_statements needs to be preloaded (ADR-0012 §4, migration 0001).
+      - postgres
+      - -c
+      - shared_preload_libraries=pg_stat_statements
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # initdb.d runs ONCE on a fresh data volume — creates the
+      # warehouse14_migrator role + pre-seeds the warehouse14_app password
+      # so the first `pnpm db:migrate` run can connect.
+      # See infrastructure/docker/postgres/initdb.d/README.md.
+      - ./postgres/initdb.d:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U warehouse14 -d warehouse14_dev']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: warehouse14-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  pgdata:
+    name: warehouse14-pgdata
+  redisdata:
+    name: warehouse14-redisdata

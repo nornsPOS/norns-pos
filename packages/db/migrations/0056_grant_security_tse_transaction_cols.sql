@@ -1,0 +1,23 @@
+-- ──────────────────────────────────────────────────────────────────────────
+-- Migration 0056 — grant the TSE ledger trigger read access to the two
+-- transaction columns it actually reads.
+--
+-- `on_tse_state_event()` (0010_tse.sql §4) runs as `warehouse14_security`
+-- (SECURITY DEFINER) and, on every TSE state event, does:
+--     SELECT cashier_user_id, device_id INTO cashier, device
+--       FROM transactions WHERE id = NEW.transaction_id;
+-- to attach the actor + device to the audit trail. But 0016 only granted
+-- `warehouse14_security` column-SELECT on `(id, customer_id)` and
+-- `(id, subtotal_eur, vat_eur, total_eur)` — NOT `cashier_user_id` / `device_id`.
+--
+-- This stayed dormant only because the function also had the un-resolvable
+-- `lower(<enum>)` call (fixed in 0055) which threw FIRST. With 0055 applied,
+-- the function reaches the SELECT and would throw `permission denied for
+-- table transactions` (42501) on the first real TSE state event. Grant the
+-- two missing columns so the audit insert succeeds. Read-only, least-privilege
+-- (column-scoped, matching the 0016 pattern).
+--
+-- Append-only + idempotent: GRANT is a no-op if already held.
+-- ──────────────────────────────────────────────────────────────────────────
+
+GRANT SELECT (cashier_user_id, device_id) ON transactions TO warehouse14_security;

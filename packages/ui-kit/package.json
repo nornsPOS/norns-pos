@@ -1,0 +1,53 @@
+{
+  "name": "@norns/ui-kit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Brand primitives for Warehouse14 — Seal, RomanIndex, IlluminatedCapital, DiamondRule, ParchmentCard, MagnifierIcon, WaxSealBadge. Source of truth: memory.md §10 [VISUAL_IDENTITY_GUIDELINES].",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./styles.css": "./dist/styles.css",
+    "./tokens.css": "./dist/tokens.css",
+    "./typography.css": "./dist/typography.css"
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "lucide-react": "0.460.0",
+    "motion": "^13.1.0"
+  },
+  "scripts": {
+    "build": "tsc && node ./scripts/copy-styles.mjs",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
+    "clean": "rm -rf dist .tsbuildinfo storybook-static"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "devDependencies": {
+    "@norns/config": "workspace:*",
+    "@testing-library/dom": "10.4.0",
+    "@testing-library/jest-dom": "6.6.3",
+    "@testing-library/react": "16.1.0",
+    "@testing-library/user-event": "14.5.2",
+    "@types/react": "18.3.12",
+    "@types/react-dom": "18.3.1",
+    "jsdom": "25.0.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "typescript": "5.7.2",
+    "vitest": "2.1.8"
+  }
+}

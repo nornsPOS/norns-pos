@@ -1,0 +1,28 @@
+{
+  "name": "@norns/appointments",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Deterministic core of the Smart Appointment System (ADR-0020): .ics generation, WhatsApp 24h-window decision, reminder cadence, no-show grace. Pure + unit-tested.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist .tsbuildinfo"
+  },
+  "devDependencies": {
+    "@norns/config": "workspace:*",
+    "typescript": "5.7.2",
+    "vitest": "2.1.8"
+  }
+}

@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Code-signing entitlements for Warehouse14 POS (macOS).
+
+  Referenced from tauri.conf.json -> bundle.macOS.entitlements.
+
+  IMPORTANT. The hardened runtime is ON even for our ad-hoc ("-") build.
+  Tauri's bundler signs with the runtime option enabled by default
+  (hardenedRuntime is not disabled in tauri.conf.json), so it applies to the
+  ad-hoc signature too. That means the resource-access entitlements below are
+  ENFORCED right now, not only on a future Developer-ID / notarized build. Do
+  NOT delete a device entitlement believing "ad-hoc ignores it", it does not,
+  and removing one silently denies that capability below the web layer.
+
+    com.apple.security.device.camera
+        Grants the in-app camera (Foto-Werkstatt getUserMedia). Without it the
+        WKWebview camera request is refused before the web layer and
+        getUserMedia rejects.
+
+    com.apple.security.device.audio-input   ── 01.08.2026 ENTFERNT ──
+        Gab das Mikrofon frei, für den ausgezogenen Sprachassistenten. Kein
+        Recht ohne Verwendung: die Kasse öffnet nirgends mehr getUserMedia
+        mit Ton. Die alte Begründung lautete: parity mit der Kamera oben,
+        NSMicrophoneUsageDescription in
+        Info.plist covers the TCC prompt, but under the hardened runtime the
+        capture is still refused unless this entitlement is present. Its
+        absence was the root cause of "Kein Zugriff auf das Mikrofon".
+
+    com.apple.security.cs.allow-jit
+    com.apple.security.cs.allow-unsigned-executable-memory
+        JavaScriptCore (the WKWebview engine) requires JIT / unsigned
+        executable memory under the hardened runtime.
+-->
+<plist version="1.0">
+  <dict>
+    <key>com.apple.security.device.camera</key>
+    <true/>
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+  	<!--
+	  ⚠️ 31.07.2026, an Basels Geraet gemessen: OHNE diese Zeile startet die
+	  Kasse auf keinem Mac.
+
+	  Die Kasse fuehrt ihren Motor als eigenen Prozess: eine umbenannte node,
+	  die zwei NATIVE Module laedt (sharp fuer Fotos, argon2 fuer Passwoerter).
+	  macOS verbietet einem selbst unterschriebenen Prozess, Bibliotheken zu
+	  laden, die er nicht selbst unterschrieben hat:
+
+	    ERR_DLOPEN_FAILED ... code signature not valid for use in process:
+	    ... have different Team IDs
+
+	  Nachtraeglich alles neu zu unterschreiben half NICHT, gemessen: zwei
+	  getrennt selbst unterschriebene Dateien gelten nie als derselbe
+	  Unterzeichner. Nur dieser Schalter loest es.
+
+	  Der Haendler sah vom ganzen Absturz nur dessen LETZTE Zeile:
+	    „Die Kasse konnte nicht starten. Node.js v22.14.0"
+	-->
+	<key>com.apple.security.cs.disable-library-validation</key>
+	<true/>
+</dict>
+</plist>

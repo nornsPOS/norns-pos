@@ -1,0 +1,45 @@
+{
+  // ⚠️ GEFEGT, NICHT AUFGEZÄHLT. UMGESTELLT AM 13.08.2026.
+  //
+  // Hier standen VIERZEHN Integrationsdateien namentlich. Gemessen gibt es 49.
+  // Fünfunddreissig wurden also von KEINER Typprüfung gelesen, und eine neue
+  // fiskale Probe wäre stillschweigend genauso ungeprüft geblieben: kein
+  // Fehler, keine Meldung, nur ein Eintrag, den jemand hätte machen müssen.
+  //
+  // Das ist in diesem Haus schon einmal teuer geworden. `pushCashPointClosing`
+  // bekam einen Pflichtwert dazu, die Tests riefen weiter mit der alten Anzahl
+  // auf, der Nachbau rutschte in den Nutzlast-Platz, und aus dem Testlauf ging
+  // ein ECHTER Netzaufruf gegen fiskaly hinaus. Genau dagegen gibt es diese
+  // Datei, und eine Namensliste kann das nicht leisten.
+  //
+  // ── WARUM ES VORHER NICHT GING, UND WARUM JETZT DOCH ──────────────────────
+  //
+  // Der alte Kommentar in `tsconfig.tests.json` sagte, `tests/integration`
+  // bleibe draussen, weil dort noch Typfehler stünden, deren Mehrzahl EINE
+  // Ursache habe. Nachgemessen am 13.08.2026 war der Befund kleiner als der
+  // Satz vermuten liess:
+  //
+  //     Dateien mit Typfehlern    18 von 49
+  //     Fehler insgesamt          36
+  //       davon EINE Ursache      14  (jede Datei baute ihr eigenes `Env`)
+  //       totes MIGRATIONS_DIR     7  (+ die daran haengenden Einfuhren)
+  //       Zeile moeglicherweise    5
+  //         undefiniert
+  //       fehlende Pflichtwerte   10
+  //
+  // Alle 36 sind behoben. Die vierzehn ueber `tests/helfer/test-umgebung.ts`,
+  // das die Vorgaben aus dem SCHEMA holt statt sie abzuschreiben; der Rest
+  // einzeln, ohne ein einziges `!` und ohne eine Zusicherung.
+  //
+  // ⚠️ Wer hier wieder eine Liste einträgt, macht die 35 erneut unsichtbar.
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "noEmit": true, "rootDir": ".", "types": ["node"] },
+  "include": [
+    "src",
+    "tests/helfer/**/*.ts",
+    "tests/integration/**/*.ts",
+    "tests/unit/datev-*.test.ts",
+    "tests/unit/storno-*.test.ts"
+  ],
+  "exclude": ["dist", "node_modules"]
+}

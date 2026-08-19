@@ -1,0 +1,12 @@
+{
+  "extends": "@norns/config/tsconfig/base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"],
+    "moduleResolution": "bundler",
+    "module": "ESNext",
+    "verbatimModuleSyntax": false,
+    "noUncheckedIndexedAccess": false
+  },
+  "include": ["**/*.ts", "../src/**/*.ts"]
+}

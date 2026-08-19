@@ -1,0 +1,22 @@
+# Altbestand toter Quellverweise in docs/ — die Sperrklinke.
+# Erzeugt von scripts/check-doku-quellverweise.mjs --schreiben
+# Diese Liste darf NUR schrumpfen. Ein neuer Eintrag von Hand ist ein
+# Versprechen, das niemand geprueft hat.
+# Format: <dokument>\t<verwiesener pfad>
+docs/ARCHITEKTUR-MANIFEST.md	infrastructure/norns/mandant-anlegen.sh
+docs/BACKLOG.md	docs/runbooks/0045-0048-prod-apply.md
+docs/architecture/adr/0008-schema-architecture.md	packages/db/scripts/verify-chain.ts
+docs/architecture/adr/0013-payments-mollie-stripe-zvt-sumup.md	apps/worker/src/jobs/chargeback-evidence-builder.ts
+docs/architecture/adr/0014-live-ops-mtls-sse-transport.md	scripts/verify-live-ops.sh
+docs/architecture/adr/0016-omnichannel-inventory-reservation-lock.md	apps/worker/src/jobs/ebay-mirror.ts
+docs/architecture/adr/0016-omnichannel-inventory-reservation-lock.md	packages/inventory-lock/src/compensate.ts
+docs/architecture/adr/0018-pos-operational-resilience-and-edge-cases.md	docs/runbooks/tse-cert-renewal.md
+docs/architecture/adr/0019-bridge-ux-cognitive-load-discipline.md	apps/admin-web/src/styles/tokens.css
+docs/architecture/adr/0019-bridge-ux-cognitive-load-discipline.md	apps/api-cloud/src/lib/events/severity.ts
+docs/architecture/adr/0021-api-cloud-architecture.md	infrastructure/docker/README.md
+docs/architecture/adr/0022-owner-ux-and-pos-pin.md	scripts/dev-bootstrap.ts
+docs/architecture/adr/0045-compliance-inbox-ux-spec.md	docs/architecture/design/0045-compliance-inbox-philosophy.md
+docs/fiscal-export-review-2026-07-08.md	packages/inventory-lock/autoReleaseExpired.ts
+docs/fiscal-recovery-spec.md	apps/tauri-pos/src/screens/geraetemanager/GeraeteManager.tsx
+docs/fiscal-recovery-spec.md	packages/api-client/src/lib/offline-queue.ts
+docs/fiscal-recovery-spec.md	packages/api-client/src/lib/outbox-store.ts

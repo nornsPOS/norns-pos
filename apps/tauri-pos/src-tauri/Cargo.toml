@@ -1,0 +1,136 @@
+[package]
+# 01.08.2026: hiess `warehouse14-tauri-pos`. Der Name wird zur ausfuehrbaren
+# Datei in `Contents/MacOS/` und damit zum Prozessnamen, den der Haendler in
+# der Aktivitaetsanzeige liest. Nichts im Bau- oder Aktualisierungsweg haengt
+# daran (geprueft), nur `main.rs`, drei Pruefstaende und ein Waechter.
+name = "norns-pos"
+# 26.07.2026 Pruefer: auf den kanonischen Stand von tauri.conf.json (0.8.0) gehoben — die Drift 0.7.2 war Freigabe-Hindernis
+version = "0.7.1"
+description = "Norns POS, die Kasse am Tresen (Tauri-2-Huelle)"
+edition = "2021"
+publish = false
+rust-version = "1.75"
+
+[lib]
+name = "norns_pos_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# ── Tauri core + officially-supported plugins ────────────────────────
+# V1 only needs `shell` (for `open_pdf_preview`). Settings persistence
+# happens client-side via localStorage + the audit-logged API, keeping
+# the native footprint small. `store` + `dialog` plugins land in V1.1
+# if the operator asks for a "Speichern unter…" file picker.
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+# Auto-update from GitHub Releases (Day-15 release automation).
+# The public key lives in tauri.conf.json plugins.updater.pubkey; the
+# matching private key (TAURI_SIGNING_PRIVATE_KEY) is held only in
+# GitHub Actions secrets — never committed.
+tauri-plugin-updater = "2"
+# Lets the React side restart the process after applying an update —
+# required for the auto-install flow on Windows + macOS.
+tauri-plugin-process = "2"
+# ADR-0044 Phase 3 — local SQLite outbox for offline mutation durability.
+# Migrations are registered in lib.rs and applied on startup; the JS side
+# talks to it via @tauri-apps/plugin-sql (TauriSqlOutboxStore).
+tauri-plugin-sql = { version = "2", features = ["sqlite"] }
+
+# ── Serde + JSON for every IPC payload ───────────────────────────────
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1"
+
+# ── Async runtime + network ──────────────────────────────────────────
+# `rustls-tls` keeps us off OpenSSL — easier cross-compile, smaller binary.
+tokio = { version = "1", features = ["net", "time", "io-util", "rt-multi-thread", "macros", "process"] }
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+
+# ── Time + base64 ────────────────────────────────────────────────────
+chrono = { version = "0.4", features = ["serde"] }
+base64 = "0.22"
+
+# ── Image processing (Mandate 1) ─────────────────────────────────────
+image = { version = "0.25", default-features = false, features = ["webp", "jpeg", "png"] }
+webp = "0.3"
+# Dekret 26.07.2026, Logo-Werk: der Haendler laedt SVG hoch („die praeziseste
+# Form"), und die Kasse rastert es fuer JEDE Papierbreite frisch. resvg bringt
+# usvg + tiny-skia mit; die Text-Merkmale bleiben an, damit ein Logo mit
+# <text>-Elementen nicht stumm leer rastert.
+resvg = "0.45"
+
+# ── PDF generation (Mandate 3-B) ─────────────────────────────────────
+printpdf = "0.7"
+
+# ── Mock-mode RNG for fail-rate injection ────────────────────────────
+fastrand = "2"
+
+# ── USB digital scale over serial (MT-SICS) ──────────────────────────
+# Wirts-Steckbrief (14.08.2026): Betriebssystem, Kern, Prozessor, Speicher
+# und der Datentraeger der Kassendaten — quer ueber macOS und Windows aus
+# EINER Quelle, statt je OS ein Shell-Kommando zu parsen.
+sysinfo = "0.30"
+# NOTE: the goal said `serialport = "6"`, but the crate's latest is the 4.x
+# line (no v5/v6 exists on crates.io); "4" resolves to the current 4.9.x.
+serialport = "4"
+
+# ── Epic C — encrypted local KYC vault (GwG / GDPR) ──────────────────
+# AES-256-GCM at-rest encryption for ID scans; the 32-byte master key lives
+# in the OS keyring (never on disk). `zeroize` wipes key material after use.
+aes-gcm = "0.10"
+minisign-verify = "0.2"   # Lizenzpruefung — dieselbe Familie wie der Aktualisierer
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }
+sha2 = "0.10"
+zeroize = "1"
+uuid = { version = "1", features = ["v4"] }
+# Direkter Blick auf die USB-Geräte des Rechners — reines Rust, keine
+# C-Abhängigkeit (geprüft: windows-sys, io-kit-sys, rustix, alles
+# Deklarationskisten). Damit sieht die Kasse einen eingesteckten Drucker,
+# BEVOR das Betriebssystem eine Warteschlange dafür hat, und ohne jede
+# Rechtefrage. Auf macOS am 02.08.2026 gemessen: die HP wurde mit Hersteller,
+# Modell und Seriennummer gefunden, ohne dass ein Dialog erschien.
+#
+# ⚠️ NUR AUFZÄHLEN, NIE ÖFFNEN. Auf Windows gehören Geräte der Klasse 7
+# (Drucker) dem Treiber usbprint.sys, nicht WinUSB; ein Öffnen scheitert dort
+# immer. Das Drucken bleibt deshalb beim Spooler bzw. bei CUPS.
+nusb = "0.2"
+# Nur die SMT-Definitionen (Stream). Kein neuer Baum: nusb bringt sie ohnehin
+# mit, hier steht sie nur als direkte Abhängigkeit, damit `Stream` in den
+# Geltungsbereich kommt.
+futures-core = "0.3"
+typst = "0.11"
+typst-pdf = "0.11"
+# Rastert dieselben Typst-Seiten zu Bildern — der Windows-Direktdruck
+# (GDI ueber den Herstellertreiber) braucht Pixel, kein PDF. Gleiche
+# Familie wie typst 0.11, gleicher tiny-skia-Unterbau wie resvg.
+typst-render = "0.11"
+comemo = "0.4.0"
+typst-assets = { version = "0.11", features = ["fonts"] }
+
+# ── Windows raw receipt printing (USB thermal printer) ───────────────
+# The macOS/Linux path uses CUPS (`lpr -o raw`); Windows has no `lpr`, so
+# `commands/win_print.rs` drives the Win32 print spooler directly (OpenPrinter /
+# StartDocPrinter RAW / WritePrinter, + EnumPrinters for the auto-detect).
+# `windows` 0.61 is ALREADY in the lock graph (via Tauri/tao/wry) — this adds no
+# new download, only the printing API surface for this crate.
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.61", features = [
+    "Win32_Graphics_Printing",
+    "Win32_Graphics_Gdi",
+    # 19.08.2026: der Druckauftrag (StartDocW, StartPage, EndPage, EndDoc,
+    # DOCINFOW) wohnt in `Win32::Storage::Xps`, nicht im Zeichenkasten.
+    "Win32_Storage_Xps",
+    "Win32_Foundation",
+    "Win32_Security",
+    # ── Verbund: Motor und Kasse sterben gemeinsam (siehe src/verbund.rs) ──
+    "Win32_System_JobObjects",
+    "Win32_System_Threading",
+] }
+
+[dev-dependencies]
+# Fuer tests/fiskaly_echt.rs: ein Test gegen die ECHTE Schnittstelle.
+# Unit-Tests haben den falschen Anmeldeweg monatelang nicht bemerkt.
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

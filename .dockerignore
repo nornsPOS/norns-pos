@@ -1,0 +1,28 @@
+# Keep the build context small + clean — never ship host artifacts.
+**/node_modules
+**/dist
+**/.tsbuildinfo
+**/coverage
+**/.turbo
+apps/tauri-pos/src-tauri/target
+apps/control-desktop/src-tauri/target
+# Native mobile build output. The api and worker images contain no mobile
+# code at all, yet these were being streamed into every build context:
+# 2.7 GB of generated Android resources and 481 MB of iOS artifacts. That is
+# what filled the build disk and failed a worker build mid deploy.
+**/android/app/build
+**/android/build
+**/android/.gradle
+**/ios/build
+**/ios/Pods
+**/ios/DerivedData
+**/.expo
+.git
+.github
+**/.env
+**/.env.*
+!**/.env.example
+**/*.log
+docs
+*.md
+deploy

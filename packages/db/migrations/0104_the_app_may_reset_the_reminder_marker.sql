@@ -1,0 +1,19 @@
+-- 0104 — Die App darf den Erinnerungs-Merker zurücksetzen.
+--
+-- WARUM
+-- Seit 0102 trägt `carts.expiry_reminder_sent_at` den Zeitpunkt, an dem die
+-- Erinnerung vor Fristablauf hinausging. Geschrieben hat ihn bis heute NUR der
+-- worker, und deshalb bekam nur `warehouse14_worker` ein GRANT.
+--
+-- Am 23.07.2026 kam die Verlängerung der Abholfrist dazu: ruft jemand an und
+-- sagt, er kommt erst Samstag, verlängert das Personal die Frist. Die NEUE
+-- Frist verdient ihre eigene Erinnerung, also setzt der Server den Merker
+-- zurück — und der Server läuft als `warehouse14_app`.
+--
+-- Ohne diese Vergabe hätte jede Verlängerung mit „42501 permission denied"
+-- geendet. Aufgefallen ist es NICHT beim Ausprobieren, sondern durch den
+-- Wächter `column-grants-cover-writes`, der die geschriebenen Spalten gegen die
+-- Vergaben hält. Es ist der dritte Fall derselben Klasse in diesem Haus: auf
+-- `carts` und `shoppers` ist UPDATE spaltenweise vergeben, also ist JEDE neue
+-- Spalte standardmässig gesperrt.
+GRANT UPDATE (expiry_reminder_sent_at) ON carts TO warehouse14_app;

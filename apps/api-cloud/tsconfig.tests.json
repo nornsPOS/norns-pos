@@ -1,0 +1,35 @@
+{
+  // ⚠️ Die Tests wurden bis zum 26.07.2026 NIE typgeprüft.
+  //
+  // `tsconfig.json` schliesst `tests` aus, und `typecheck` war schlicht
+  // `tsc --noEmit`. Ein Test konnte deshalb eine Funktion mit der falschen
+  // Anzahl Werte aufrufen, ohne dass irgendetwas meckerte. Genau das ist
+  // passiert: `pushCashPointClosing` bekam einen Pflichtwert dazu, die Tests
+  // riefen weiter mit der alten Anzahl auf, und damit rutschte der Nachbau in
+  // den Nutzlast-Platz. Die Folge war kein Typfehler, sondern ein ECHTER
+  // Netzaufruf gegen fiskaly aus dem Testlauf heraus.
+  //
+  // Diese Datei kann nicht in `tsconfig.json` aufgehen: der Bau benutzt
+  // dieselbe Datei und würde die Tests sonst nach `dist` schreiben.
+  //
+  // `tests/integration` bleibt vorerst draussen: dort stehen noch Typfehler,
+  // deren Mehrzahl EINE Ursache hat (die Umgebungs-Vorlage der Tests ist rund
+  // sechzig Werte hinter dem Umgebungsschema zurück). Sie jetzt aufzunehmen
+  // hiesse, die Prüfung sofort wieder rot zu haben und damit abzuschalten.
+  //
+  // Für die fiskalen Integrationsproben gibt es eine eigene, engere Datei:
+  // `tsconfig.fiskal.json`. Beide dürfen nebeneinander stehen.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"],
+    // `rootDir` wird hier ausdrücklich AUFGEHOBEN (die Basis setzt "./src").
+    // Einzelne Tests greifen absichtlich über die Anwendungsgrenze, etwa auf
+    // `cart-math` der Kasse, um zu belegen, dass beide Seiten dieselbe
+    // Rechnung benutzen. Ohne Erzeugnis gibt es kein Ausgabeverzeichnis, für
+    // das eine Wurzel nötig wäre.
+    "rootDir": null
+  },
+  "include": ["src", "tests/unit"],
+  "exclude": ["dist", "node_modules"]
+}

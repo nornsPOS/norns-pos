@@ -1,0 +1,10 @@
+/**
+ * Single entry — consumers import this once.
+ *
+ *   import '@norns/ui-kit/styles.css';
+ *
+ * Order matters: @font-face declarations first (so subsequent tokens.css
+ * can reference the families); tokens + base reset second.
+ */
+@import "./typography.css";
+@import "./tokens.css";

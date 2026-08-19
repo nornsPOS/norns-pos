@@ -1,0 +1,26 @@
+<!doctype html>
+<!--
+  Sichtprüfungs-Blatt „Die eine Geste" (Bezahldialog, Stripe-Leser) — NUR im
+  Vite-Entwicklungslauf.
+
+  Der Produktionsbau bündelt ausschliesslich index.html (kein
+  rollupOptions.input), dieses Blatt liegt also nie in einer Auslieferung.
+  Es existiert, weil die Kasse hinter der lokalen Schnellcode-Sperre wohnt
+  und die Sperre Basels Sache ist: hier wird der ECHTE BezahlenDialog mit
+  einer protokolltreuen fetch-Attrappe durch alle Fälle der einen Geste
+  gefahren — Erfolg, weiche girocard-Ablehnung, Karte abgelehnt,
+  Zeitüberschreitung, Abbruch, Leser offline, Riegel im Trockenlauf,
+  kein Leser (Zahlart unsichtbar) und der Storno mit Erstattungs-Auskunft.
+-->
+<html lang="de" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Sichtprüfung — Die eine Geste (Stripe-Leser)</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/dev/vorschau-bezahlen.tsx"></script>
+  </body>
+</html>

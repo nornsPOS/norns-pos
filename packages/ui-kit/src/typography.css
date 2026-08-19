@@ -1,0 +1,166 @@
+/**
+ * Local @font-face declarations — NEVER from a CDN (DSGVO, memory.md #74-C).
+ *
+ * Drop the .woff2 files into the consuming app's `/public/fonts/` directory
+ * (Vite serves `/fonts/*` from there). Run `scripts/download-fonts.sh` once
+ * to fetch the open-source releases. Filenames below match that script.
+ *
+ * All three faces are free / open-source — Bricolage Grotesque (SIL OFL),
+ * Inter (SIL OFL), JetBrains Mono (Apache 2.0).
+ *
+ * The OFFICIAL STORE design system (warehouse14-onlineshop globals.css) is
+ * the single source of truth: headings = Bricolage Grotesque, body = Inter,
+ * numerals = JetBrains Mono. This file mirrors that exactly.
+ */
+
+/* ═══════════════════════════════════════════════════════════════════
+ * DIE NORNS-STIMME (27.07.2026)
+ * ═══════════════════════════════════════════════════════════════════
+ *
+ * WAS BASEL SAH: „Das fühlt sich an wie das Bedienfeld einer Nähmaschine,
+ * nicht wie eine Goldkasse." Er hatte recht, und hier stand der Grund.
+ *
+ * GEMESSEN, nicht vermutet: 144 KB Cormorant Garamond lagen unter
+ * `public/fonts/`, aber in dieser Datei stand für sie NULL `@font-face`.
+ * Die Marke `--w14-font-display` fiel deshalb still auf Bricolage
+ * Grotesque zurück — eine Groteske. JEDE Überschrift der ganzen Kasse war
+ * mit einer Maschinenschrift gesetzt. Das ist kein Geschmack, das ist ein
+ * toter Verweis, der ein Jahr lang niemandem auffiel.
+ *
+ * DIE NEUE STIMME kommt von norns.de selbst, aus dem lebenden Stylesheet
+ * gezogen (`--font-fraunces`, `--font-manrope`). NICHT kopiert: die
+ * Website ist die Inspiration, die Kasse ist ein Werkzeug am Tresen und
+ * braucht eigene Dichte, eigene Grössen, eigene Linien.
+ *
+ * ⚠️ DIE EINE HARTE GRENZE, gemessen an der Schriftdatei selbst:
+ * FRAUNCES KANN KEINE TABELLENZIFFERN. Ihre GSUB-Tabelle führt genau
+ * `aalt case liga locl rvrn ss01` — kein `tnum`, kein `lnum`. Die Ziffer 0
+ * ist 1461 Einheiten breit, die 1 nur 1024, ein Unterschied von 43 %.
+ * `font-variant-numeric: tabular-nums` hilft NICHT, weil das Merkmal in
+ * der Schrift fehlt. Eine Geldspalte in Fraunces würde bei jeder
+ * Ziffernänderung springen.
+ *   → Fraunces steht über Überschriften und Namen. NIE über Geld.
+ *   → Manrope trägt den Text UND jede Zahl. Manrope hat `tnum`, aber die
+ *     Vorgabe ist proportional (0 = 1156, 1 = 716) — jede Zahlenfläche
+ *     muss `tabular-nums` AUSDRÜCKLICH setzen (siehe `.w14-tabular`).
+ *
+ * Beide sind variable Schriften (eine Datei je Familie, Achse wght) und
+ * liegen LOKAL — kein CDN, wie die Hausregel es verlangt.
+ * ═══════════════════════════════════════════════════════════════════ */
+
+/* ─── Fraunces — die Anzeige ────────────────────────────────────────
+ * Eine warme Antiqua mit weichen Enden. Sie gibt den Überschriften das,
+ * was eine Groteske nie geben kann: den Eindruck eines Hauses, das schon
+ * länger da ist. Achse wght 100 bis 900. */
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/Fraunces-Variable.woff2") format("woff2-variations");
+}
+
+/* ─── Manrope — der Text und JEDE Zahl ──────────────────────────────
+ * Ruhig, sehr gut lesbar auf einen Meter Abstand, und sie beherrscht
+ * Tabellenziffern (`tnum`) — der Grund, warum Geld hier wohnt und nicht
+ * in der Antiqua. Achse wght 200 bis 800. */
+@font-face {
+  font-family: "Manrope";
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url("/fonts/Manrope-Variable.woff2") format("woff2-variations");
+}
+
+/* ─── Bricolage Grotesque — Display (ALTLAST, wird abgelöst) ────────
+ * Bleibt als Rückfallweg deklariert, solange noch Flächen ausdrücklich
+ * danach greifen. Die Marken zeigen seit dem 27.07. auf Fraunces und
+ * Manrope. */
+@font-face {
+  font-family: "Bricolage Grotesque";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/BricolageGrotesque-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Bricolage Grotesque";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/BricolageGrotesque-500.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Bricolage Grotesque";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/BricolageGrotesque-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Bricolage Grotesque";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/BricolageGrotesque-700.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Bricolage Grotesque";
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url("/fonts/BricolageGrotesque-800.woff2") format("woff2");
+}
+
+/* ─── Inter — Body ────────────────────────────────────────────────── */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/Inter-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/Inter-Medium.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/Inter-SemiBold.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/Inter-Bold.woff2") format("woff2");
+}
+
+/* ─── JetBrains Mono — Numerals + Hashes ──────────────────────────── */
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/JetBrainsMono-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/JetBrainsMono-Medium.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/JetBrainsMono-SemiBold.woff2") format("woff2");
+}

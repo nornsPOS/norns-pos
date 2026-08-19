@@ -1,0 +1,104 @@
+# Phase 2.1 — Honesty sweep checklist (raw-error / token-leak sites)
+
+Generated from `scripts/honesty-gate.sh` (frozen regex: err.message · error.message · j.error.message · ?? err · humanizeEnum · localhost:3001).
+**DONE (2026-07-07): gate at 0, flipped to STRICT-by-default.** Baseline was 95 leaks.
+
+Route `err.message`/`error.message`/`j.error.message` → `describeError(err)`; `humanizeEnum`/`LABELS[x] ?? x` → `germanLabel(...)`; localhost fallbacks → prod default. Both from `@norns/i18n-de`.
+
+## Sites (`- [ ]` = pending)
+
+- [x] apps/tauri-pos/src/main.tsx:38:const apiBaseUrl = env.VITE_API_BASE_URL ?? 'http://localhost:3001';
+- [x] apps/tauri-pos/src/app/chrome/StepUpModal.tsx:94:            setErrorMsg(err.message);
+- [x] apps/tauri-pos/src/screens/werkstatt/GoogleKalenderCard.tsx:163:          ? `Termine konnten nicht geladen werden — ${err.message}`
+- [x] apps/tauri-pos/src/screens/werkstatt/TerminDialog.tsx:368:        return `Eingabe ungültig — ${err.message}`;
+- [x] apps/tauri-pos/src/screens/werkstatt/TerminDialog.tsx:372:        return `${fallback} (${err.message})`;
+- [x] apps/tauri-pos/src/screens/termine/QuickCreateDialog.tsx:107:            setError(err.message);
+- [x] apps/tauri-pos/src/screens/lager/WebSeoPanel.tsx:124:        body: err instanceof ApiError ? err.message : 'Netzwerkfehler — bitte erneut versuchen.',
+- [x] apps/tauri-pos/src/screens/lager/WebSeoPanel.tsx:151:        body: err instanceof ApiError ? err.message : 'Bitte Eingaben prüfen.',
+- [x] apps/tauri-pos/src/screens/lager/WebSeoPanel.tsx:171:        body: err instanceof ApiError ? err.message : 'Bitte erneut versuchen.',
+- [x] apps/tauri-pos/src/screens/lager/WebSeoPanel.tsx:205:          ? err.message
+- [x] apps/tauri-pos/src/screens/lager/WebSeoPanel.tsx:207:            ? err.message
+- [x] apps/tauri-pos/src/screens/lager/DeleteProductDialog.tsx:82:        err instanceof ApiError ? err.message : 'Verbindung gestört — bitte erneut versuchen.';
+- [x] apps/tauri-pos/src/screens/lager/DeleteProductDialog.tsx:103:        err instanceof ApiError ? err.message : 'Verbindung gestört — bitte erneut versuchen.';
+- [x] apps/tauri-pos/src/screens/lager/NeuesProduktDialog.tsx:347:      const msg = err instanceof Error ? err.message : 'Unbekannter Fehler';
+- [x] apps/tauri-pos/src/screens/lager/ProductSheet.tsx:485:      const msg = err instanceof Error ? err.message : 'Unbekannter Fehler';
+- [x] apps/tauri-pos/src/screens/lager/ProductSheet.tsx:999:        err instanceof ApiError ? err.message : 'Verbindung gestört — bitte erneut versuchen.';
+- [x] apps/tauri-pos/src/screens/lager/ProductSheet.tsx:1162:        err instanceof ApiError ? err.message : 'Verbindung gestört — bitte erneut versuchen.';
+- [x] apps/tauri-pos/src/screens/lager/ProductSheet.tsx:1270:        } else setError(err.message);
+- [x] apps/tauri-pos/src/screens/lager/ProductSheet.tsx:1471:        err instanceof ApiError ? err.message : 'Verbindung gestört — bitte erneut versuchen.';
+- [x] apps/tauri-pos/src/screens/lager/ProductSheet.tsx:1506:        err instanceof ApiError ? err.message : 'Verbindung gestört — bitte erneut versuchen.';
+- [x] apps/tauri-pos/src/screens/lager/ProductSheet.tsx:1645:        err instanceof ApiError ? err.message : 'Verbindung gestört — bitte erneut versuchen.';
+- [x] apps/tauri-pos/src/screens/PinLogin.tsx:92:            setErrorMsg(err.message);
+- [x] apps/tauri-pos/src/screens/kunden/CustomerTrustDialog.tsx:108:        else setError(err.message);
+- [x] apps/tauri-pos/src/screens/kunden/CustomerCreateDialog.tsx:128:            : err.message,
+- [x] apps/tauri-pos/src/screens/kunden/CustomerEditDialog.tsx:122:          setError(err.message);
+- [x] apps/tauri-pos/src/screens/kunden/CustomerEditDialog.tsx:124:          setError(err.message);
+- [x] apps/tauri-pos/src/screens/kasse/ZBonDialog.tsx:105:          setError(err.message);
+- [x] apps/tauri-pos/src/screens/kasse/CashMovementDialog.tsx:96:        setError(err.message);
+- [x] apps/tauri-pos/src/screens/kasse/ShiftOpenPanel.tsx:54:          setError(err.message);
+- [x] apps/tauri-pos/src/screens/aufgaben/Aufgaben.tsx:186:        body: err instanceof ApiError ? err.message : 'Netzwerkfehler.',
+- [x] apps/tauri-pos/src/screens/aufgaben/Aufgaben.tsx:444:        body: err instanceof ApiError ? err.message : 'Bitte erneut versuchen.',
+- [x] apps/tauri-pos/src/screens/aufgaben/Aufgaben.tsx:460:        body: err instanceof ApiError ? err.message : 'Bitte erneut versuchen.',
+- [x] apps/tauri-pos/src/screens/aufgaben/ShippingLabelButton.tsx:51:        body: err instanceof ApiError ? err.message : 'Bitte erneut versuchen.',
+- [x] apps/tauri-pos/src/screens/verkauf/KaeuferPicker.tsx:463:          err.code === 'STEP_UP_REQUIRED' ? 'PIN-Bestätigung wurde abgebrochen.' : err.message,
+- [x] apps/tauri-pos/src/screens/verkauf/KaeuferPicker.tsx:699:      if (err instanceof ApiError) setError(err.message);
+- [x] apps/tauri-pos/src/screens/verkauf/StornoDialog.tsx:128:            setError(err.message);
+- [x] apps/tauri-pos/src/screens/verkauf/Verkauf.tsx:237:            body: err.message,
+- [x] apps/tauri-pos/src/screens/verkauf/BezahlenDialog.tsx:1048:      setError(err instanceof Error ? err.message : 'Kunde konnte nicht ermittelt werden.');
+- [x] apps/tauri-pos/src/screens/verkauf/BezahlenDialog.tsx:1227:      setError(err instanceof Error ? err.message : 'Kunde konnte nicht ermittelt werden.');
+- [x] apps/tauri-pos/src/screens/verkauf/BezahlenDialog.tsx:2663:    return err.message;
+- [x] apps/tauri-pos/src/screens/verkauf/BezahlenDialog.tsx:2665:  if (err instanceof Error) return err.message;
+- [x] apps/tauri-pos/src/screens/verkauf/VoucherField.tsx:66:      const msg = err instanceof Error ? err.message : '';
+- [x] apps/tauri-pos/src/screens/ankauf/AnkaufBezahlenDialog.tsx:188:          setError(err.message);
+- [x] apps/tauri-pos/src/screens/ankauf/AnkaufBezahlenDialog.tsx:465:          setError(err.message);
+- [x] apps/tauri-pos/src/screens/ankauf/CustomerPanel.tsx:665:      if (err instanceof ApiError) setError(err.message);
+- [x] apps/tauri-pos/src/screens/bewertung/AcceptanceDialog.tsx:162:        else setError(err.message);
+- [x] apps/tauri-pos/src/screens/bewertung/AcceptanceDialog.tsx:204:      setError(err instanceof ApiError ? err.message : 'Netzwerk prüfen.');
+- [x] apps/tauri-pos/src/screens/bewertung/AppraisalItemForm.tsx:114:      setError(err instanceof ApiError ? err.message : 'Netzwerk prüfen.');
+- [x] apps/tauri-pos/src/screens/bewertung/AppraisalItemsList.tsx:55:        body: err instanceof ApiError ? err.message : 'Netzwerk prüfen.',
+- [x] apps/tauri-pos/src/screens/bewertung/AppraisalItemsList.tsx:75:      setCompleteError(err instanceof ApiError ? err.message : 'Netzwerk prüfen.');
+- [x] apps/tauri-pos/src/screens/secondary/IntegrationenSection.tsx:224:        body: err instanceof ApiError ? err.message : 'Bitte erneut versuchen.',
+- [x] apps/tauri-pos/src/screens/secondary/IntegrationenSection.tsx:244:          err instanceof ApiError ? err.message : 'Test fehlgeschlagen. Bitte erneut versuchen.',
+- [x] apps/tauri-pos/src/screens/secondary/SteuerExport.tsx:91:        body: err instanceof ApiError ? err.message : 'Bitte erneut versuchen.',
+- [x] apps/tauri-pos/src/screens/secondary/Fotos.tsx:193:            ? err.message
+- [x] apps/tauri-pos/src/screens/secondary/Fotos.tsx:195:              ? err.message
+- [x] apps/tauri-pos/src/screens/secondary/Fotos.tsx:945:            ? err.message
+- [x] apps/tauri-pos/src/screens/secondary/Fotos.tsx:1244:        else setError(err.message);
+- [x] apps/tauri-pos/src/screens/secondary/Kurse.tsx:728:        body: err instanceof ApiError ? err.message : 'Bitte erneut versuchen.',
+- [x] apps/tauri-pos/src/screens/secondary/Kurse.tsx:914:        body: err instanceof ApiError ? err.message : 'Bitte erneut versuchen.',
+- [x] apps/tauri-pos/src/screens/secondary/Dokumente.tsx:205:        body: err instanceof ApiError ? err.message : 'Bitte erneut versuchen.',
+- [x] apps/tauri-pos/src/screens/secondary/Dokumente.tsx:431:        body: err instanceof ApiError ? err.message : 'Bitte erneut versuchen.',
+- [x] apps/tauri-pos/src/screens/secondary/Schreiben.tsx:136:      const msg = err instanceof ApiError ? err.message : 'KI nicht erreichbar.';
+- [x] apps/tauri-pos/src/screens/secondary/Ebay.tsx:327:        body: err instanceof ApiError ? err.message : 'Bitte erneut versuchen.',
+- [x] apps/tauri-pos/src/screens/secondary/Belegdesigner.tsx:180:        body: err instanceof ApiError ? err.message : 'Bitte erneut versuchen.',
+- [x] apps/tauri-pos/src/screens/secondary/SteuerComplianceSection.tsx:87:        body: err instanceof ApiError ? err.message : 'Bitte erneut versuchen.',
+- [x] apps/tauri-pos/src/screens/secondary/SteuerComplianceSection.tsx:188:        body: err instanceof ApiError ? err.message : 'Bitte erneut versuchen.',
+- [x] apps/tauri-pos/src/screens/secondary/SteuerComplianceSection.tsx:302:        body: err instanceof ApiError ? err.message : 'Bitte erneut versuchen.',
+- [x] apps/tauri-pos/src/screens/secondary/SteuerComplianceSection.tsx:378:        body: err instanceof ApiError ? err.message : 'Bitte erneut versuchen.',
+- [x] apps/tauri-pos/src/screens/secondary/Belegtexte.tsx:290:        body: err instanceof ApiError ? err.message : 'Bitte erneut versuchen.',
+- [x] apps/tauri-pos/src/screens/secondary/WhatsApp.tsx:343:              : err.message
+- [x] apps/tauri-pos/src/screens/secondary/WhatsApp.tsx:661:        body: err instanceof ApiError ? err.message : 'Bitte erneut versuchen.',
+- [x] apps/tauri-pos/src/screens/secondary/WhatsApp.tsx:677:        body: err instanceof ApiError ? err.message : 'Bitte erneut versuchen.',
+- [x] apps/tauri-pos/src/screens/secondary/WhatsApp.tsx:692:        body: err instanceof ApiError ? err.message : 'Bitte erneut versuchen.',
+- [x] apps/tauri-pos/src/components/hardware/CropStudio.tsx:107:            ? err.message
+- [x] apps/tauri-pos/src/hooks/useInvoicePdf.ts:42:  return err instanceof Error ? err.message : String(err);
+- [x] apps/tauri-pos/src/hooks/useAppUpdate.ts:173:        error: err instanceof Error ? err.message : String(err),
+- [x] apps/tauri-pos/src/hooks/useAppUpdate.ts:241:        error: err instanceof Error ? err.message : String(err),
+- [x] apps/tauri-pos/src/hooks/useCamera.ts:144:        setError(err instanceof Error ? err.message : 'Unbekannter Kamera-Fehler.');
+- [x] apps/tauri-pos/src/hooks/useScaleWeight.ts:30:  return err instanceof Error ? err.message : String(err);
+- [x] apps/tauri-pos/src/lib/item-type-label.ts:53:  return ITEM_TYPE_LABEL[value as ItemType] ?? humanizeEnum(value);
+- [x] apps/tauri-pos/src/lib/item-type-label.ts:91:  return CONDITION_LABEL[value as Condition] ?? humanizeEnum(value);
+- [x] apps/tauri-pos/src/lib/item-type-label.ts:100:export function humanizeEnum(value: string): string {
+- [x] apps/control-desktop/src/main.tsx:22:const apiBaseUrl = env.VITE_API_BASE_URL ?? 'http://localhost:3001';
+- [x] apps/control-desktop/src/panels/ApprovalsPanel.tsx:133:      pushToast('alert', 'Aktion fehlgeschlagen', err.message);
+- [x] apps/control-desktop/src/panels/ClosingsPanel.tsx:149:        err instanceof Error ? err.message : 'Netzwerkfehler',
+- [x] apps/control-desktop/src/panels/ClosingsPanel.tsx:198:        err instanceof Error ? err.message : 'Netzwerkfehler',
+- [x] apps/control-desktop/src/panels/ClosingsPanel.tsx:232:          if (j?.error?.message) msg = j.error.message;
+- [x] apps/control-desktop/src/panels/ClosingsPanel.tsx:254:        err instanceof Error ? err.message : 'Netzwerkfehler',
+- [x] apps/control-desktop/src/panels/LagerPanel.tsx:108:      const msg = err.message;
+- [x] apps/control-desktop/src/panels/EinstellungenPanel.tsx:187:        return err.message;
+- [x] apps/control-desktop/src/panels/KonformitaetPanel.tsx:152:      pushToast('alert', 'Export fehlgeschlagen', err instanceof Error ? err.message : 'Netzwerk');
+- [x] apps/control-desktop/src/components/StepUpModal.tsx:101:            setErrorMsg(err.message);
+- [x] apps/control-desktop/src/components/UpdateBanner.tsx:83:      setError(err instanceof Error ? err.message : 'Aktualisierung fehlgeschlagen.');
+- [x] apps/control-desktop/src/components/CustomerEditDialog.tsx:80:        return err.message;
+- [x] apps/control-desktop/src/ErrorBoundary.tsx:62:            {error.message}

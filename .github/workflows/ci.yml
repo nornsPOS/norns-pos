@@ -1,0 +1,334 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_ENV: test
+
+jobs:
+  quality:
+    name: Lint / Typecheck / Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      # `xmllint` prueft die DSFinV-K-Ausgabe gegen die AMTLICHE DTD der GDPdU
+      # (`dsfinvk-datentraeger-nennt-den-absender.test.ts`).
+      #
+      # ⚠️ Warum das hier steht statt auf gut Glueck: bis zum 13.08.2026 fing
+      # dieser Satz das fehlende Werkzeug still ab. `execFileSync` wirft ohne
+      # `xmllint` mit `ENOENT` und OHNE `stderr`, der Fangarm machte daraus eine
+      # leere Meldungsliste, und der Vergleich „unsere Ausgabe gegen die
+      # Vorlage" verglich zweimal nichts. Er bestand, ohne ein Zeichen geprueft
+      # zu haben. Jetzt bricht er ab, und damit muss das Werkzeug hier auch
+      # wirklich liegen, statt dass wir es vom Abbild des Laeufers erhoffen.
+      - name: xmllint für die amtliche DTD
+        run: sudo apt-get install -y --no-install-recommends libxml2-utils
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint (Biome)
+        run: pnpm lint
+
+      # Rohes SQL ist für den Typprüfer nur Text. Diese Wache hält jede
+      # `alias.spalte`-Referenz gegen eine Momentaufnahme des echten Schemas.
+      # Sie existierte schon, lief aber in KEINEM Arbeitsablauf, und genau
+      # deshalb ging `products.price_eur` (die Spalte heisst `list_price_eur`)
+      # am 22.07.2026 live und legte die Reservierung im Kundenshop lahm.
+      # Braucht keine Datenbank: die Momentaufnahme liegt im Baum.
+      - name: SQL-Spalten gegen das Schema prüfen
+        run: pnpm check:sql
+
+      # Ein Steuerzeichen in einem Template-Literal hat schon einmal einen
+      # Produktions-Hash zerstört und war in `grep` unsichtbar.
+      - name: Keine Steuerzeichen in Quelltexten
+        run: node scripts/check-no-control-bytes.mjs
+
+      # Ein Dokument kann eine Quelldatei versprechen, die es nicht gibt, und
+      # KEIN Typprüfer sieht das. `docs/companion-architecture.md` nannte sich
+      # „architecture-of-record" und verwies auf `companion.rs`, vier Wochen
+      # nachdem c6bd85f diese Datei samt 8.888 Zeilen Begleiter-Quelltext
+      # gelöscht hatte. Diese Wache ist eine Sperrklinke: der Altbestand liegt
+      # namentlich in scripts/doku-tote-verweise.txt und darf nur schrumpfen.
+      - name: Dokumente dürfen keine toten Quellverweise tragen
+        run: pnpm check:doku
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      # ⚠️ Das Buendel ist `.gitignore`-Beute (10,5 MB, erzeugt), und bis zum
+      # 13.08.2026 baute dieser Auftrag es nie. `fehlerkennung.test.ts` misst
+      # aber genau daran, ob die Klassennamen das Buendeln ueberleben (waeren
+      # sie verkleinert, hiesse jede Klasse `a` und jede Fehlerkennung waere
+      # Unsinn, waehrend die Quelle stimmt). Der Waechter starb deshalb auf dem
+      # Laeufer IMMER, mit einem nackten ENOENT. Sichtbar wurde es erst, als die
+      # Schritte davor gruen wurden: ein rotes Tor verdeckt das naechste.
+      #
+      # Gemessen kostet das Buendeln 172 Millisekunden. Es gibt keinen Grund,
+      # es dem Pruefstand vorzuenthalten. Derselbe Befehl liegt an EINER Stelle,
+      # `scripts/buendle-motor.mjs`, und die Freigabe ruft ihn auch.
+      - name: Das Bündel, das gemessen wird
+        run: node scripts/buendle-motor.mjs
+
+      - name: Test
+        run: pnpm test
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Desktop build gate. Doctrine (c) says the whole repo, INCLUDING the Tauri
+  # side, must compile. `pnpm -r typecheck` in `quality` covers the TypeScript,
+  # but not the Rust side or the frontend->Tauri build. This job compiles the
+  # Rust command surface (`cargo check`) and runs `tauri build --no-bundle`
+  # (frontend + binary, no installer/signing), so a Rust or Tauri-config
+  # regression is caught on the PR that introduces it. Gated on changes that can
+  # actually affect a desktop build to keep fast PRs fast.
+  #
+  # ⚠️ Hier stand bis zum 13.08.2026 „for BOTH desktop apps", und der Auftrag
+  # hiess so. Gemessen: der Baum hat GENAU EIN Rust-Kistchen
+  # (`apps/tauri-pos/src-tauri/Cargo.toml`). Der Name stammte aus einer Zeit mit
+  # zwei Anwendungen. Wer nach einem fehlenden zweiten Baulauf sucht, sucht
+  # etwas, das es nicht gibt. Dieselbe Klasse wie der Kopf von `release.yml`,
+  # der drei Laeufer versprach und zwei baute.
+  # ───────────────────────────────────────────────────────────────────────────
+  desktop-build:
+    name: Desktop build (Rust + Tauri)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect desktop-affecting changes
+        uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            desktop:
+              - 'apps/tauri-pos/**'
+              - 'packages/**'
+              - '.github/workflows/ci.yml'
+
+      - name: Install Rust toolchain
+        if: steps.changes.outputs.desktop == 'true'
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo + Rust build
+        if: steps.changes.outputs.desktop == 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            apps/tauri-pos/src-tauri/target
+          key: desktop-cargo-${{ hashFiles('apps/*/src-tauri/Cargo.lock') }}
+          restore-keys: desktop-cargo-
+
+      - uses: pnpm/action-setup@v4
+        if: steps.changes.outputs.desktop == 'true'
+        with:
+          version: 9.15.0
+
+      - uses: actions/setup-node@v4
+        if: steps.changes.outputs.desktop == 'true'
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install Linux WebView build deps
+        if: steps.changes.outputs.desktop == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libudev-dev
+          # ⚠️ `libudev-dev` seit dem 13.08.2026: die Kasse spricht ueber
+          # `serialport` mit der Waage und dem Kartenleser, und dessen
+          # Linux-Zweig bindet `libudev`. Ohne das Paket bricht schon
+          # `cargo check` ab („The system library `libudev` required by crate
+          # `libudev-sys` was not found"). Dieser Auftrag konnte damit nie
+          # gruen werden, sichtbar wurde es erst, nachdem der fehlende
+          # Beipack davor behoben war. Ein rotes Tor verdeckt das naechste.
+
+      - name: Install dependencies
+        if: steps.changes.outputs.desktop == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Build internal packages the desktop apps consume
+        if: steps.changes.outputs.desktop == 'true'
+        run: |
+          # REIHENFOLGE IST PFLICHT (30.07.2026). i18n-de importiert api-client,
+          # stand aber davor: der Baulauf fand `@norns/api-client` nicht
+          # und dieser Auftrag war seit dem 23.07. ROT, ohne dass es jemandem
+          # auffiel. „CI grün" war in der Zeit kein Signal. Wer hier etwas
+          # verschiebt: ein Paket kommt NACH allem, was es importiert.
+          pnpm --fail-if-no-match --filter @norns/inventory-lock build
+          pnpm --fail-if-no-match --filter @norns/db build
+          pnpm --fail-if-no-match --filter @norns/ui-kit build
+          pnpm --fail-if-no-match --filter @norns/api-client build
+          pnpm --fail-if-no-match --filter @norns/i18n-de build
+
+      - name: Der Läufer, sonst findet tauri-build den Beipack nicht
+        if: steps.changes.outputs.desktop == 'true'
+        run: |
+          set -euo pipefail
+          # ── WARUM DIESER SCHRITT SEIT DEM 13.08.2026 HIER STEHT ────────────
+          #
+          # `tauri.conf.json` fuehrt `binaries/norns-sidecar` als externalBin.
+          # `tauri-build` (das Bauskript, das `cargo check` mit ausfuehrt)
+          # verlangt die Datei MIT angehaengter Zielkennung, sonst bricht es
+          # ab mit:
+          #     resource path `binaries/norns-sidecar-<ziel>` doesn't exist
+          #
+          # Angelegt hat sie bisher NUR das Freigabe-Fliessband. Dieser Auftrag
+          # hier hat sie nie angelegt und war deshalb dauerhaft ROT, gemessen
+          # seit dem 10.08.2026 kein einziger gruener CI-Lauf. Ein Tor, das
+          # immer rot ist, ist kein Tor: es wird weggeschaut, und irgendwann
+          # verdeckt es einen echten Fund.
+          #
+          # Der Laeufer IST ein umbenanntes `node` (so macht es auch die
+          # Freigabe). Fuer eine Uebersetzungspruefung genuegt das `node` des
+          # Laeufers selbst, es muss nur da sein und ausfuehrbar.
+          ziel="apps/tauri-pos/src-tauri/binaries"
+          mkdir -p "$ziel"
+          cp "$(command -v node)" "$ziel/norns-sidecar-x86_64-unknown-linux-gnu"
+          chmod +x "$ziel/norns-sidecar-x86_64-unknown-linux-gnu"
+          ls -la "$ziel"
+
+      - name: cargo check (tauri-pos)
+        if: steps.changes.outputs.desktop == 'true'
+        run: cargo check --manifest-path apps/tauri-pos/src-tauri/Cargo.toml
+
+      - name: tauri build --no-bundle (tauri-pos)
+        if: steps.changes.outputs.desktop == 'true'
+        run: pnpm --fail-if-no-match --filter @norns/tauri-pos exec tauri build --no-bundle
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Windows-Übersetzung, die Bahn, die es bis zum 02.08.2026 nicht gab
+  #
+  # ⚠️ DER GRUND, WARUM DIESER AUFTRAG EXISTIERT
+  # `desktop-build` läuft auf ubuntu-22.04. Alles hinter `#[cfg(windows)]`
+  # wurde dort NIE übersetzt. Windows kam erst dran, wenn jemand ein Etikett
+  # für eine Freigabe setzte (`release.yml`, windows-latest), Wochen später,
+  # und dann mitten in einer Auslieferung.
+  #
+  # Gemessen am selben Tag: `win_print.rs` (der Weg, über den der Bondrucker
+  # auf Windows spricht) war seit seiner Entstehung nur bei Freigaben
+  # übersetzt worden. Und der frisch geschriebene Windows-Zweig in `label.rs`
+  # und `pdf.rs` lässt sich auf einem Mac gar nicht prüfen: `ring` braucht
+  # einen C-Übersetzer für das Windows-Ziel, den ein Mac nicht hat.
+  #
+  # Ein `cargo check` genügt: er übersetzt die Zweige, ohne zu binden. Er kann
+  # nicht aus Umgebungsgründen scheitern, sondern nur am Code, und genau das
+  # ist der Zweck.
+  #
+  # Die Wegfilterung ist dieselbe wie bei `desktop-build`: ein Windows-Läufer
+  # kostet das Doppelte, und Änderungen am Server gehen ihn nichts an.
+  # ───────────────────────────────────────────────────────────────────────────
+  desktop-windows:
+    name: Desktop-Übersetzung auf Windows (Rust)
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Betroffene Änderungen erkennen
+        uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            desktop:
+              - 'apps/tauri-pos/**'
+              - 'packages/**'
+              - '.github/workflows/ci.yml'
+
+      - name: Rust-Werkzeugkette
+        if: steps.changes.outputs.desktop == 'true'
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Cargo-Zwischenlager
+        if: steps.changes.outputs.desktop == 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            apps/tauri-pos/src-tauri/target
+          key: desktop-windows-cargo-${{ hashFiles('apps/*/src-tauri/Cargo.lock') }}
+          restore-keys: desktop-windows-cargo-
+
+      # ⚠️ Das Fenster wird gebaut, weil `tauri-build` im Bauskript nach
+      # `../dist` sucht. Fehlt der Ordner, bricht `cargo check` ab, BEVOR eine
+      # einzige Zeile unseres Rust-Codes geprüft ist, der Auftrag wäre rot,
+      # ohne etwas über Windows auszusagen.
+      - uses: pnpm/action-setup@v4
+        if: steps.changes.outputs.desktop == 'true'
+        with:
+          version: 9.15.0
+
+      - uses: actions/setup-node@v4
+        if: steps.changes.outputs.desktop == 'true'
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Abhängigkeiten
+        if: steps.changes.outputs.desktop == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Hauseigene Pakete bauen
+        if: steps.changes.outputs.desktop == 'true'
+        # REIHENFOLGE IST PFLICHT, dieselbe wie bei `desktop-build`, und aus
+        # demselben Grund: ein Paket kommt NACH allem, was es importiert.
+        run: |
+          pnpm --fail-if-no-match --filter @norns/inventory-lock build
+          pnpm --fail-if-no-match --filter @norns/db build
+          pnpm --fail-if-no-match --filter @norns/ui-kit build
+          pnpm --fail-if-no-match --filter @norns/api-client build
+          pnpm --fail-if-no-match --filter @norns/i18n-de build
+
+      - name: Fenster bauen (damit tauri-build den dist-Ordner findet)
+        if: steps.changes.outputs.desktop == 'true'
+        run: pnpm --fail-if-no-match --filter @norns/tauri-pos build
+
+      - name: Der Läufer, sonst findet tauri-build den Beipack nicht
+        if: steps.changes.outputs.desktop == 'true'
+        shell: pwsh
+        run: |
+          # Dieselbe Luecke wie im Linux-Auftrag, siehe Begruendung dort.
+          # Tauri haengt die Zielkennung an den Namen an, GENAU so.
+          $ziel = "apps/tauri-pos/src-tauri/binaries"
+          New-Item -ItemType Directory -Force -Path $ziel | Out-Null
+          Copy-Item (Get-Command node).Source `
+                    "$ziel/norns-sidecar-x86_64-pc-windows-msvc.exe"
+          Get-Item "$ziel/norns-sidecar-x86_64-pc-windows-msvc.exe" | Select-Object Name, Length
+
+      - name: cargo check (tauri-pos, Windows)
+        if: steps.changes.outputs.desktop == 'true'
+        run: cargo check --manifest-path apps/tauri-pos/src-tauri/Cargo.toml
+
+      # Die reinen Sätze, darunter `druckweg.rs`, das auf einem Mac
+      # entschieden, aber erst hier auf der ECHTEN Plattform übersetzt wird.
+      - name: cargo test (tauri-pos, Windows)
+        if: steps.changes.outputs.desktop == 'true'
+        run: cargo test --manifest-path apps/tauri-pos/src-tauri/Cargo.toml
