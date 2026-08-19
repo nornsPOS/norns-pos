@@ -3,7 +3,7 @@
 - **Status:** Proposed (pending Basel review)
 - **Date:** 2026-05-23
 - **Deciders:** Basel, Technik
-- **Related:** ADR-0014 (Live Ops transport — Control Desktop is the canonical Live Ops client), ADR-0019 (Bridge UX — the actual screens this app hosts), ADR-0008 (every Control Desktop action emits a ledger event), ADR-0012 (multi-arch build pipeline), ADR-0003 (Tauri-only, Electron rejected), `docs/memory.md` §2 #30.
+- **Related:** ADR-0014 (Live Ops transport — Control Desktop is the canonical Live Ops client), ADR-0019 (Bridge UX — the actual screens this app hosts), ADR-0008 (every Control Desktop action emits a ledger event), ADR-0012 (multi-arch build pipeline), ADR-0003 (Tauri-only, Electron rejected), dazu das interne Arbeitsheft (nicht veröffentlicht).
 
 ## Context
 
@@ -24,7 +24,7 @@ Constraints:
 1. **Single Next.js codebase.** The admin-web rendered in a browser and rendered inside Control Desktop must be the same source — no fork, no parallel implementation.
 2. **Tauri 2 only.** Electron is rejected by ADR-0003. Tauri's smaller footprint (~10 MB installer vs ~150 MB) and OS-WebView reuse fit the single-shop posture.
 3. **Multi-arch builds.** Windows x64 (Basel's home PC) and macOS arm64 (Basel's MacBook) from day one. Linux deferred.
-4. **Code signing mandatory.** Windows EV cert (memory.md §7), Apple Developer ID. Without them, SmartScreen / Gatekeeper warnings would erode Basel's trust in his own software.
+4. **Code signing mandatory.** Windows EV cert (internes Arbeitsheft, §7), Apple Developer ID. Without them, SmartScreen / Gatekeeper warnings would erode Basel's trust in his own software.
 5. **Offline read of recent data.** Reviewing yesterday's reports must not require internet — flights, internet outages, etc.
 6. **One Control Desktop per machine.** Two open windows of the same app would duplicate notifications and confuse the SSE stream. Single-instance lock enforced.
 7. **The Rust side owns identity and secrets.** Client cert + WebAuthn keys + cached session tokens live in the OS keychain via Tauri's `keyring` plugin — never in webview localStorage.
@@ -158,7 +158,7 @@ Tauri's built-in updater (`tauri-plugin-updater`) checks `https://releases.wareh
 }
 ```
 
-Windows installer is signed with our **EV code-signing certificate** (memory.md §7, ADR-0012). Without it, SmartScreen would warn the owner on every install — eroding trust in his own deployment. EV cert is also what allows Tauri's updater to silently install.
+Windows installer is signed with our **EV code-signing certificate** (internes Arbeitsheft, §7, ADR-0012). Without it, SmartScreen would warn the owner on every install — eroding trust in his own deployment. EV cert is also what allows Tauri's updater to silently install.
 
 macOS package is **notarized via Apple's Developer ID** and stapled. Without it, Gatekeeper would block the installation.
 
@@ -335,4 +335,4 @@ Every Tauri command that touches business state receives the validated `device_i
 - ADR-0020 — Smart Appointment System this app surfaces
 - Tauri 2 docs — https://tauri.app
 - Oliver Roos cherry-picks: `components/UpdateBanner.tsx`, `components/UpdateSettingsCard.tsx`, `shell/EmbeddedDesktopGate.tsx`, `components/ErrorBoundary.tsx`, the trusted-device-pairing pattern
-- `docs/memory.md` §2 #30, §7 (open items: Windows EV cert + Apple Developer ID)
+- das interne Arbeitsheft (nicht veröffentlicht), §7 (open items: Windows EV cert + Apple Developer ID)

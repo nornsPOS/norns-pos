@@ -74,7 +74,7 @@ The decision space is deliberately quartered. Hicks' Law: more than four primary
 
 **When it is correct.** Vanishingly rare. The server is wrong (verified out-of-band: cloud-side restore from backup, manual database correction by Basel, a documented incident) AND the Owner has documentary evidence to defend the override at audit.
 
-**What the system does.** Sends the original mutation with an `X-Force-Override` header that the server accepts only with valid step-up credentials and writes a *manual-adjustment* record on the append-only ledger (memory.md §3 hash chain). The outbox row is marked `resolved_override`. The override creates a paired entry on both client and server audit logs, tagged for the year-end annual review.
+**What the system does.** Sends the original mutation with an `X-Force-Override` header that the server accepts only with valid step-up credentials and writes a *manual-adjustment* record on the append-only ledger (internes Arbeitsheft, §3 hash chain). The outbox row is marked `resolved_override`. The override creates a paired entry on both client and server audit logs, tagged for the year-end annual review.
 
 **Mandatory inputs.** (1) Step-up PIN modal (the same flow as `stepUpMiddleware`). (2) Long-form reason text, minimum 50 characters, in German. (3) Evidence reference field (free-text — a Tagesbericht filename, a Vorgangsnummer, an email reference, an Incident-ID).
 
@@ -246,9 +246,9 @@ The aesthetic spirit of Parchment-2 is documented separately in the companion de
 
 ## 8. Hand-off checklist for engineering
 
-1. [ ] Implement `Compliance Inbox` route at `/compliance/inbox` in `apps/control-desktop` (gated by ADMIN role per memory.md §1 roles).
+1. [ ] Implement `Compliance Inbox` route at `/compliance/inbox` in `apps/control-desktop` (gated by ADMIN role per das interne Arbeitsheft, §1 roles).
 2. [ ] Implement four resolution flows: Übergehen, Stornieren, Erzwingen (with step-up integration from ADR-0043), Steuerberater.
-3. [ ] Implement `outbox_resolutions` table (append-only, hash-chained per memory.md §3) with the schema implied in §2.
+3. [ ] Implement `outbox_resolutions` table (append-only, hash-chained per das interne Arbeitsheft, §3) with the schema implied in §2.
 4. [ ] Implement DATEV-compatible XML exporter for the Steuerberater flow.
 5. [ ] Implement the resolution-import flow for Steuerberater responses.
 6. [ ] Apply Parchment-2 tokens consistently to the existing primitive POS chrome where it touches Compliance Inbox (separate epic — this is the catalyst, not the only surface).

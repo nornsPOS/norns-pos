@@ -83,7 +83,8 @@ Quellbaum von `apps/api-cloud`. Die Kasse startet aber das **gebündelte**
 node scripts/buendle-motor.mjs
 ```
 
-Das schreibt `apps/tauri-pos/src-tauri/resources/sidecar/start.mjs` neu.
+Das schreibt das gebündelte start.mjs im Ressourcen-Ordner der Kasse neu
+(ein erzeugtes Artefakt, bewusst nicht eingecheckt).
 Eine Quelländerung ohne Neubündelung erreicht das Produkt nie.
 
 ## 5. Wanderungen (Migrationen)

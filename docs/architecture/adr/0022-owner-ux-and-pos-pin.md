@@ -3,7 +3,7 @@
 - **Status:** Accepted (Basel directive 2026-05-25 mid Day-12 planning)
 - **Date:** 2026-05-25
 - **Deciders:** Basel (the Owner), Technik
-- **Related:** ADR-0006 (better-auth library choice), ADR-0008 §3 (RBAC roles), ADR-0009 (mTLS device identity — the first layer of defense this ADR builds on), ADR-0014 (Bridge UX session model), ADR-0018 §5 (duress PIN — sibling concept on different threat surface), ADR-0021 (the API architecture this auth lives inside), `docs/memory.md` §2.
+- **Related:** ADR-0006 (better-auth library choice), ADR-0008 §3 (RBAC roles), ADR-0009 (mTLS device identity — the first layer of defense this ADR builds on), ADR-0014 (Bridge UX session model), ADR-0018 §5 (duress PIN — sibling concept on different threat surface), ADR-0021 (the API architecture this auth lives inside), dazu das interne Arbeitsheft (nicht veröffentlicht).
 
 ## Context
 

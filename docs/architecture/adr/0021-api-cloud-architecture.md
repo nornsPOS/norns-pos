@@ -3,7 +3,7 @@
 - **Status:** Accepted (Basel approved 2026-05-25 via choice-of-3 prompt)
 - **Date:** 2026-05-25
 - **Deciders:** Basel, Technik
-- **Related:** ADR-0006 (Auth & RBAC — better-auth), ADR-0008 (schema architecture + role separation), ADR-0009 (mTLS device identity), ADR-0010 (das frühere Kanal-Gateway, ausgezogen), ADR-0012 (Oracle Cloud hosting + Cloudflare Tunnel), ADR-0014 (POS resilience + SSE for Bridge UX), ADR-0016 (Inventory Lock — package consumed here), ADR-0018 §10 (defense-in-depth), `docs/architecture/RED_TEAM_AUDIT_2026-05-25.md` (the audit that confirmed DB readiness), migration `0013_security_hardening.sql` (the pg_notify substrate this ADR consumes), `docs/memory.md` §2.
+- **Related:** ADR-0006 (Auth & RBAC — better-auth), ADR-0008 (schema architecture + role separation), ADR-0009 (mTLS device identity), ADR-0010 (das frühere Kanal-Gateway, ausgezogen), ADR-0012 (Oracle Cloud hosting + Cloudflare Tunnel), ADR-0014 (POS resilience + SSE for Bridge UX), ADR-0016 (Inventory Lock — package consumed here), ADR-0018 §10 (defense-in-depth), `docs/architecture/RED_TEAM_AUDIT_2026-05-25.md` (the audit that confirmed DB readiness), migration `0013_security_hardening.sql` (the pg_notify substrate this ADR consumes), dazu das interne Arbeitsheft (nicht veröffentlicht).
 
 ## Context
 

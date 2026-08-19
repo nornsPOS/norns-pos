@@ -40,7 +40,7 @@ Primitives keep `Object.is` (correct NaN/+0/-0). jsonb fields opt-in via `maybe(
 
 **CTO disposition:** **Confirmed architectural cost, but accepted for V1.** ADR-0012 explicitly scopes V1 to single-instance Oracle Cloud. Switching to Redis-backed today adds operational complexity (Redis container provisioning, failover, persistence config) without serving a V1 use case.
 
-**Deferred to Phase 1.5 as item I-6** (memory.md §7.bis). The swap is a one-line plugin constructor option change once `RATE_LIMIT_REDIS_URL` lands. The plugin API surface is unchanged for routes.
+**Deferred to Phase 1.5 as item I-6** (internes Arbeitsheft, §7.bis). The swap is a one-line plugin constructor option change once `RATE_LIMIT_REDIS_URL` lands. The plugin API surface is unchanged for routes.
 
 ### Praises noted
 - `trustProxy: true` for Cloudflare Tunnel — confirmed correct.

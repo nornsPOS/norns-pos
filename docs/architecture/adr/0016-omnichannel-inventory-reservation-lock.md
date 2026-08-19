@@ -3,7 +3,7 @@
 - **Status:** Proposed (pending Basel review)
 - **Date:** 2026-05-23
 - **Deciders:** Basel, Technik
-- **Related:** ADR-0008 (the `ledger_events` chain anchors every state change here), ADR-0013 pending (Mollie + ZVT + Stripe — finalize through this lock), ADR-0014 (SSE pushes inventory state to all subscribed clients in real-time), ADR-0017 pending (WhatsApp bot reads inventory via this lock), **ADR-0020 pending (Smart Appointment System — the producer of soft viewing-holds defined here)**, `docs/memory.md` §2 #31 #32.
+- **Related:** ADR-0008 (the `ledger_events` chain anchors every state change here), ADR-0013 pending (Mollie + ZVT + Stripe — finalize through this lock), ADR-0014 (SSE pushes inventory state to all subscribed clients in real-time), ADR-0017 pending (WhatsApp bot reads inventory via this lock), **ADR-0020 pending (Smart Appointment System — the producer of soft viewing-holds defined here)** dem internen Arbeitsheft (nicht veröffentlicht).
 
 ## Context
 
@@ -624,4 +624,4 @@ packages/inventory-lock/
 - eBay Inventory & Trading API docs — listing lifecycle, `marketplace_decision`, end-item semantics
 - Mollie Checkout API docs — 15-minute session TTL
 - Oliver Roos cherry-pick: `backend/src/lib/inventoryCheckoutDeduction.ts` (the deduction pattern), `backend/src/lib/checkoutPipeline.ts` (the orchestration shape)
-- `docs/memory.md` §2 #31 #32 (Payments architecture context)
+- dem internen Arbeitsheft (nicht veröffentlicht)

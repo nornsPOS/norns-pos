@@ -62,5 +62,5 @@ URL: <https://esth.bundesfinanzministerium.de/usth/2024/A-Umsatzsteuergesetz/VI-
 ## References
 
 - BMF link above
-- See `memory.md` §3 for the compliance summary
+- Siehe das interne Arbeitsheft, §3, für die Compliance-Zusammenfassung
 - See `packages/domain/src/money/money.test.ts` for the working "§25a margin" test

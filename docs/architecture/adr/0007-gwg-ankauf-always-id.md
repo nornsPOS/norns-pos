@@ -11,7 +11,7 @@ The Geldwäschegesetz (GwG) sets a **€2,000 threshold** above which dealers in
 Warehouse14 operates in **Schorndorf, Germany (73614)**. Two structural risks follow:
 
 1. **§259 StGB (Hehlerei / receiving stolen goods):** If Warehouse14 accepts gold or coins that turn out to be stolen, the shop's own legal exposure depends substantially on the documentation trail. Anonymous accepts above any value — even at €100 — leave the shop unable to prove good faith.
-2. **Structuring / Smurfing:** Customers can deliberately keep transactions just under €2,000 to evade ID requirements. Detection middleware is mandatory (see `memory.md` §3).
+2. **Structuring / Smurfing:** Customers can deliberately keep transactions just under €2,000 to evade ID requirements. Detection middleware is mandatory (siehe das interne Arbeitsheft, §3).
 
 The statutory minimum is not sufficient for this shop's risk profile.
 
@@ -68,7 +68,7 @@ Cross-border traffic makes structuring attacks realistic. Middleware on the tran
 - Multiple customers within a short time window with sequential or similar ID patterns
 - Cross-store patterns when multi-shop is reached (Phase 2+)
 
-**Precise rule thresholds remain open** — Steuerberater consultation needed before go-live (tracked in `memory.md` §7).
+**Precise rule thresholds remain open** — Steuerberater consultation needed before go-live (vermerkt im internen Arbeitsheft, §7).
 
 ## Consequences
 
@@ -98,4 +98,4 @@ Cross-border traffic makes structuring attacks realistic. Middleware on the tran
 - GwG (Geldwäschegesetz) §§ 10 ff. — identification obligations
 - §259 StGB — Hehlerei
 - BaFin guidance for Güterhändler (goods dealers): <https://www.bafin.de>
-- `memory.md` §3 — full compliance summary
+- das interne Arbeitsheft, §3 — full compliance summary

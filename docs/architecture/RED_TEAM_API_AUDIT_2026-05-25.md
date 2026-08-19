@@ -116,6 +116,6 @@ The HTTP layer was built on a heavily fortified DB substrate (Red Team Audit 202
 3. ✅ A-3 + A-4 helmet + CORS via `security-headers` plugin landed early
 4. ✅ Workspace typecheck across 7 projects green
 5. ✅ Day 16 E2E test suite includes a smoke check on the security headers
-6. ⏸ A-5 / A-6 / A-7 / A-8 documented in this report + `memory.md` Phase 1.5 backlog
+6. ⏸ A-5 / A-6 / A-7 / A-8 documented in this report + dem internen Arbeitsheft (Phase-1.5-Rueckstand)
 
 After Day 16 the API can ship to production with the same confidence the DB layer earned in Audit 1.

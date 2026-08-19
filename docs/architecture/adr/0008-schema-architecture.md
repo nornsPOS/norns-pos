@@ -4,7 +4,7 @@
 - **Date:** 2026-05-23
 - **Deciders:** Basel, Technik
 - **Supersedes:** none
-- **Related:** ADR-0002 (Drizzle), ADR-0007 (GwG always-ID), `docs/memory.md` §2 #24 #25, §3 (compliance facts)
+- **Related:** ADR-0002 (Drizzle), ADR-0007 (GwG always-ID), dazu das interne Arbeitsheft (nicht veröffentlicht), §3 (compliance facts)
 
 ## Context
 
@@ -15,11 +15,11 @@ GoBD §146 AO, KassenSichV, and DSFinV-K together impose three database-level in
 3. **The full chain must be reconstructible** for a Finanzamt auditor years later, including who/when/what/where for every change.
 
 We must also satisfy operational realities:
-- Single shop on a single Oracle Cloud ARM VM (memory.md §29). Postgres 17 self-hosted in Docker.
+- Single shop on a single Oracle Cloud ARM VM (internes Arbeitsheft, §29). Postgres 17 self-hosted in Docker.
 - Cashier flow must be fast: < 200ms for a `POST /transactions/finalize` round-trip including TSE state transition + ledger append.
 - Drizzle is the ORM (ADR-0002), so the schema must be expressible as typed TS modules with first-class `$inferSelect`/`$inferInsert`.
 - Migrations must be reviewable in PRs (no single 800-line file).
-- The schema must be Greenfield but informed by Oliver Roos's audit/scheduling/TSE patterns (memory.md §5).
+- The schema must be Greenfield but informed by Oliver Roos's audit/scheduling/TSE patterns (internes Arbeitsheft, §5).
 
 These three pressures — compliance integrity, performance, and reviewability — drive every decision below.
 
@@ -51,7 +51,7 @@ CREATE TABLE ledger_events (
 - Auditors get one tail to walk, not seven.
 - Concurrency is centralised at one row-level lock (head row), which is fine for single-shop throughput.
 
-This is the concrete implementation of **Event Sourcing Lite** from memory.md §2 #26: operational tables hold current state, `ledger_events` is the immutable journal, both maintained in the same DB transaction.
+This is the concrete implementation of **Event Sourcing Lite** from das interne Arbeitsheft, §2 #26: operational tables hold current state, `ledger_events` is the immutable journal, both maintained in the same DB transaction.
 
 ### 2. Bypass-proof hash via Postgres trigger — application code cannot opt out
 
@@ -190,7 +190,7 @@ Both the original and the Storno emit `ledger_events` rows. Verification: the su
 
 ### 6. Money, weight, and decimal precision
 
-Aligned with ADR-0002 #12 and memory.md §2 #12:
+Aligned with ADR-0002 #12 and das interne Arbeitsheft, §2 #12:
 
 | Column kind                      | Type             | Example              |
 |----------------------------------|------------------|----------------------|
@@ -373,7 +373,7 @@ GRANT UPDATE (printed_at, receipt_locator, notes_internal)    ON transactions TO
 **Mitigations:**
 - `packages/db/scripts/verify-chain.ts` (chunked, resumable, parallel-safe per shard) — Phase 1 deliverable.
 - Each migration has a `drizzle-kit verify` step in CI that re-derives the schema from `schema/*.ts` and diffs against the database state. Hand-edits that aren't reflected in the Drizzle schema fail the build.
-- Read-replica strategy is documented but deferred (memory.md §Known limits §11).
+- Read-replica strategy is documented but deferred (internes Arbeitsheft, §Known limits §11).
 
 ## Alternatives considered
 
@@ -401,4 +401,4 @@ GRANT UPDATE (printed_at, receipt_locator, notes_internal)    ON transactions TO
 - §146 AO, §147 AO — record-keeping and retention obligations
 - Stripe Engineering blog, "Designing immutable APIs" — confirms the single-stream ledger pattern in fintech practice
 - Oliver Roos cherry-pick: `backend/src/lib/audit/logger.ts` (write pattern), `backend/src/lib/finance/berlinMonthBounds.ts` (business-day helper), `backend/drizzle/0005_audit_logs_delta.sql` (early audit schema — note we are improving on it with the hash chain)
-- `docs/memory.md` §2 #24 #25, §3 (Append-only ledger paragraph)
+- das interne Arbeitsheft (nicht veröffentlicht), §3 (Append-only ledger paragraph)

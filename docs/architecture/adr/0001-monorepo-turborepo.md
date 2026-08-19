@@ -74,4 +74,4 @@ If we use multiple repositories, every shared change becomes a cross-repo dance 
 
 ## References
 
-- See `memory.md` §2 for the full decision matrix
+- Siehe das interne Arbeitsheft, §2, für die volle Entscheidungsmatrix

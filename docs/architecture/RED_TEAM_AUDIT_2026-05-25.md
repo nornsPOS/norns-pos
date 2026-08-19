@@ -102,7 +102,7 @@ Same defensive logic applies to `appointments.linked_transaction_id` (an appoint
 
 **Evidence:** The SSE consumer (Bridge UX) needs to be notified when a new `ledger_events` row lands. Currently the app would need to **poll** the table, which is wasteful and adds latency.
 
-**Operational impact:** Real-time Bridge updates would be sluggish or expensive. The "as if standing next to the cashier" feel that Basel asked for (memory.md §2 #33) needs sub-second push.
+**Operational impact:** Real-time Bridge updates would be sluggish or expensive. The "as if standing next to the cashier" feel that Basel asked for (internes Arbeitsheft, §2 #33) needs sub-second push.
 
 **Fix:** AFTER INSERT trigger on `ledger_events` that calls `pg_notify('warehouse14_ledger', NEW.id::text)`. Subscribers `LISTEN warehouse14_ledger;` and pull the full row when an ID arrives.
 
@@ -222,7 +222,7 @@ To declare "defect-free for V1":
 
 1. ✅ Migration 0013 written and tested
 2. ✅ All 6 critical findings have an enforcing DB construct
-3. ✅ Phase 1.5 backlog documented in `memory.md §7`
+3. ✅ Phase 1.5 backlog documented im internen Arbeitsheft, §7
 4. ✅ The audit report (this file) committed alongside
 
 When all four are true, we cross the line to API construction with confidence.

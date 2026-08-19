@@ -16,13 +16,13 @@ Warehouse14-specific stakes that sharpen the requirement:
 
 - **Ankauf is fiscally heavier than retail sale.** GwG identity records are linked to the transaction at the moment of intake. A lost Ankauf row = lost identity record = §259 StGB exposure (Hehlerei defense weakens).
 - **§25a UStG margin tax and §25c investment-gold VAT exemption** are decided per line item at tender time. A re-keyed mutation after offline period must not allow the tax_treatment lookup to drift; the original choice is the audit record.
-- **Smurfing detection** (Weil am Rhein, Dreiländereck DE/CH/FR — see docs/memory.md §3) runs on the server and reads transaction timestamps in order. A queue that replays out-of-order would mask threshold-crossing patterns.
+- **Smurfing detection** (Weil am Rhein, Dreiländereck DE/CH/FR — see dem internen Arbeitsheft (nicht veröffentlicht). A queue that replays out-of-order would mask threshold-crossing patterns.
 - **Metal-price volatility.** Spot gold can move 1–2 % in a single offline hour. The queue stores the price *agreed at tender time*, not the current price at replay — the customer's contract is the historical price.
 - **The Owner monitors live from home.** The Control Desktop (Tauri app on Windows) consumes the same API. An offline event at the shop must be visible to the Owner as "X mutations pending sync" within seconds of reconnection.
 
 Operational constraints:
 
-- Single Mac mini per till on the Tauri POS side (memory.md). The replay loop must survive process restarts, macOS updates, power loss. In-memory queues are non-starters.
+- Single Mac mini per till on the Tauri POS side (internes Arbeitsheft). The replay loop must survive process restarts, macOS updates, power loss. In-memory queues are non-starters.
 - The app is unsigned for the Tauri side initially (code-signing pending). The replay path must not depend on background processes that Gatekeeper might quarantine — it lives inside the same Tauri process as the UI.
 - End user is non-technical; a stack trace is never acceptable.
 
@@ -272,7 +272,7 @@ End of fiscal year, the Owner runs the export command from the Control Desktop:
 
 1. Filter `outbox_mutations WHERE status IN ('succeeded', 'failed_terminal') AND gobd_relevant = 1 AND enqueued_at < <year_end>`.
 2. Bundle to a tamper-evident DATEV-compatible archive (XML + SHA-256 hash file).
-3. Write to AWS Glacier Deep Archive eu-central-1 (per memory.md §4 retention strategy) AND to a local NAS as second copy.
+3. Write to AWS Glacier Deep Archive eu-central-1 (per das interne Arbeitsheft, §4 retention strategy) AND to a local NAS as second copy.
 4. Operator confirms successful read-back; only then are rows marked `archived` and eligible for deletion (but kept in DB for 1 more fiscal year as safety buffer).
 
 ### Storage growth model
@@ -382,12 +382,12 @@ Full implementation, replay loop, Rust-side Tauri commands, and tests are out of
 - Storage management: yearly export-to-archive workflow needs to exist before this ADR can be marked Accepted. Owner must be trained.
 - Schema migrations are forward-only and immutable for the outbox — a bug in the schema is a multi-year liability.
 - Replay loop adds a new failure mode: if the loop crashes mid-replay (e.g. SQLite corruption), the queue head may stay `in_flight` forever. Recovery sweep at startup must detect `in_flight` rows older than 5 minutes and revert them to `pending`.
-- Smurfing detection on the server depends on transaction order; replay-after-extended-offline may flag a chunk of transactions retroactively. Coordinate with the smurfing middleware spec (memory.md §3) so the audit understands the replay flag.
+- Smurfing detection on the server depends on transaction order; replay-after-extended-offline may flag a chunk of transactions retroactively. Coordinate with the smurfing middleware spec (internes Arbeitsheft, §3) so the audit understands the replay flag.
 
 **To revisit:**
 - Long-haul retention strategy after 10y mark: archive format, key rotation for archive integrity, regulator-accepted storage mediums beyond Glacier.
 - Conflict UI: see ADR-0045 for the Compliance Inbox.
-- Multi-device coordination: if a second till is added (memory.md §1 "multi-location-ready"), per-device idempotency keys avoid collisions; per-device monotonic_seq diverges and a server-side merge order needs to be defined.
+- Multi-device coordination: if a second till is added (internes Arbeitsheft, §1 "multi-location-ready"), per-device idempotency keys avoid collisions; per-device monotonic_seq diverges and a server-side merge order needs to be defined.
 
 ---
 
@@ -414,9 +414,9 @@ Full implementation, replay loop, Rust-side Tauri commands, and tests are out of
 ## 12. Open questions for compliance review
 
 1. **Server idempotency cache TTL.** If `apps/api-cloud` caches `Idempotency-Key` results for only 24h, a device offline for 48h produces server-side ambiguity on replay. Recommended TTL: ≥30 days. Confirm with Steuerberater and document in §25a outsourcing controls.
-2. **Conflict resolution audit format.** A `conflict` row's resolution must be logged: who reviewed, when, what action. Does it belong in `outbox_mutations.response_json`, in a separate `conflict_resolutions` table, or in the existing append-only ledger (memory.md §3)?
+2. **Conflict resolution audit format.** A `conflict` row's resolution must be logged: who reviewed, when, what action. Does it belong in `outbox_mutations.response_json`, in a separate `conflict_resolutions` table, or in the existing append-only ledger (internes Arbeitsheft, §3)?
 3. **Device fingerprint in keys.** Embed device fingerprint as key suffix so multi-device futures don't collide. Confirm fingerprint stability across macOS updates.
-4. **Smurfing detection interaction.** Coordinate with smurfing middleware (memory.md §3): replay-after-offline mutations should carry a `was_offline_queued` flag so the smurfing window calculation treats them honestly.
+4. **Smurfing detection interaction.** Coordinate with smurfing middleware (internes Arbeitsheft, §3): replay-after-offline mutations should carry a `was_offline_queued` flag so the smurfing window calculation treats them honestly.
 5. **TSE state machine interaction.** The Fiskaly SIGN DE V2 cloud TSE has its own offline-queue semantics for the INTENTION → TRANSACTION → FINISHED state machine. The outbox here is for the *API request* layer; the TSE queue is a separate concern at the hardware/signing layer. Document where they intersect.
 
 ---

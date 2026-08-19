@@ -3,11 +3,11 @@
 - **Status:** Proposed (pending Basel review)
 - **Date:** 2026-05-23
 - **Deciders:** Basel, Technik
-- **Related:** ADR-0008 (audit chain — every Live Ops command is a ledger event), ADR-0012 (network topology and the Caddy/cloudflared/Tailscale containers this ADR uses), ADR-0009 (Control Desktop client to be defined), `docs/memory.md` §2 #30 #33.
+- **Related:** ADR-0008 (audit chain — every Live Ops command is a ledger event), ADR-0012 (network topology and the Caddy/cloudflared/Tailscale containers this ADR uses), ADR-0009 (Control Desktop client to be defined), dazu das interne Arbeitsheft (nicht veröffentlicht).
 
 ## Context
 
-memory.md §2 #33 records Basel's decision: the owner monitors and operates the shop **live from home, as if standing next to the cashier.** This single sentence drives a network and protocol design that V1 must get right because every later choice — multi-shop, scaling, push notifications, remote commands — composes on top of it.
+das interne Arbeitsheft, §2 #33 records Basel's decision: the owner monitors and operates the shop **live from home, as if standing next to the cashier.** This single sentence drives a network and protocol design that V1 must get right because every later choice — multi-shop, scaling, push notifications, remote commands — composes on top of it.
 
 The concrete operational picture:
 
@@ -287,7 +287,7 @@ Notifications fire only after the SSE event arrives — meaning they've already 
 | Oracle VM down                          | immediate       | Entire cloud surface offline. POS continues offline. RTO from R2 restore: 30 min (ADR-0012 §5).    |
 | Owner's home internet down              | n/a             | Owner can't monitor; everything else proceeds. POS continues operating.                            |
 
-The single most important property: **the shop never stops selling because the cloud broke.** TSE compliance is preserved by the local SQLite TSE queue (Oliver's pattern, memory.md §3 "TSE — network-resilient").
+The single most important property: **the shop never stops selling because the cloud broke.** TSE compliance is preserved by the local SQLite TSE queue (Oliver's pattern, das interne Arbeitsheft, §3 "TSE — network-resilient").
 
 ### 9. Connection budget for V1
 
@@ -328,7 +328,7 @@ Total sustained: ~25 KB/s. Burst on a busy minute (sale finalized + receipt prin
 - Tailscale free tier limit (5 user accounts, 100 devices) — fine for V1, would constrain a multi-shop expansion.
 
 **Mitigations:**
-- The pairing flow is exactly the OnboardingWizard / PairingScreen cherry-pick from Oliver (memory.md §5) — the UX is already designed, we adapt it.
+- The pairing flow is exactly the OnboardingWizard / PairingScreen cherry-pick from Oliver (internes Arbeitsheft, §5) — the UX is already designed, we adapt it.
 - A scheduled health check (`scripts/verify-live-ops.sh`) runs every hour and tests: mTLS handshake, SSE event arrival within 2s, command round-trip latency, cert renewal pipeline. Alerts on any regression.
 - Cloudflare Access paid tier ($3/user/month) is the documented upgrade path; cost remains marginal even at 20 users.
 
@@ -362,4 +362,4 @@ Total sustained: ~25 KB/s. Burst on a busy minute (sale finalized + receipt prin
 - Oliver Roos cherry-picks: `lib/sseClient.ts`, `hooks/useLiveSessions.ts`, `pages/PairingScreen.tsx`, the trusted-device-pairing pattern in `backend/src/lib/auth/deviceAuth.ts`
 - ADR-0008 — Schema architecture (ledger_events is the substrate for the SSE feed)
 - ADR-0012 — Hosting (network topology this ADR uses)
-- `docs/memory.md` §2 #30 #33, §3 (RBAC), §5 (cherry-picks)
+- das interne Arbeitsheft (nicht veröffentlicht), §3 (RBAC), §5 (cherry-picks)

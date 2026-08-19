@@ -3,7 +3,7 @@
 - **Status:** Proposed (pending Basel review)
 - **Date:** 2026-05-23
 - **Deciders:** Basel, Technik
-- **Related:** ADR-0008 (every payment row + state change emits a ledger event), ADR-0010 (no AI here, but the abstraction discipline is the model), ADR-0016 (reservation lock interlocks with payment lifecycle), ADR-0018 (cash drawer + ZVT terminal edge cases), `docs/memory.md` §2 #31 #32.
+- **Related:** ADR-0008 (every payment row + state change emits a ledger event), ADR-0010 (no AI here, but the abstraction discipline is the model), ADR-0016 (reservation lock interlocks with payment lifecycle), ADR-0018 (cash drawer + ZVT terminal edge cases), dazu das interne Arbeitsheft (nicht veröffentlicht).
 
 ## Context
 
@@ -627,4 +627,4 @@ This mapping is the single source of truth for the DSFinV-K `BON_KASSE` export's
 - SumUp REST API — https://developer.sumup.com
 - BMF DSFinV-K v2.0 schema — `Zahlart` codes (Bar, Unbar, Gutschein, Sonstiges)
 - Oliver Roos cherry-pick: `backend/src/modules/hardware/zvt.ts`, `backend/src/lib/finance/datevFormatter.ts`, `backend/src/lib/export/datev.ts`
-- `docs/memory.md` §2 #31 #32
+- dem internen Arbeitsheft (nicht veröffentlicht)

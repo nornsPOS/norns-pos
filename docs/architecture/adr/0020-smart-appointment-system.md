@@ -3,7 +3,7 @@
 - **Status:** Proposed (pending Basel review)
 - **Date:** 2026-05-23
 - **Deciders:** Basel, Technik
-- **Related:** ADR-0008 (the schema this ADR adds to migration `0006_products.sql` — or a new migration, see §11), ADR-0014 (reminders + check-ins flow as SSE events), ADR-0016 §6 (the *consumer-side* contract of soft viewing-holds — this ADR is the *producer side*), ADR-0017 pending (WhatsApp delivery of reminders and confirmations), ADR-0018 §7 (the POS-side interactions with appointments), ADR-0019 (the Appointments panel in the Bridge), `docs/memory.md` §2 #33.
+- **Related:** ADR-0008 (the schema this ADR adds to migration `0006_products.sql` — or a new migration, see §11), ADR-0014 (reminders + check-ins flow as SSE events), ADR-0016 §6 (the *consumer-side* contract of soft viewing-holds — this ADR is the *producer side*), ADR-0017 pending (WhatsApp delivery of reminders and confirmations), ADR-0018 §7 (the POS-side interactions with appointments), ADR-0019 (the Appointments panel in the Bridge), dazu das interne Arbeitsheft (nicht veröffentlicht).
 
 ## Context
 
@@ -446,7 +446,7 @@ packages/db/migrations/
 **Mitigations:**
 - The slot function is the centerpiece of the test suite: ~200 property-based tests covering DST, working-hours edge cases, time-off overlaps, simultaneous bookings.
 - Multi-staff complexity is genuinely small (one additional table + one extra column on appointments) — the dev cost of forward-looking design is hours, not weeks.
-- The amendment to ADR-0008 §9 is recorded in this ADR's §11 (Migration ownership) and in memory.md.
+- The amendment to ADR-0008 §9 is recorded in this ADR's §11 (Migration ownership) und im internen Arbeitsheft.
 
 ## Alternatives considered
 
@@ -478,4 +478,4 @@ packages/db/migrations/
 - ADR-0018 §7 — POS appointment surfaces (Next Hour panel, one-tap check-in, walk-in conflict policy)
 - ADR-0019 — Bridge UX (Appointments panel + Morning Briefing integration)
 - iCalendar RFC 5545 — https://datatracker.ietf.org/doc/html/rfc5545
-- `docs/memory.md` §2 #33 (Live Ops architecture)
+- dem internen Arbeitsheft (nicht veröffentlicht)

@@ -3,7 +3,7 @@
 - **Status:** Proposed (pending Basel review)
 - **Date:** 2026-05-23
 - **Deciders:** Basel, Technik
-- **Related:** ADR-0009 (the Tauri app this UX lives inside), ADR-0014 (the SSE event stream that powers the live feed), ADR-0010 (Morning Briefing über das frühere Kanal-Gateway, ausgezogen), ADR-0016 + ADR-0018 (every business event surfaces here), ADR-0020 (appointments are a first-class panel here), `docs/memory.md` §2 #30 #33.
+- **Related:** ADR-0009 (the Tauri app this UX lives inside), ADR-0014 (the SSE event stream that powers the live feed), ADR-0010 (Morning Briefing über das frühere Kanal-Gateway, ausgezogen), ADR-0016 + ADR-0018 (every business event surfaces here), ADR-0020 (appointments are a first-class panel here), dazu das interne Arbeitsheft (nicht veröffentlicht).
 
 ## Context
 
@@ -30,7 +30,7 @@ Constraints:
 5. **Color discipline** — red / yellow / green for state, never decorative.
 6. **No notification interrupts an in-progress text input.** Queue and dispatch when idle.
 7. **End-of-day mode** — one click closes the loop and pauses non-critical noise.
-8. **Cherry-picked Luxury* aesthetic from Oliver** (memory.md §5) — generous whitespace, fluid typography, no `backdrop-blur`.
+8. **Cherry-picked Luxury* aesthetic from Oliver** (internes Arbeitsheft, §5) — generous whitespace, fluid typography, no `backdrop-blur`.
 
 ## Decision
 
@@ -74,7 +74,7 @@ The header shows three things and nothing else: overall system status, current B
 
 ### 2. Component hierarchy — atoms / molecules / organisms (cherry-picked Luxury* family)
 
-We adopt the atomic-design layout from Oliver's `frontend/src/components/` (memory.md §5), reimplemented in Next.js with Tailwind v4 + shadcn/ui primitives:
+We adopt the atomic-design layout from Oliver's `frontend/src/components/` (internes Arbeitsheft, §5), reimplemented in Next.js with Tailwind v4 + shadcn/ui primitives:
 
 ```
 apps/admin-web/src/components/
@@ -109,14 +109,14 @@ apps/admin-web/src/components/
 
 **Aesthetic constraints (locked in code via design tokens):**
 
-- No `backdrop-blur` (memory.md performance constraint inherited from Oliver salon Mac).
+- No `backdrop-blur` (internes Arbeitsheft, performance constraint inherited from Oliver salon Mac).
 - Generous whitespace: `12-16px` minimum padding between sections, `24-32px` between rails.
 - Editorial typography (cherry-picked `lib/editorialTheme.ts`): serif display for numbers and panel titles, sans-serif body. Fluid scale via `clamp()` for 21" salon displays and small laptops alike.
 - Motion: `motionPresets.ts` cherry-pick — short (180ms) easings, no decorative animation.
 
 ### 3. State management — TanStack Query (server cache) + Zustand (client state)
 
-Per memory.md #16, the same combo we already use elsewhere. Specifically for the Bridge:
+Per das interne Arbeitsheft, #16, the same combo we already use elsewhere. Specifically for the Bridge:
 
 | Concern | Tool |
 |---|---|
@@ -467,7 +467,7 @@ The architecture leaves a place for voice — a push-to-talk button in the heade
 
 ## Known limits & deferred decisions
 
-1. **No multi-language UI strings in V1.** German + Arabic at the data level (memory.md #5); UI chrome is English at V1. We translate the UI when a non-English-reading ADMIN joins.
+1. **No multi-language UI strings in V1.** German + Arabic at the data level (internes Arbeitsheft, #5); UI chrome is English at V1. We translate the UI when a non-English-reading ADMIN joins.
 2. **No mobile/tablet Bridge.** Designed for 1280×800+ screens. A read-only mobile companion is Phase 2.
 3. **No customizable rails order via drag-drop.** Settings page exposes visibility toggles; order is fixed for V1 to keep the design language tight.
 4. **No reusable "build your own dashboard" capability.** Anti-feature for the cognitive-load goal.
@@ -481,4 +481,4 @@ The architecture leaves a place for voice — a push-to-talk button in the heade
 - ADR-0016 + ADR-0018 — every business event surfaces here
 - ADR-0020 — appointments are a first-class Bridge panel
 - Oliver Roos cherry-picks: `components/ui/Luxury*`, `lib/motionPresets.ts`, `lib/editorialTheme.ts`, `components/molecules/BentoCard.tsx`, `components/molecules/SkeletonCard.tsx`, `components/organisms/PrintPaperFX.tsx`, `pages/DashboardHome.tsx`, the entire atomic-design layout
-- `docs/memory.md` §2 #30 #33, §5 (cherry-picks)
+- das interne Arbeitsheft (nicht veröffentlicht), §5 (cherry-picks)

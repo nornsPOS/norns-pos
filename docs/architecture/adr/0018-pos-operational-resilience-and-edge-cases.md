@@ -3,7 +3,7 @@
 - **Status:** Proposed (pending Basel review)
 - **Date:** 2026-05-23
 - **Deciders:** Basel, Technik
-- **Related:** ADR-0014 (network transport — covered cloud/Tunnel/Tailscale outages but not the operational surfaces below), ADR-0008 (every recovery action emits ledger events), ADR-0016 (POS interacts with inventory lock through these flows), **ADR-0020 pending (Smart Appointment System — the source of the appointment-aware POS UX defined here)**, ADR-0007 (GwG → AML edge cases), `docs/memory.md` §3 ("TSE — network-resilient").
+- **Related:** ADR-0014 (network transport — covered cloud/Tunnel/Tailscale outages but not the operational surfaces below), ADR-0008 (every recovery action emits ledger events), ADR-0016 (POS interacts with inventory lock through these flows), **ADR-0020 pending (Smart Appointment System — the source of the appointment-aware POS UX defined here)**, ADR-0007 (GwG → AML edge cases), dazu das interne Arbeitsheft (nicht veröffentlicht).
 
 ## Context
 
@@ -53,7 +53,7 @@ The principle behind every row: **block only what would create a fiscal violatio
 
 ### 3. Fiscal (TSE) edge cases
 
-TSE = the German fiscal signing device. We use **Fiskaly SIGN DE V2** (cloud TSE) per ADR-0001 / memory.md §29. Every transaction follows the state machine:
+TSE = the German fiscal signing device. We use **Fiskaly SIGN DE V2** (cloud TSE) per ADR-0001 / das interne Arbeitsheft, §29. Every transaction follows the state machine:
 
 ```
 INTENTION → TRANSACTION → FINISHED (signed)
@@ -64,11 +64,11 @@ The local SQLite queue holds INTENTIONs that have not yet completed their signat
 | TSE edge case | Detection | Behavior | Recovery |
 |---|---|---|---|
 | **Fiskaly cloud unreachable** | API timeout > 5s | Sale continues; INTENTION queued in local SQLite with local signature using cached TSE cert. Banner: "TSE pending sync (N items)." | Worker reconciles on reconnect; signed receipts can be reprinted with cloud signature. |
-| **TSE cert near expiry** | Prometheus alert at T-30d, T-7d, T-1d (memory.md §29) | Auto-renewal via Fiskaly API. ADMIN alerted at T-30d to confirm. | Manual renewal path documented in `docs/runbooks/tse-cert-renewal.md` if auto-renewal fails. |
+| **TSE cert near expiry** | Prometheus alert at T-30d, T-7d, T-1d (internes Arbeitsheft, §29) | Auto-renewal via Fiskaly API. ADMIN alerted at T-30d to confirm. | Manual renewal path documented in `docs/runbooks/tse-cert-renewal.md` if auto-renewal fails. |
 | **Fiskaly rate limit hit** | 429 response or response > 10s | Exponential backoff in worker (1s → 2s → 4s → … capped at 60s). | Resolves within minutes; no action needed. |
 | **TSE cert expired during sale** | Fiskaly returns 401 | Sale proceeds offline; INTENTION queued; ADMIN paged immediately. | Issue new cert via Fiskaly dashboard; sync queue replays. |
 | **Cross-day Storno** (Storno of a transaction signed yesterday) | TSE request includes `original_finalized_at` from previous Berlin business day | Special TSE request flagged `cross_day_reversal`; signed in today's chain with explicit reference to yesterday's TSE transaction ID. | Both TSE archive periods must reflect the reversal — reconciler verifies on next archive cycle. |
-| **TSE archive period mismatch** | Daily closing job (memory.md §6) compares TSE transaction count vs `transactions` row count | Block daily closing with "TSE mismatch — TSE has N transactions, DB has M. Investigate before closing." | ADMIN reviews `tse_transactions` table side-by-side with `transactions`; manual classification of orphans. |
+| **TSE archive period mismatch** | Daily closing job (internes Arbeitsheft, §6) compares TSE transaction count vs `transactions` row count | Block daily closing with "TSE mismatch — TSE has N transactions, DB has M. Investigate before closing." | ADMIN reviews `tse_transactions` table side-by-side with `transactions`; manual classification of orphans. |
 | **TSE INTENTION orphan** (signed locally but never finalized in cloud) | Worker reconciler finds INTENTION older than 1 hour without TRANSACTION | Auto-promote to TRANSACTION + FINISHED in cloud using the locally-signed INTENTION as proof. | Designed-for case; not an error if it happens once a day. |
 | **Storno of Ankauf where cash was paid** | Sale type = Ankauf + payment_method = cash + Storno requested | Manual cash drawer count required; reason text mandatory; ADMIN approval. | Accounting impact, not just inventory — `cash_journal` reflects the reversal. |
 
@@ -219,7 +219,7 @@ The whole cashier flow continues normally — the perpetrator gets what they cam
 
 #### Cashier walked away from a logged-in terminal
 
-Idle detection (memory.md §5: useIdleTimeout cherry-pick from Oliver):
+Idle detection (internes Arbeitsheft, §5: useIdleTimeout cherry-pick from Oliver):
 
 ```
 > 5 minutes idle with no cart  → screen lock (cashier re-enters PIN to unlock)
@@ -437,4 +437,4 @@ Engineering-facing metrics (Prometheus, alerts):
 - GwG §§ 10 ff. — enhanced due diligence thresholds
 - OpenSanctions — https://www.opensanctions.org
 - Oliver Roos cherry-picks: `hooks/useIdleTimeout.ts`, `lib/sessionAuth.ts` (PIN handling), `pages/Reconcile.tsx` (Storno / Kassensturz patterns), `backend/src/modules/hardware/zvt.ts` (ZVT terminal adapter)
-- `docs/memory.md` §3 ("TSE — network-resilient"), §5 (cherry-picks)
+- das interne Arbeitsheft (nicht veröffentlicht), §5 (cherry-picks)
