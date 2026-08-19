@@ -303,7 +303,7 @@ const transactionsRueckgabeRoute: FastifyPluginAsync = async (app) => {
           .limit(1);
         if (schonStorniert[0]) {
           throw new RueckgabeKonfliktError(
-            'Dieser Beleg ist bereits vollständig storniert — es gibt nichts mehr zurückzunehmen.',
+            'Dieser Beleg ist bereits vollständig storniert; es gibt nichts mehr zurückzunehmen.',
           );
         }
 

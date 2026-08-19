@@ -120,6 +120,18 @@ export const CONFLICT_TOKENS: ReadonlyArray<{ token: string; line: string }> = [
   // Versand, Support-Antworten, DHL) fielen mit der Trennung von warehouse14.
   // Ihre Server-Saetze existieren nicht mehr; der Waechter unten hat jeden
   // einzelnen als Geist gemeldet.
+  // ── Teilrückgabe (Wanderung 0148) ─────────────────────────────────────────
+  // 20.08.2026: der CI-Lauf 32314907276 fing die fehlende Registrierung.
+  // Die Sätze hier sind bewusst EIGENE Fassungen, nicht der Drahttext:
+  // der Wächter verlangt, dass keine Servermeldung wörtlich am Tresen landet.
+  {
+    token: "nichts mehr zurückzunehmen",
+    line: "Dieser Beleg ist bereits vollständig storniert. Es gibt nichts mehr zurückzunehmen.",
+  },
+  {
+    token: "wurde bereits zurückgenommen",
+    line: "Mindestens ein gewähltes Stück wurde schon zurückgenommen. Bitte den Beleg neu laden und erneut wählen.",
+  },
   // ── Kunden (Blind-Index-Eindeutigkeit) ────────────────────────────────────
   {
     token: "customers_email_blind_index_active_uq",
