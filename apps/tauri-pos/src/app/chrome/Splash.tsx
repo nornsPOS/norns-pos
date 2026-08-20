@@ -6,7 +6,7 @@
  * either the login screen (no session) or the Werkstatt (session restored).
  */
 
-import { Zwischentitel, NornsZeichen, ParchmentCard } from '@norns/ui-kit';
+import { Zwischentitel, NornsWortmarke, ParchmentCard } from '@norns/ui-kit';
 
 export function Splash(): JSX.Element {
   return (
@@ -28,22 +28,14 @@ export function Splash(): JSX.Element {
             das Zeichen mit dem Faden, und es steht hier allein. */}
         {/* Die Marke, die der Haendler als ERSTES sieht: das Zeichen, dann
             der Name. */}
-        <NornsZeichen faden="var(--w14-weinrot, #9c2630)"
-          size={72}
-          tinte="var(--w14-ink)"
-          titel="Norns"
-          style={{ display: 'block', margin: '0 auto' }}
-        />
-        <h1
-          style={{
-            fontFamily: 'var(--w14-font-display)',
-            fontWeight: 500,
-            fontSize: 'var(--w14-schrift-summe)',
-            margin: '16px 0 4px',
-          }}
-        >
-          {/* Die Marke, die der Händler als ERSTES sieht. */}
-          NORNS
+        {/* 20.08.2026, Basels Anweisung: EINE Marke, nicht zwei untereinander.
+            Das Zeichen ist das N des Namens. */}
+        <h1 style={{ margin: '0 0 4px', fontWeight: 500 }}>
+          <NornsWortmarke
+            faden="var(--w14-weinrot, #9c2630)"
+            tinte="var(--w14-ink)"
+            style={{ fontSize: 'var(--w14-schrift-flaeche)', fontWeight: 500 }}
+          />
         </h1>
         <p
           style={{

@@ -17,7 +17,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { type AnmeldbarePerson, ApiError, authPin } from '@norns/api-client';
-import { Zwischentitel, NornsZeichen, Hourglass, Icon, ParchmentCard, PinPad, RomanIndex } from '@norns/ui-kit';
+import { Zwischentitel, NornsWortmarke, Hourglass, Icon, ParchmentCard, PinPad, RomanIndex } from '@norns/ui-kit';
 
 import { ThemeToggle } from '../app/chrome/ThemeToggle.js';
 import { useApiClient } from '../lib/api-context.js';
@@ -285,26 +285,28 @@ export function PinLogin({ onUseGoogle }: { onUseGoogle?: () => void }): JSX.Ele
             stand an seiner Stelle nur der Name als Textzeile: der Haendler sah
             die Marke also nirgends, wo er arbeitet. Der Schriftzug darunter
             bleibt unveraendert. */}
-        <NornsZeichen faden="var(--w14-weinrot, #9c2630)"
-          size={92}
+        {/* ⚠️ 20.08.2026, Basels Anweisung: das Zeichen IST das N des Namens.
+            Hier standen bis heute BEIDE untereinander — das Zeichen gross,
+            darunter der Schriftzug mit einem gewoehnlichen N. Zwei Marken
+            uebereinander, und die obere war eine Wiederholung der unteren.
+            Jetzt EIN Wort, dessen erster Buchstabe die Marke selbst ist. */}
+        {/* Die GRÖSSE ist gemessen, nicht geschätzt (20.08.2026): die Karte
+            gibt 376 Punkte Platz frei, und die Marke misst das 4,89-fache
+            ihrer Schriftgrösse. 4,4rem (70 Punkte) füllen die Karte mit Luft
+            an beiden Seiten; darunter greift 13vw, damit sie auf einem engen
+            Schirm mitgeht statt zu brechen.
+            Vorher trug diese Fläche ein 92 Punkte hohes Zeichen UND darunter
+            den Schriftzug. Jetzt trägt sie EINE Marke, und die darf denselben
+            Auftritt haben wie vorher beide zusammen. */}
+        <NornsWortmarke
+          faden="var(--w14-weinrot, #9c2630)"
           tinte="var(--w14-ink)"
-          titel="Norns"
-          style={{ display: 'block', margin: '0 auto var(--w14-abstand-12)' }}
-        />
-        <p
           style={{
-            margin: '0 0 4px',
-            fontFamily: 'var(--w14-font-display)',
-            fontSize: 'var(--w14-step-3)',
+            fontSize: 'var(--w14-schrift-wortmarke)',
             fontWeight: 500,
-            letterSpacing: '0.34em',
-            textIndent: '0.34em',
-            lineHeight: 1.15,
-            color: 'var(--w14-ink)',
+            margin: '0 0 var(--w14-abstand-4)',
           }}
-        >
-          NORNS
-        </p>
+        />
         <p
           style={{
             fontFamily: 'var(--w14-font-display)',

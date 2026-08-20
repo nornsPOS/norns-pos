@@ -58,8 +58,38 @@ const RECHTS = M + BREITE / 2; // 73,4
 const OBEN = M - HOEHE / 2; // 20
 const UNTEN = M + HOEHE / 2; // 80
 
-const FADEN_DICKE = 0.11 * HOEHE; // 6,6
+/**
+ * Die Dicke des Fadens. Öffentlich, weil die Wortmarke (`NornsWortmarke`)
+ * dieselbe Zahl braucht: zwei Zeichnungen mit zwei Fadendicken wären zwei
+ * Zeichen.
+ */
+export const FADEN_DICKE = 0.11 * HOEHE; // 6,6
 const KAPPE = FADEN_DICKE / 2;
+
+/**
+ * Der Ausschnitt für den GESETZTEN Gebrauch: die Glyphe plus die beiden
+ * Seitenlagen, die ein Buchstabe von sich aus mitbringt.
+ *
+ * ── WARUM ES DIESE ZWEITE FASSUNG BRAUCHT ─────────────────────────────────
+ *
+ * Als Programmsymbol steht das Zeichen allein in einem quadratischen Feld und
+ * braucht dort Rand (das Betriebssystem beschneidet und rundet). Als
+ * BUCHSTABE in der Wortmarke gilt das Gegenteil: dieser grosse Rand würde das
+ * N geschrumpft und eingerückt neben O R N S stellen.
+ *
+ * Ein gesetzter Buchstabe hat aber auch nicht NULL Rand. Am laufenden Bild
+ * gemessen (Fraunces, 20.08.2026): ein „N" trägt beidseitig zusammen 0,117
+ * seiner Versalhöhe als Seitenlage, also 0,059 je Seite. Genau diese Luft
+ * bekommt das Zeichen hier — dann steht es im selben Rhythmus wie die
+ * Buchstaben daneben, ohne dass an seiner FORM etwas verändert wird.
+ *
+ * ⚠️ Die Form bleibt unangetastet. Das Zeichen ist schmaler als ein gesetztes
+ * N (0,78 gegen 0,99 der Versalhöhe), und das bleibt so: es breitzuziehen
+ * hiesse, ein zweites Zeichen zu erschaffen, das nicht mehr zum Programmsymbol
+ * passt.
+ */
+const SEITENLAGE = 0.059 * HOEHE; // 3,54
+export const ZEICHEN_KASTEN = `${LINKS - SEITENLAGE} ${OBEN} ${BREITE + 2 * SEITENLAGE} ${HOEHE}`;
 
 // Der Faden ist die Schräge: von der Spitze des LINKEN Stamms zum Fuss des
 // RECHTEN, auf den Mittellinien der Stämme. Die runden Kappen rücken um

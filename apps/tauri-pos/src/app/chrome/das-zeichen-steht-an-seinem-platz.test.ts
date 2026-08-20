@@ -153,16 +153,46 @@ describe('Das Zeichen von Norns', () => {
   });
 
   it('⛔ es steht auf allen drei Flächen, auf denen die Marke gehört', () => {
+    /*
+     * ── 20.08.2026, BASELS ANWEISUNG, ZWEIMAL GESAGT ─────────────────────
+     *
+     * „Das normale N entfernen und das Zeichen an seine Stelle setzen."
+     * Bis heute stand auf diesen Flächen das Zeichen ÜBER dem Schriftzug,
+     * und der Schriftzug trug ein gewöhnliches N: die Marke stand zweimal
+     * untereinander. Jetzt trägt jede Fläche EIN Wort, dessen erster
+     * Buchstabe das Zeichen selbst ist (`NornsWortmarke`).
+     *
+     * Der Wächter prüft deshalb ab jetzt die WORTMARKE, und zusätzlich, dass
+     * daneben kein gesetztes „NORNS" mehr steht — sonst wäre die alte
+     * Dopplung stillschweigend zurück.
+     */
     for (const [name, pfad] of FLAECHEN) {
       const f = lies(pfad);
-      expect(f, `${name} zeigt das Zeichen nicht`).toContain('<NornsZeichen');
-      // Und mit Namen, denn dort steht es für das Haus.
-      expect(f, `${name}: kein Name für Vorleseprogramme`).toContain('titel="Norns"');
+      expect(f, `${name} zeigt die Wortmarke nicht`).toContain('<NornsWortmarke');
       // Die Tinte folgt dem Thema: auf dunklem Grund hell.
       expect(f, `${name}: die Tinte folgt dem Thema nicht`).toContain(
         'tinte="var(--w14-ink)"',
       );
+      // Und NIRGENDS ein zweites, gesetztes NORNS daneben.
+      const sichtbar = ohneKommentare(f);
+      expect(
+        sichtbar,
+        `${name}: neben der Wortmarke steht wieder ein gesetztes NORNS`,
+      ).not.toMatch(/>\s*NORNS\s*</);
     }
+  });
+
+  it('⛔ die Wortmarke setzt das Zeichen als Buchstaben, nicht als Bild daneben', () => {
+    const marke = lies('../../../../../packages/ui-kit/src/components/NornsWortmarke.tsx');
+    // Sie zeichnet dieselben zwei Stämme und denselben Faden.
+    expect(marke).toContain('<rect');
+    expect(marke).toContain('strokeLinecap="round"');
+    // Und sie holt Dicke und Ausschnitt aus dem EINEN Zeichen, statt sie
+    // ein zweites Mal zu erfinden.
+    expect(marke).toContain('FADEN_DICKE');
+    expect(marke).toContain('ZEICHEN_KASTEN');
+    // Der Rest des Namens ist gesetzte Schrift.
+    expect(marke).toContain('ORNS');
   });
 
   it('⛔ KEIN Siegel ohne Beschriftung: sonst wird der Ring zur Marke', () => {

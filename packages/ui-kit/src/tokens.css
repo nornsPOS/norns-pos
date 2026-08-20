@@ -325,6 +325,18 @@
   --w14-schrift-anschlag: 2.5rem;    /* 40px  die Zahl, die den Bildschirm trägt */
   --w14-schrift-buehne: 3rem;        /* 48px  die eine Zahl, die allein steht */
 
+  /* ── DIE WORTMARKE (20.08.2026) ─────────────────────────────────────────
+     Basels Anweisung: das Zeichen IST das N des Namens, eine Marke statt
+     zwei untereinander. Damit traegt der Schriftzug allein den ganzen
+     Auftritt, und seine Groesse ist keine Stufe der Leseleiter, sondern ein
+     eigenes Mass.
+
+     GEMESSEN am laufenden Bild, nicht geschaetzt: die Marke misst das
+     4,89-fache ihrer Schriftgroesse; die Anmeldekarte gibt 376 Punkte frei.
+     4,4rem (70 Punkte) fuellen sie mit Luft an beiden Seiten, 13vw traegt
+     sie auf engen Schirmen mit, 2,25rem ist der Boden. */
+  --w14-schrift-wortmarke: clamp(2.25rem, 13vw, 4.4rem);
+
   /* ─── DIE ZUORDNUNGSTABELLE ────────────────────────────────────────────
      Das Werkzeug für den nächsten Durchgang, der die Bildschirme umstellt.
      Jede der 48 gemessenen Grössen steht hier genau einmal, mit ihrer Zahl

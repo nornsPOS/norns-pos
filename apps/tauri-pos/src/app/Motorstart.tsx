@@ -25,7 +25,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 
-import { NornsZeichen } from '@norns/ui-kit';
+import { NornsWortmarke } from '@norns/ui-kit';
 
 /** Der Zustand, wie ihn `motor_stand` in Rust liefert. */
 type Stand =
@@ -119,13 +119,16 @@ function Warteflaeche({ grund, lange }: { grund: string | null; lange: boolean }
       <style>{ATEM}</style>
       <div style={MITTE}>
         {/* Dasselbe Zeichen wie an der Zifferntuer und auf dem Startbild. */}
-        <NornsZeichen faden="var(--w14-weinrot, #9c2630)"
-          size={64}
-          tinte="var(--w14-ink)"
-          titel="Norns"
-          style={{ display: 'block', margin: '0 auto var(--w14-abstand-10)' }}
-        />
-        <p style={MARKE}>NORNS</p>
+        {/* 20.08.2026, Basels Anweisung: das Zeichen IST das N des Namens.
+            Vorher standen Zeichen und Schriftzug untereinander. */}
+        <p style={MARKE}>
+          <NornsWortmarke
+            faden="var(--w14-weinrot, #9c2630)"
+            tinte="var(--w14-ink)"
+            sperrung="0.42em"
+            style={{ fontSize: 'var(--w14-schrift-wortmarke)', fontWeight: 500 }}
+          />
+        </p>
         <p style={UNTERZEILE}>Kasse</p>
 
         <div style={LINIE} aria-hidden="true">
@@ -179,15 +182,15 @@ const MITTE: React.CSSProperties = {
 const MARKE: React.CSSProperties = {
   margin: 0,
   fontFamily: 'var(--w14-font-display)',
-  fontSize: 'var(--w14-step-4)',
   fontWeight: 500,
-  // Der Buchstabenabstand trägt hier die ganze Würde: der Name steht allein
-  // auf einer leeren Fläche und darf nicht gedrängt wirken.
-  letterSpacing: '0.42em',
-  // Sperrung fügt rechts vom letzten Buchstaben Luft an; ohne diesen Ausgleich
-  // steht das Wort sichtbar links von der Mitte.
-  textIndent: '0.42em',
   lineHeight: 1.1,
+  // 20.08.2026: die GROESSE traegt die Wortmarke selbst
+  // (`--w14-schrift-wortmarke`). Zwei Groessen uebereinander waeren zwei
+  // Wahrheiten, und die aeussere gewaenne stillschweigend.
+  // 20.08.2026: Sperrung und Ausgleich wohnen jetzt IM Bauteil (die Marke
+  // muss zwischen Zeichen und Buchstaben eigens Luft setzen, weil
+  // `letter-spacing` zwischen Bild und Text nicht wirkt). Zwei Sperrungen
+  // uebereinander waeren doppelte Luft.
 };
 
 const UNTERZEILE: React.CSSProperties = {

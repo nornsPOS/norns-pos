@@ -14,6 +14,7 @@ export { RomanIndex, type RomanIndexProps, toRoman } from './components/RomanInd
 export { Seal, type SealProps } from './components/Seal.js';
 export { Zwischentitel, type ZwischentitelProps } from './components/Zwischentitel.js';
 export { Fensterboden } from './components/Fensterboden.js';
+export { NornsWortmarke, type NornsWortmarkeProps } from './components/NornsWortmarke.js';
 export {
   NornsZeichen,
   NORNS_TINTE,
