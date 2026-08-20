@@ -293,6 +293,26 @@ pub fn starten(
         befehl.env(k, v);
     }
 
+    // ── DIE ZUGANGSDATEN DER SICHERUNGSEINRICHTUNG (20.08.2026) ──────────
+    //
+    // Sie liegen NICHT im Tresor der vier Startgeheimnisse, sondern in einem
+    // eigenen Schluesselbundfach (`commands/tse.rs`), weil der Haendler sie
+    // erst spaeter eintraegt — nach dem ersten Start, wenn sein fiskaly-Konto
+    // steht. Der Motor braucht sie trotzdem: seine Einrichtungsroute prueft
+    // damit LIVE, ob die eingetragene Kennung wirklich eine betriebsbereite
+    // TSE mit angemeldeter Kasse ist.
+    //
+    // ⚠️ Ohne diese Zeilen trug die Kasse jede Kennung UNGEPRUEFT ein und sagte
+    // das auch ehrlich („keine Zugangsdaten hinterlegt") — nur half die
+    // Ehrlichkeit dem Haendler nicht, der einen Zahlendreher erst beim ersten
+    // Verkauf bemerkt haette. Live gemessen am 20.08.2026.
+    //
+    // Fehlt ein Fach, wird NICHTS gesetzt: der Motor bleibt bei seinem
+    // ehrlichen Hinweis, statt eine Pruefung zu versuchen, die scheitern muss.
+    for (k, v) in crate::commands::tse::fiskaly_fuer_motor() {
+        befehl.env(k, v);
+    }
+
     // Unter Windows sonst ein schwarzes Konsolenfenster neben der Kasse.
     #[cfg(windows)]
     {

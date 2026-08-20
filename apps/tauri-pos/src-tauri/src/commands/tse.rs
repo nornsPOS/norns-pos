@@ -1020,3 +1020,46 @@ pub async fn tse_clear_credentials() -> HwResult<()> {
     }
     Ok(())
 }
+
+// ════════════════════════════════════════════════════════════════════════
+//  DIE BRUECKE ZUM MOTOR (20.08.2026)
+// ════════════════════════════════════════════════════════════════════════
+//
+// ── DER FUND, LIVE GEMESSEN ─────────────────────────────────────────────
+//
+// Basel fragte: „wenn ich die fiskaly-Schluessel eintrage, laeuft es dann
+// sofort?" Gemessen am echten Dienst: die Schluessel selbst tragen (die
+// Anmeldung bei fiskaly gelingt, eine TSE laesst sich anlegen, in Betrieb
+// nehmen, ein Verkauf wird wirklich signiert). ABER: die Einrichtungsroute
+// des Motors antwortete
+//
+//     „Fuer diese Kasse sind keine fiskaly-Zugangsdaten hinterlegt,
+//      also laesst sich die Kennung nicht ueberpruefen."
+//
+// und trug die Kennung UNGEPRUEFT ein. Der Grund liegt genau hier: die
+// Schluessel wohnen im Schluesselbund unter dem Dienst dieser Datei, und
+// der Rumpf reicht dem Motor eine GESCHLOSSENE Liste von vier Geheimnissen
+// durch (`tresor.rs`), in der sie nicht vorkommen. Zwei Haelften desselben
+// Weges, die sich nie begegnet sind.
+//
+// ── WAS DIESE FUNKTION TUT ──────────────────────────────────────────────
+//
+// Sie liest die beiden Faecher und gibt sie unter den Namen zurueck, die
+// der Motor in seiner Umgebung erwartet. Fehlt eines, gibt sie NICHTS
+// zurueck: eine halbe Zugangsangabe ist schlimmer als keine, denn sie
+// laesst den Motor eine Pruefung versuchen, die nur scheitern kann.
+//
+// ⚠️ Die Schluessel bleiben damit im Rumpf und im Kindprozess. Sie gehen
+// NICHT in die Weboberflaeche, nicht auf die Platte, nicht ins Protokoll —
+// dieselbe Regel wie fuer die vier anderen Geheimnisse.
+pub(crate) fn fiskaly_fuer_motor() -> Vec<(String, String)> {
+    let key = read_keyring(TSE_KEY_USER).ok().flatten();
+    let secret = read_keyring(TSE_SECRET_USER).ok().flatten();
+    match (key, secret) {
+        (Some(k), Some(s)) => vec![
+            ("FISKALY_API_KEY".to_string(), k),
+            ("FISKALY_API_SECRET".to_string(), s),
+        ],
+        _ => Vec::new(),
+    }
+}

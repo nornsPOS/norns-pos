@@ -15,6 +15,8 @@ pub mod error;
 // Der Server, der im Gerät wohnt (Norns POS). Siehe motor.rs.
 pub mod lizenz;
 pub mod motor;
+#[cfg(test)]
+mod fiskaly_erreicht_den_motor;
 pub mod sicherung;
 // Die Geheimnisse des Motors, erzeugt und verwahrt im Systemtresor.
 pub mod mock;
