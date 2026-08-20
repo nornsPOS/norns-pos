@@ -74,6 +74,7 @@ import { currentShiftQueryKey, useCurrentShift } from '../../hooks/useCurrentShi
 import { dashboardQueryKey } from '../../hooks/useDashboardSummary.js';
 import { useReceiptFooterLines } from '../../hooks/useReceiptFooter.js';
 import { useSteuermodus } from '../../hooks/useSteuermodus.js';
+import { pruefeUhr } from '../../lib/uhrenabgleich.js';
 import {
   RECEIPT_VAT_LOCK_REASON,
   isReceiptShopValid,
@@ -1080,6 +1081,24 @@ export function BezahlenDialog({
               tseStartTime: sig.startedAt,
               tseEndTime: sig.finishedAt,
             });
+
+            /*
+             * ── DIE UHR DES GERAETS, EINMAL NACHGESEHEN (20.08.2026) ──────
+             *
+             * Der Bon und die Tageszuordnung folgen der GERAETEUHR, die
+             * Signatur der Uhr des Signaturdienstes. Gehen die beiden
+             * auseinander, stehen im Prueferpaket zwei verschiedene Zeiten
+             * nebeneinander — und genau das faellt auf.
+             *
+             * Nur eine Meldung, kein Riegel: eine schiefe Uhr ist ein Grund
+             * zum Stellen, nie ein Grund, einen bezahlten Verkauf zu
+             * verweigern. Die Schwelle ist grob (zwei Minuten), damit die
+             * Netzreise keinen Fehlalarm ausloest.
+             */
+            const uhr = pruefeUhr(sig.finishedAt);
+            if (uhr?.auffaellig) {
+              addToast({ tone: 'warn', title: 'Die Uhr dieser Kasse geht falsch', body: uhr.satz ?? '' }); // tse-zweig-frei: die Signatur liegt vor und ist gemeldet; gewarnt wird vor der schiefen Geraeteuhr, nicht vor einem Ausfall
+            }
           } catch (err) {
             // Record-failed (path b): we HOLD the signature but the server POST
             // failed. Enqueue the SIGNED entry to the durable queue so the drain

@@ -59,6 +59,23 @@ const ABSCHNITT_ENDE = 'return result;';
  */
 const ZWEIGGRENZE = /\}\s*else|^\s*if\s*\(|^\s*try\s*\{|^\s*\}\s*catch/;
 
+
+/**
+ * ── DIE FREISTELLUNG MIT GRUND (20.08.2026) ────────────────────────────────
+ *
+ * Nicht jeder Satz in diesem Abschnitt meldet einen AUSFALL. Der
+ * Uhrenabgleich zum Beispiel meldet sich NACH einer erfolgreichen, bereits
+ * gemeldeten Signatur: es gibt dort nichts einzureihen, gewarnt wird vor
+ * etwas anderem (die Geräteuhr weicht von der Uhr der Sicherheitseinrichtung
+ * ab, und damit stehen Bon und Tageszuordnung schief).
+ *
+ * Für solche Fälle gibt es diese Marke — auf DERSELBEN Zeile wie der Satz,
+ * mit einem Grund dahinter. Ohne Grund gilt sie nicht: eine wortlose
+ * Freistellung ist ein Abschalten mit besserem Namen.
+ */
+const FREI = 'tse-zweig-frei:';
+const FREI_GRUND_MINDESTLAENGE = 12;
+
 /** Was einen Satz an den Kassierer rechtfertigt. */
 const RECHTFERTIGUNGEN = [
   'ausfallSichern(',
@@ -115,6 +132,17 @@ describe('⛔ kein TSE-Zweig ohne Einreihung', () => {
       }
 
       const zweig = [...davor, ...anweisung].join('\n');
+
+      // Ausdrueckliche Freistellung, aber nur MIT Grund auf derselben Zeile.
+      const freigestellt = zeile.includes(FREI);
+      if (freigestellt) {
+        const grund = zeile.split(FREI)[1]?.trim() ?? '';
+        if (grund.length < FREI_GRUND_MINDESTLAENGE) {
+          ungedeckt.push(`Zeile ${versatz + i}: Freistellung ohne Grund`);
+        }
+        continue;
+      }
+
       if (!RECHTFERTIGUNGEN.some((r) => zweig.includes(r))) {
         ungedeckt.push(`Zeile ${versatz + i}: ${zeile.trim()}`);
       }
