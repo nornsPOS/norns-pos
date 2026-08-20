@@ -50,7 +50,7 @@ import { useKursstreifenSichtbar } from '../../state/kursstreifen-store.js';
 import { Spotlight } from './Spotlight.js';
 import { StepUpModal } from './StepUpModal.js';
 import { SubBreadcrumb } from './SubBreadcrumb.js';
-import { rueckwegFuer } from './rueckweg.js';
+import { type Wegstand, rueckwegFuer, schreibeWegFort } from './rueckweg.js';
 import { erstelleZifferSchleuse, isAnyDialogOpen, isTextEntryElement } from './digit-nav.js';
 import {
   PRIMARY_SURFACES,
@@ -110,22 +110,21 @@ export function AppShell(): JSX.Element {
    * ── DIE FLÄCHE DAVOR — für den Weg zurück (20.08.2026) ─────────────────
    *
    * Ein eigener Halt, NICHT der Spotlight-Speicher „Zuletzt": der sortiert
-   * die zuletzt besuchten Flächen um und wirft Doppelte weg, damit seine
-   * Liste kurz bleibt. Für die Frage „wo kam ich gerade her" ist das die
-   * falsche Auskunft — sie stimmt meistens und manchmal nicht, und ein
+   * um und wirft Doppelte weg. Für die Frage „wo kam ich gerade her" ist das
+   * die falsche Auskunft — sie stimmt meistens und manchmal nicht, und ein
    * Rückweg, der manchmal woandershin führt, ist schlimmer als keiner.
    *
-   * `useRef`, nicht `useState`: der Wert wird nur beim Wechsel gelesen, und
-   * ein zweiter Durchlauf je Flächenwechsel wäre umsonst.
+   * ⚠️ NACHGEPRÜFT UND BERICHTIGT am selben Tag: die erste Fassung schrieb
+   * den Halter im AUFRÄUMEN eines Effekts. React räumt erst NACH dem Rendern
+   * der neuen Fläche auf — beim ersten Bild stand also der Pfad von
+   * vorvorhin da, und der Knopf sagte „Werkstatt" statt „Lager". Der Halter
+   * wird deshalb WÄHREND des Renderns fortgeschrieben; die Regel dazu ist
+   * eine reine Funktion und wird durchgespielt (`rueckweg.test.ts`).
    */
-  const vorherigerPfad = useRef<string | null>(null);
+  const wegRef = useRef<Wegstand>({ letzter: null, vorher: null });
   const pfadJetzt = location.pathname;
-  const rueckweg = rueckwegFuer(pfadJetzt, vorherigerPfad.current);
-  useEffect(() => {
-    return () => {
-      vorherigerPfad.current = pfadJetzt;
-    };
-  }, [pfadJetzt]);
+  wegRef.current = schreibeWegFort(wegRef.current, pfadJetzt);
+  const rueckweg = rueckwegFuer(pfadJetzt, wegRef.current.vorher);
 
   // <main> owns the scroll — reset it to the top on each route change so a new
   // surface never opens already scrolled down (the body used to do this for free).

@@ -47,6 +47,44 @@
 import { GRUPPEN_HEIMAT } from '../../screens/secondary/gruppen.js';
 import { HOME_PATH, PRIMARY_SURFACES, findSurfaceByPath } from './surface-registry.js';
 
+/**
+ * Wo der Mensch war, und wo er davor war.
+ *
+ * ── DER FEHLER, DEN DIE NACHPRÜFUNG GEFUNDEN HAT (20.08.2026) ──────────────
+ *
+ * Die erste Fassung merkte sich den Vorgänger in einem `useRef`, das im
+ * AUFRÄUMEN eines Effekts beschrieben wurde. React räumt aber erst NACH dem
+ * Rendern der neuen Fläche auf. Beim ersten Bild der neuen Fläche stand im
+ * Halter also noch der Pfad von VORVORHIN, und der Rückweg fiel auf die
+ * Heimfläche zurück.
+ *
+ * Gemessen an der laufenden Kasse: von „Lager" nach „Dokumente" sagte der
+ * Knopf „Zurück zu Werkstatt". Meine erste Probe hatte das NICHT gefangen,
+ * weil ich von der Werkstatt aus geprüft hatte — und die Heimfläche IST die
+ * Werkstatt. Die falsche Antwort sah aus wie die richtige.
+ *
+ * Deshalb steht die Regel jetzt als reine Funktion da: sie lässt sich ohne
+ * React durchspielen, und der Wächter spielt genau diese Folge durch.
+ */
+export interface Wegstand {
+  /** Die Adresse, auf der er steht. */
+  letzter: string | null;
+  /** Die Adresse davor. */
+  vorher: string | null;
+}
+
+/**
+ * Den Weg fortschreiben.
+ *
+ * ⚠️ Idempotent: derselbe Pfad zweimal hintereinander ändert nichts. React
+ * rendert im Prüfmodus doppelt, und ein zweiter Durchlauf darf den Vorgänger
+ * nicht wegwerfen.
+ */
+export function schreibeWegFort(stand: Wegstand, pfad: string): Wegstand {
+  if (stand.letzter === pfad) return stand;
+  return { letzter: pfad, vorher: stand.letzter };
+}
+
 /** Ein benannter Weg zurück. */
 export interface Rueckweg {
   /** Wohin er führt. */

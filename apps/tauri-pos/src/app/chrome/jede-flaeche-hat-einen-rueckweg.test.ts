@@ -26,7 +26,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { rueckwegFuer } from './rueckweg.js';
+import { type Wegstand, rueckwegFuer, schreibeWegFort } from './rueckweg.js';
 import { PRIMARY_SURFACES, SECONDARY_SURFACES, findSurfaceByPath } from './surface-registry.js';
 
 describe('⛔ Von jeder sekundären Fläche führt ein Weg zurück', () => {
@@ -82,6 +82,48 @@ describe('⛔ Von jeder sekundären Fläche führt ein Weg zurück', () => {
     // richten — er fällt dann auf die Gruppe zurück.
     const weg = rueckwegFuer(ziel.path, ziel.path);
     expect(weg?.pfad).not.toBe(ziel.path);
+  });
+
+  it('⛔ der Weg merkt sich den Vorgänger SOFORT, nicht erst beim nächsten Bild', () => {
+    /*
+     * ── DER FEHLER, DEN DIE NACHPRÜFUNG GEFUNDEN HAT (20.08.2026) ────────
+     *
+     * Die erste Fassung schrieb den Vorgänger im AUFRÄUMEN eines Effekts.
+     * React räumt erst NACH dem Rendern der neuen Fläche auf: beim ERSTEN
+     * Bild stand dort noch der Pfad von vorvorhin, und der Rückweg fiel auf
+     * die Heimfläche zurück.
+     *
+     * An der laufenden Kasse gemessen: von „Lager" nach „Dokumente" sagte
+     * der Knopf „Zurück zu Werkstatt".
+     *
+     * ⚠️ Meine ERSTE Probe hatte das nicht gefangen, weil ich von der
+     * Werkstatt aus geprüft hatte — und die Heimfläche IST die Werkstatt.
+     * Die falsche Antwort sah aus wie die richtige. Diese Probe geht deshalb
+     * ausdrücklich von einer ANDEREN Fläche aus.
+     */
+    let stand: Wegstand = { letzter: null, vorher: null };
+    stand = schreibeWegFort(stand, '/werkstatt');
+    stand = schreibeWegFort(stand, '/lager');
+    stand = schreibeWegFort(stand, '/dokumente');
+
+    const weg = rueckwegFuer('/dokumente', stand.vorher);
+    expect(
+      weg?.label,
+      'Der Rückweg zeigt nicht dorthin, wo der Mensch wirklich herkam.',
+    ).toBe('Lager');
+  });
+
+  it('⛔ zweimal dasselbe Bild wirft den Vorgänger NICHT weg', () => {
+    // React rendert im Prüfmodus doppelt. Wäre die Fortschreibung nicht
+    // idempotent, zeigte der Knopf nach dem zweiten Bild auf die Fläche,
+    // auf der man gerade steht.
+    let stand: Wegstand = { letzter: null, vorher: null };
+    stand = schreibeWegFort(stand, '/lager');
+    stand = schreibeWegFort(stand, '/dokumente');
+    stand = schreibeWegFort(stand, '/dokumente');
+    stand = schreibeWegFort(stand, '/dokumente');
+    expect(stand.vorher).toBe('/lager');
+    expect(rueckwegFuer('/dokumente', stand.vorher)?.label).toBe('Lager');
   });
 
   it('⛔ auch eine unbekannte Adresse führt auf eine WIRKLICHE Fläche', () => {
