@@ -29,7 +29,7 @@ export const GRUPPEN: ReadonlyArray<{ titel: string; satz: string; pfade: readon
     // ⚠️ 01.08.2026: `/schaufenster` stand hier weiter, nachdem die Fläche
     // ausgezogen war (sie zeigte den Webshop, den diese Kasse nicht hat).
     // Die Kachel führte ins Leere. Der Wächter unten hat es gefangen.
-    pfade: ['/leitstand', '/risiko', '/zielkarte', '/tagebuch'],
+    pfade: ['/leitstand', '/compliance-inbox', '/risiko', '/zielkarte', '/tagebuch'],
   },
   {
     titel: 'Geld und Steuer',
@@ -49,12 +49,18 @@ export const GRUPPEN: ReadonlyArray<{ titel: string; satz: string; pfade: readon
   {
     titel: 'Kundschaft',
     satz: 'Anfragen, Nachrichten und was noch offen ist.',
+    // ⚠️ 20.08.2026, Basel nannte es ausdruecklich: das Konfliktpostfach stand
+    // hier. Es ist aber keine Sache der Kundschaft — es zeigt Buchungen, die
+    // beim Nachtragen aus der Offline-Warteschlange vom Server ABGEWICHEN
+    // sind, und solange eine davon offen ist, steht die GANZE Warteschlange
+    // still. Das ist ein Zustand der Anlage und gehoert unter die Aufsicht,
+    // wo der Inhaber ohnehin nachsieht, ob alles laeuft.
     // Ebenso `/kalender`: die Google-Kalender-Fläche ist ausgezogen, `/termine`
     // ist der eigene Terminweg dieser Kasse und bleibt.
     // Ebenso `/anfragen` (der Gmail-Abholer wohnt im Arbeiter, der nicht
     // mitreist) und `/whatsapp` (der Eingang kommt per Webhook von Meta, den
     // eine Kasse ohne Tunnel nie bekommt).
-    pfade: ['/compliance-inbox', '/termine', '/aufgaben'],
+    pfade: ['/termine', '/aufgaben'],
   },
   {
     titel: 'Haus und Personal',

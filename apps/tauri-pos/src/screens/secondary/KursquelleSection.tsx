@@ -44,6 +44,7 @@ import { describeError } from '@norns/i18n-de';
 import { Button, Zwischentitel, InfoPunkt, ParchmentCard } from '@norns/ui-kit';
 
 import { useApiClient } from '../../lib/api-context.js';
+import { KursstreifenSchalter } from './Schalter.js';
 import { useToastStore } from '../../state/toast-store.js';
 import {
   dollarkursSpieltEineRolle,
@@ -288,6 +289,23 @@ export function KursquelleSection(): JSX.Element {
             {speichern.isPending ? 'Wird gespeichert' : 'Kursquelle speichern'}
           </Button>
         </div>
+      </div>
+
+      {/*
+        ── 20.08.2026: DER KURSSTREIFEN WOHNT JETZT HIER ──────────────────
+        Dieser Schalter hatte einen EIGENEN Bereich „Darstellung", mit ihm
+        als einzigem Inhalt. Basel: „nicht eine Million Einstellungen, die
+        je eine Sache tun." Er handelt von Kursen und steht deshalb bei den
+        Kursen — eine Zeile weiter, nicht einen Bereich weiter.
+      */}
+      <div
+        style={{
+          marginTop: 'var(--w14-abstand-20)',
+          paddingTop: 'var(--w14-abstand-20)',
+          borderTop: '1px solid var(--w14-rule)',
+        }}
+      >
+        <KursstreifenSchalter />
       </div>
     </ParchmentCard>
   );

@@ -14,7 +14,7 @@ import { type CSSProperties, type ReactNode, useEffect, useState } from 'react';
 
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
-import { Button, Zwischentitel, Icon, ShieldCheck, ArrowDownToLine, Landmark, Cpu, KeyRound, Boxes, Scale, ReceiptText, HandCoins } from '@norns/ui-kit';
+import { Button, Zwischentitel, Icon, ShieldCheck, ArrowDownToLine, Landmark, Cpu, KeyRound, Boxes, Scale, ReceiptText, HandCoins, CircleHelp, FileText } from '@norns/ui-kit';
 
 import { findSurfaceByPath } from '../../app/chrome/surface-registry.js';
 import { GRUPPEN } from './Uebersicht.js';
@@ -23,7 +23,6 @@ import { IconPower, IconServer } from '../../app/chrome/Icons.js';
 import { useApiClient } from '../../lib/api-context.js';
 import { NORNS_BAUART } from '../../lib/bauart.js';
 import { requestSignOut } from '../../lib/session-actions.js';
-import { useKursstreifenStore } from '../../state/kursstreifen-store.js';
 import { VerkaufsaufschlagSection } from './VerkaufsaufschlagSection.js';
 import { useSessionStore } from '../../state/session-store.js';
 import { useToastStore } from '../../state/toast-store.js';
@@ -54,7 +53,6 @@ type SectionId =
   | 'sicherung'
   | 'hardware'
   | 'aufschlag'
-  | 'darstellung'
   | 'apikeys'
   | 'server'
   | 'beleg'
@@ -161,12 +159,6 @@ const SECTIONS: SectionDef[] = [
     desc: 'Was auf den Materialwert kommt',
   },
   {
-    id: 'darstellung',
-    label: 'Darstellung',
-    icon: <Icon icon={HandCoins} size={18} />,
-    desc: 'Metallkurse ein- oder ausblenden',
-  },
-  {
     id: 'apikeys',
     label: 'API-Schlüssel',
     icon: <Icon icon={KeyRound} size={18} />,
@@ -179,7 +171,15 @@ const SECTIONS: SectionDef[] = [
     icon: <IconServer size={18} />,
     desc: 'API · Synchronisation',
   },
-  { id: 'beleg', label: 'Beleg & Shop', icon: <Icon icon={ReceiptText} size={18} />, desc: 'Geschäftsdaten' },
+  {
+    id: 'beleg',
+    label: 'Beleg',
+    // 20.08.2026: hiess „Beleg & Shop". Diese Kasse hat keinen Shop; das Wort
+    // stammt aus einem fremden Haus und schickte den Inhaber weg von einem
+    // Bereich, den er wirklich braucht.
+    icon: <Icon icon={ReceiptText} size={18} />,
+    desc: 'Was auf dem Bon steht',
+  },
   {
     id: 'betrieb',
     label: 'Betrieb',
@@ -191,29 +191,46 @@ const SECTIONS: SectionDef[] = [
     id: 'kurse',
     label: 'Metallkurse',
     icon: <Icon icon={HandCoins} size={18} />,
+    // 20.08.2026: hier kam der eine Schalter aus „Darstellung" dazu (Kurse im
+    // Kopf ein- oder ausblenden). Ein eigener Bereich fuer EINEN Schalter,
+    // der ohnehin von Kursen handelt, war genau das, was Basel meinte:
+    // „nicht eine Million Einstellungen, die je eine Sache tun".
     // 19.08.2026: hier stand zusaetzlich Eingabe von Hand, sie ist seit dem
     // 18.08. abgeschafft; die Beschreibung darf nichts Abgeschafftes anbieten.
-    desc: 'Herkunft der Kurse',
+    desc: 'Herkunft der Kurse · Kursstreifen',
     adminOnly: true,
   },
   {
     id: 'sammlungen',
     label: 'Sammlungen',
     icon: <Icon icon={Boxes} size={18} />,
-    desc: 'Web-Shop-Kategorien',
+    // 20.08.2026: hiess „Web-Shop-Kategorien". GEMESSEN: es sind die
+    // Warengruppen, die `CategoryPicker` im Lager an jedes Stueck haengt —
+    // diese Kasse hat keinen Shop. Die Beschreibung schickte den Inhaber von
+    // einem Bereich weg, den sein Lager wirklich benutzt.
+    desc: 'Warengruppen für das Lager',
     adminOnly: true,
   },
   {
     id: 'steuer',
-    label: 'Steuer-Export & Compliance',
-    icon: <Icon icon={Scale} size={18} />,
+    // 20.08.2026: hiess „Steuer-Export & Compliance" — DERSELBE Name wie die
+    // Flaeche `/steuer-export` zwei Handbreit tiefer in derselben Spalte. Zwei
+    // Eintraege, ein Name, zwei verschiedene Ziele. „Steuer und Buchhaltung"
+    // sagt, was hier eingestellt wird; die Flaeche darunter LAEDT die Dateien.
+    label: 'Steuer und Buchhaltung',
+    // Das Amtsgebaeude (`Landmark`) gehoert dem Bereich `Betrieb`, wo die
+    // Stammdaten fuer das Finanzamt stehen. Hier geht es um Konten und
+    // Dateien.
+    icon: <Icon icon={FileText} size={18} />,
     desc: 'DATEV · DSFinV-K · TSE · GoBD',
     adminOnly: true,
   },
   {
     id: 'hilfe',
     label: 'Hilfe & Norns',
-    icon: <Icon icon={ShieldCheck} size={18} />,
+    // 20.08.2026: trug dasselbe Siegel wie die Lizenz. Ein Siegel steht fuer
+    // eine Freischaltung, nicht fuer eine Anleitung.
+    icon: <Icon icon={CircleHelp} size={18} />,
     desc: 'Anleitung · Support · Preise',
   },
 ];
@@ -437,7 +454,6 @@ export function Einstellungen(): JSX.Element {
         {activeSection === 'aufschlag' && (
           <VerkaufsaufschlagSection pad={pad} card={card} SectionTitle={SectionTitle} />
         )}
-        {activeSection === 'darstellung' && <DarstellungSection />}
         {activeSection === 'apikeys' && isAdmin && <ApiKeysSection />}
         {activeSection === 'server' && <ServerSection />}
         {activeSection === 'beleg' && <BelegSection />}
@@ -562,69 +578,14 @@ function Field({
   );
 }
 
-function Toggle({
-  on,
-  onChange,
-  title,
-  desc,
-}: {
-  on: boolean;
-  onChange: (v: boolean) => void;
-  title: string;
-  desc: string;
-}): JSX.Element {
-  return (
-    <button
-      type="button"
-      onClick={() => onChange(!on)}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 'var(--w14-abstand-14)',
-        padding: 'var(--w14-abstand-12) var(--w14-abstand-14)',
-        border: '1px solid var(--w14-rule)',
-        borderRadius: 'var(--w14-radius-button)',
-        background: 'var(--w14-parchment)',
-        cursor: 'pointer',
-        textAlign: 'left',
-      }}
-    >
-      <span style={{ display: 'grid', gap: 'var(--w14-abstand-2)' }}>
-        <span style={{ fontSize: 'var(--w14-schrift-betont)', color: 'var(--w14-ink)' }}>{title}</span>
-        <span style={{ fontSize: 'var(--w14-schrift-zeile)', color: 'var(--w14-ink-faded)' }}>{desc}</span>
-      </span>
-      <span
-        aria-hidden="true"
-        style={{
-          width: 42,
-          height: 24,
-          flex: '0 0 auto',
-          borderRadius: 'var(--w14-radius-pille)',
-          background: on ? 'var(--w14-accent)' : 'var(--w14-rule)',
-          position: 'relative',
-          transition: 'background var(--w14-dur-exit) var(--w14-ease-hover)',
-        }}
-      >
-        <span
-          style={{
-            position: 'absolute',
-            top: 3,
-            left: on ? 21 : 3,
-            width: 18,
-            height: 18,
-            borderRadius: '50%',
-            // 19.08.2026: reines Weiss (Hausverbot) und 1,24:1 auf der Aus-Schiene.
-            background: 'var(--w14-parchment-2)',
-            border: '1px solid var(--w14-feldlinie)',
-            transition: 'left var(--w14-dur-exit) var(--w14-ease-hover)',
-            boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
-          }}
-        />
-      </span>
-    </button>
-  );
-}
+/*
+ * ── 20.08.2026: `Toggle` wohnt jetzt in `Schalter.tsx` ───────────────────
+ * Zwei Bereiche brauchen ihn, seit der Kursstreifen-Schalter zu den
+ * Metallkursen gezogen ist. Beim Umzug fielen zwei Fehler auf, die dort
+ * behoben sind: er sagte einer Vorlesefläche nicht, ob er AN steht, und sein
+ * Schieber bewegte sich über `left` statt `transform`.
+ */
+
 
 /**
  * SignOutFooter — pinned to the bottom of the section rail. The header lock was
@@ -743,37 +704,18 @@ function TextScaleControl(): JSX.Element {
 // Sections
 // ════════════════════════════════════════════════════════════════════════
 
-/**
- * Darstellung — was der Tresen sehen WILL, nicht was das Haus vorschreibt.
+/*
+ * ── 20.08.2026: „Darstellung" ist zu den Kursen gezogen ──────────────────
  *
- * ⚠️ Basel, 05.08.2026: „المارجة بدل منتها حاطها فوق جنب الدارك مود حطها بس
- * بل اعادتدات وبداخلها اشغل واطفي الشريط" — nicht oben neben den dunklen
- * Modus, sondern HIER in die Einstellungen, und dort ein- und ausschalten.
+ * Hier stand ein eigener Bereich mit EINEM Schalter: „Metallkurse im Kopf
+ * anzeigen". Basel: „nicht eine Million Einstellungen, die je eine Sache
+ * tun." Ein Schalter, der von Kursen handelt, gehoert zu den Kursen — der
+ * Bereich `Metallkurse` traegt ihn jetzt (`KursquelleSection`).
  *
- * Er hat recht: die Kopfleiste ist der Arbeitsplatz, kein Schaltpult. Was man
- * einmal im Jahr entscheidet, gehoert nicht neben das, was man staendig
- * braucht. Der Knopf oben ist deshalb verschwunden.
+ * Basels aeltere Anweisung vom 05.08.2026 gilt unveraendert weiter: der
+ * Schalter gehoert in die Einstellungen und NICHT in die Kopfleiste neben
+ * den dunklen Modus. Die Kopfleiste ist der Arbeitsplatz, kein Schaltpult.
  */
-function DarstellungSection(): JSX.Element {
-  const kurse = useKursstreifenStore((s) => s.sichtbar);
-  const setzeKurse = useKursstreifenStore((s) => s.setzen);
-  return (
-    <div style={pad}>
-      <SectionTitle
-        title="Darstellung"
-        subtitle="Was auf dem Bildschirm dieses Geräts steht. Gilt nur hier, nicht für die Zweitkasse."
-      />
-      <div style={card}>
-        <Toggle
-          on={kurse}
-          onChange={setzeKurse}
-          title="Metallkurse im Kopf anzeigen"
-          desc="Der Kursstreifen unter der Kopfleiste. Wer nicht täglich ankauft, blendet ihn aus."
-        />
-      </div>
-    </div>
-  );
-}
 
 function ServerSection(): JSX.Element {
   const api = useApiClient();

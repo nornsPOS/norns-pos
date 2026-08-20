@@ -1,5 +1,5 @@
 /**
- * Gerätemanager, der Reiter „Hardware & Kasse" in den Einstellungen.
+ * Gerätemanager, der Bereich „Geräte & Kasse" in den Einstellungen.
  *
  * 27.07.2026: der alte Kopf zählte vier Abschnitte und versprach „nur lokal
  * gespeichert", beides längst überholt. Wahr sind heute ACHT Gruppen, in der
@@ -162,7 +162,7 @@ export function GeraeteManager(): JSX.Element {
 
   return (
     <section
-      aria-label="Hardware & Kasse"
+      aria-label="Geräte & Kasse"
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -190,7 +190,7 @@ export function GeraeteManager(): JSX.Element {
               fontSize: 'var(--w14-schrift-summe)',
             }}
           >
-            Hardware & Kasse
+            Geräte & Kasse
           </h1>
           <span
             className="w14-smallcaps"
