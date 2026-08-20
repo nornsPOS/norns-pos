@@ -20,6 +20,21 @@ export interface MrzPerson {
   expiryDate: string;
   /** True when every MRZ check digit validated. */
   valid: boolean;
+  /**
+   * WELCHE Felder der Auswerter beanstandet hat.
+   *
+   * ── DER BEFUND VOM 20.08.2026 ────────────────────────────────────────────
+   *
+   * `valid` allein sagt nur DASS etwas nicht aufgeht, nicht WAS. Beim Einbau
+   * des Lesers habe ich daraus „Prüfziffern stimmen nicht" gemacht — und beim
+   * Gegenprüfen mit einem Muster fiel auf, dass die Prüfziffern alle stimmten
+   * und in Wahrheit der STAATENCODE unbekannt war („UTO", Utopia).
+   *
+   * Eine Kasse, die dem Händler bei der Identifizierung nach § 10 GwG eine
+   * falsche Ursache nennt, schickt ihn an die falsche Stelle. Also nennt sie
+   * die Felder, die wirklich beanstandet wurden.
+   */
+  beanstandet: string[];
   /** 'TD1' | 'TD2' | 'TD3' | null (the detected MRZ format). */
   format: string | null;
 }
@@ -48,6 +63,12 @@ export function parseMrzDocument(lines: string | string[]): MrzPerson | null {
     documentNumber: f.documentNumber ?? '',
     expiryDate: f.expirationDate ?? '',
     valid: result.valid,
+    beanstandet: result.details
+      .filter((d) => !d.valid)
+      .map((d) => String(d.field))
+      // Ausgabestaat und Staatsangehörigkeit scheitern am selben Code; einmal
+      // nennen reicht.
+      .filter((f, i, alle) => alle.indexOf(f) === i),
     format: result.format,
   };
 }

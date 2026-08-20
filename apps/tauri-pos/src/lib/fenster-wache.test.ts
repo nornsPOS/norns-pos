@@ -61,6 +61,9 @@ const GEPRUEFT = [
   'screens/kunden/CustomerTrustDialog.tsx',
   'screens/kunden/KycCaptureModal.tsx',
   'screens/verkauf/StornoDialog.tsx',
+  // 20.08.2026: der Ausweisleser am Ankauf. Neu eingebaut MIT dem
+  // gemeinsamen Rahmen (Escape, Fokusfang) und eigener Höhenbegrenzung.
+  'screens/ankauf/CustomerPanel.tsx',
 ];
 
 /**

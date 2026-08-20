@@ -27,9 +27,12 @@ import {
   type CustomerDetail,
   customersApi,
 } from '@norns/api-client';
-import { Button, Zwischentitel, MoneyAmount, ParchmentCard } from '@norns/ui-kit';
+import { Button, Zwischentitel, Fensterboden, MoneyAmount, ParchmentCard } from '@norns/ui-kit';
 
+import { MrzScanner } from '../../components/MrzScanner.js';
 import { standSatz } from '../../lib/abfragestand.js';
+import { type Ausweisuebernahme, uebernimmAusweis } from '../../lib/ausweis-uebernahme.js';
+import { useFensterRahmen } from '../../lib/fenster-rahmen.js';
 import { useApiClient } from '../../lib/api-context.js';
 import { germanDateToIso } from '../../lib/german-date.js';
 import { KundenSucher, VertrauensZeichen, useKundenSuche } from '../kunden/KundenSucher.js';
@@ -433,6 +436,29 @@ function CreateMode({
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  /*
+   * ── DER AUSWEISLESER (20.08.2026, Basels Frage) ───────────────────────
+   *
+   * Basel hat nach dem Ausweisleser am Ankauf gefragt. Beim Nachmessen kam
+   * heraus: er war GEBAUT — Kamera, Handeingabe und ein Auswerter mit allen
+   * Prüfziffern nach ICAO 9303 — und an KEINER Fläche eingebaut.
+   *
+   * Hier gehört er hin: an die Stelle, an der die Person entsteht, die nach
+   * § 10 GwG identifiziert sein muss.
+   *
+   * ⚠️ Ohne Kamera und ohne Texterkennung bleibt er trotzdem nützlich: die
+   * Handeingabe nimmt die zwei oder drei Maschinenzeilen entgegen, und die
+   * üblichen Ausweisleser am Tresen tippen genau die als Tastatur ein.
+   */
+  const [leserOffen, setLeserOffen] = useState<boolean>(false);
+  const [ausweis, setAusweis] = useState<Ausweisuebernahme | null>(null);
+  // Escape, Anfangsfokus, Fokusfang und die Rückgabe des Fokus — aus dem
+  // gemeinsamen Rahmen, statt sie hier ein weiteres Mal zu bauen.
+  const leserRahmen = useFensterRahmen({
+    offen: leserOffen,
+    aufSchliessen: () => setLeserOffen(false),
+  });
+
   const canSubmit = fullName.trim().length >= 2 && !submitting;
 
   const submit = async (): Promise<void> => {
@@ -488,6 +514,51 @@ function CreateMode({
         padding="md"
         style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}
       >
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <Button variant="ghost" size="sm" onClick={() => setLeserOffen(true)}>
+            Ausweis einlesen
+          </Button>
+        </div>
+
+        {/*
+          ⚠️ Was der Ausweis SAGT, und wie sicher. Eine Kasse, die eine
+          unstimmige Nummer wortlos ins Formular schreibt, nimmt dem Händler
+          die Möglichkeit, genauer hinzusehen — und die Identifizierung nach
+          § 10 GwG ist SEINE Pflicht, nicht die der Kasse.
+        */}
+        {ausweis && (
+          <p
+            role="status"
+            style={{
+              margin: 0,
+              padding: 'var(--w14-abstand-8) var(--w14-abstand-10)',
+              borderRadius: 'var(--w14-radius-button)',
+              background:
+                ausweis.geprueft && !ausweis.abgelaufen
+                  ? 'rgb(var(--w14-verdigris-rgb) / 0.10)'
+                  : 'rgb(var(--w14-wax-red-rgb) / 0.10)',
+              color: 'var(--w14-ink-aged)',
+              fontSize: 'var(--w14-schrift-zeile)',
+              lineHeight: 1.5,
+              textWrap: 'pretty',
+            }}
+          >
+            {ausweis.dokumentennummer} · {ausweis.staat}
+            {ausweis.geprueft
+              ? ' · Angaben gehen auf'
+              : /*
+                 ⚠️ 20.08.2026: hier stand „Prüfziffern stimmen NICHT". Beim
+                 Gegenprüfen mit einem Muster stimmten alle vier Prüfziffern —
+                 unbekannt war der STAATENCODE. Eine falsch benannte Ursache
+                 schickt den Händler an die falsche Stelle; bei einer
+                 Identifizierung nach § 10 GwG ist das schlimmer als gar keine
+                 Angabe. Also wird genannt, was WIRKLICH nicht aufging.
+                */
+                ` · ⚠️ nicht in Ordnung: ${ausweis.beanstandet.join(', ')}`}
+            {ausweis.abgelaufen ? ' · ⚠️ Ausweis ist abgelaufen' : ''}
+          </p>
+        )}
+
         <Field
           label="Vollständiger Name"
           value={fullName}
@@ -523,6 +594,46 @@ function CreateMode({
           {submitting ? 'Speichert…' : 'Anlegen'}
         </Button>
       </div>
+
+      {leserOffen && (
+        <Fensterboden>
+          <div
+            ref={leserRahmen}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Ausweis einlesen"
+            style={{
+              position: 'fixed',
+              inset: 0,
+              display: 'grid',
+              placeItems: 'center',
+              background: 'rgb(var(--w14-ink-rgb) / 0.45)',
+              padding: 'var(--w14-abstand-20)',
+            }}
+          >
+            <ParchmentCard
+              padding="md"
+              style={{ maxWidth: 520, width: '100%', maxHeight: '90dvh', overflowY: 'auto' }}
+            >
+              <MrzScanner
+                onCancel={() => setLeserOffen(false)}
+                onResult={(person) => {
+                  const u = uebernimmAusweis(person);
+                  setAusweis(u);
+                  // ⚠️ Nur FÜLLEN, nie überschreiben, was schon dasteht: hat
+                  // der Kassierer den Namen bereits getippt, ist seine
+                  // Schreibweise die gewollte.
+                  if (fullName.trim() === '') setFullName(u.fullName);
+                  if (dateOfBirth.trim() === '' && u.geburtsdatum !== null) {
+                    setDateOfBirth(u.geburtsdatum);
+                  }
+                  setLeserOffen(false);
+                }}
+              />
+            </ParchmentCard>
+          </div>
+        </Fensterboden>
+      )}
     </>
   );
 }
