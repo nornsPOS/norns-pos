@@ -526,7 +526,7 @@ export function CartPanel({
         </div>
 
         {/* Kein Rechnungsrabatt bei einer Abholung — der reservierte Preis gilt. */}
-        {!isPickup && <InvoiceDiscount lines={lines} />}
+        {!isPickup && <InvoiceDiscount lines={geltendeZeilen} />}
 
         {/* ONE obvious primary action. Bezahlen owns the full-width, ~80px,
             bottom-anchored slot (Fitts: edge-anchored, the read-from-80cm tile).
@@ -582,10 +582,25 @@ export function CartPanel({
         </div>
       </ParchmentCard>
 
+      {/*
+        ⛔ 20.08.2026, bei der Nachpruefung gefunden: hier stand `lines={lines}`
+        — also die Zeilen mit dem GESPEICHERTEN Preis, waehrend `perLineMath`
+        schon aus dem Tagespreis rechnete.
+
+        Auf dem gewoehnlichen Weg fiel das nicht auf, weil der Bezahlen-Weg
+        die Geldbetraege aus `perLineMath` nimmt. Auf EINEM Weg aber nicht:
+        wechselt die Steuerart (B2B, § 13b Reverse Charge), rechnet der
+        Bezahlen-Weg die Zeile NEU — und zwar aus `line.listPriceEur`. Mit
+        den rohen Zeilen waere das der gespeicherte Preis gewesen.
+
+        Ein B2B-Verkauf eines kursgebundenen Stuecks haette damit wieder zum
+        alten Lagerpreis gebucht — genau der Fehler, den der Tagespreis
+        beseitigen sollte, nur auf einem selteneren Weg versteckt.
+      */}
       <BezahlenDialog
         open={bezahlenOpen}
         onClose={() => setBezahlenOpen(false)}
-        lines={lines}
+        lines={geltendeZeilen}
         perLineMath={perLine.map((p) => p.math)}
         totals={header}
         onFinalizeSuccess={onAfterFinalize}
