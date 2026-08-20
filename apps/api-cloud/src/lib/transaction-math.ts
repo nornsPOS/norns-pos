@@ -23,7 +23,7 @@
  *      are present together since the DB CHECK enforces that).
  */
 
-import { Money } from '@norns/domain';
+import { Money, alsTag } from '@norns/domain';
 
 import type { FinalizeBody } from '../schemas/transaction.js';
 import { pruefeSteuerJeBeleg, pruefeSteuerbetrag } from './steuerbetrag-passt.js';
@@ -46,6 +46,23 @@ function add(a: Money, str: string): Money {
  */
 export function validateTransactionMath(body: FinalizeBody): TransactionMathError | null {
   const isStorno = body.stornoOfTransactionId != null;
+
+  /*
+   * ── DER TAG, AN DEM DIESER BELEG ENTSTEHT (20.08.2026) ──────────────────
+   *
+   * Die Steuersätze hingen als feste Zahlen im Quelltext. Sie hängen jetzt am
+   * TAG (`@norns/domain`, `satzAm`), damit der Tag einer Gesetzesänderung
+   * kein Betriebsstillstand wird.
+   *
+   * Massgeblich ist die ERFASSUNGSZEIT des Geräts, nicht die Ankunftszeit des
+   * Servers: nach § 146a AO ist die Kasse die Quelle für den Vorgangsbeginn.
+   * Fehlt sie (ältere Aufrufer), gilt jetzt.
+   *
+   * ⚠️ `alsTag` rechnet in deutscher Ortszeit. Die naive UTC-Rechnung
+   * (`toISOString().slice(0,10)`) legt einen Verkauf um 00:30 Sommerzeit auf
+   * den VORTAG — an einer Satzgrenze wäre das der falsche Satz.
+   */
+  const tag = alsTag(body.erfasstAm != null ? new Date(body.erfasstAm) : new Date());
 
   const headerTotal = Money.of(body.totalEur);
   const headerSubtotal = Money.of(body.subtotalEur);
@@ -97,7 +114,7 @@ export function validateTransactionMath(body: FinalizeBody): TransactionMathErro
     // man `STANDARD_19` mit Satz 0,19 und Steuer 0,00 senden — Kopf und Zeilen
     // stimmten ueberein, die Summe ging auf, und der § 13b-Riegel feuerte nie,
     // weil er nur auf ein WORT hoert. Siehe steuerbetrag-passt.ts.
-    const steuerbefund = pruefeSteuerbetrag(item, i);
+    const steuerbefund = pruefeSteuerbetrag(item, i, tag);
     if (steuerbefund) return steuerbefund;
 
     // 1 — per-line invariant (DB CHECK on transaction_items mirrors).
@@ -157,7 +174,7 @@ export function validateTransactionMath(body: FinalizeBody): TransactionMathErro
   // § 14 Abs. 4 Nr. 8 UStG meint die Rechnung, nicht die Position — die Kasse
   // rundet deshalb einmal je Beleg und verteilt. Der Zeilenriegel oben lässt
   // dafür zwei Cent; diese Zeile schliesst die Tür, die das offenliesse.
-  const belegbefund = pruefeSteuerJeBeleg(body.items);
+  const belegbefund = pruefeSteuerJeBeleg(body.items, tag);
   if (belegbefund) return belegbefund;
 
   if (!lineTotalSum.equals(headerTotal)) {

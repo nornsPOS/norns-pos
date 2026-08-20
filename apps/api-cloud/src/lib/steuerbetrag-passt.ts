@@ -44,15 +44,36 @@
  *      bekommen, die die Tür offen gelassen hätte.
  */
 
-import { Money } from '@norns/domain';
+import { Money, type Steuersatzart, satzAm } from '@norns/domain';
 
 /** Was zu welchem Schlüssel gehört. `null` heisst: kein Satz auf dem Entgelt. */
-const SATZ_JE_SCHLUESSEL: Record<string, string | null> = {
-  STANDARD_19: '0.1900',
-  REDUCED_7: '0.0700',
+/**
+ * Welcher Satz zu welchem Schlüssel gehört — als ART, nicht als Zahl.
+ *
+ * ── DER BEFUND VOM 20.08.2026 (Basels Prüfbericht) ────────────────────────
+ *
+ * Hier standen die Zahlen `'0.1900'` und `'0.0700'` fest im Quelltext. Am Tag
+ * einer Gesetzesänderung wäre das ein Betriebsstillstand mit zwei Ausgängen,
+ * und beide falsch:
+ *
+ *   • Zieht man die Zahl auf den neuen Satz, weist diese Prüfung ab sofort
+ *     jeden Beleg ab, der noch mit dem alten gebucht wird.
+ *   • Lässt man sie stehen, kann die Kasse den neuen Satz nicht buchen.
+ *
+ * Die Zuordnung Schlüssel → ART bleibt für immer richtig (`STANDARD_19` ist
+ * der Regelsatz des § 12 Abs. 1 UStG, egal welche Zahl der gerade trägt).
+ * Welche ZAHL das an einem Tag bedeutet, sagt `@norns/domain`.
+ *
+ * ⚠️ Die Zahl im NAMEN bleibt, obwohl sie irreführen kann. Der Name steht in
+ * jeder gebuchten Zeile, in der DSFinV-K-Ausfuhr und im DATEV-Stapel; ihn zu
+ * ändern hiesse, die Bücher umzuschreiben.
+ */
+const ART_JE_SCHLUESSEL: Record<string, Steuersatzart | 'OHNE' | null> = {
+  STANDARD_19: 'REGEL',
+  REDUCED_7: 'ERMAESSIGT',
   // Die Steuerschuld geht auf den Leistungsempfänger über. Der Verkäufer weist
   // nichts aus, also muss der Betrag null sein.
-  REVERSE_CHARGE_13B: '0.0000',
+  REVERSE_CHARGE_13B: 'OHNE',
   // Sonderregelungen: die Steuer liegt nicht auf dem Entgelt. Der Satz gehört
   // deshalb auf `null`, und der Betrag wird hier nicht gegen das Entgelt
   // gerechnet — bei § 25a liegt er auf der Marge.
@@ -114,15 +135,33 @@ const TOLERANZ_CENT = Money.of('0.02');
 const TOLERANZ_BELEG = Money.of('0.01');
 
 /**
+ * Der Satz, den ein Schlüssel AN DIESEM TAG verlangt.
+ *
+ * `undefined` = unbekannter Schlüssel (das Schema fängt ihn).
+ * `null`      = Sonderregelung, die Steuer liegt nicht auf dem Entgelt.
+ */
+function satzFuerSchluessel(schluessel: string, tag: string): string | null | undefined {
+  const art = ART_JE_SCHLUESSEL[schluessel];
+  if (art === undefined) return undefined;
+  if (art === null) return null;
+  if (art === 'OHNE') return '0.0000';
+  return satzAm(art, tag);
+}
+
+/**
  * Passt der ausgewiesene Betrag zum Schlüssel und zum Satz?
  *
  * `null` heisst: in Ordnung. Rein, ohne Uhr, Netz oder Datenbank.
  */
-export function pruefeSteuerbetrag(zeile: Steuerzeile, index: number): Steuerbefund | null {
+export function pruefeSteuerbetrag(
+  zeile: Steuerzeile,
+  index: number,
+  tag: string,
+): Steuerbefund | null {
   const schluessel = zeile.appliedTaxTreatmentCode ?? null;
   if (schluessel == null) return null; // ältere Aufrufer ohne Zeilenschlüssel
 
-  const erwarteterSatz = SATZ_JE_SCHLUESSEL[schluessel];
+  const erwarteterSatz = satzFuerSchluessel(schluessel, tag);
   if (erwarteterSatz === undefined) return null; // unbekannter Schlüssel: das Schema fängt ihn
 
   const satz = zeile.appliedVatRate ?? null;
@@ -247,14 +286,17 @@ export function pruefeSteuerbetrag(zeile: Steuerzeile, index: number): Steuerbef
  *
  * `null` heisst: in Ordnung. Rein, ohne Uhr, Netz oder Datenbank.
  */
-export function pruefeSteuerJeBeleg(zeilen: readonly Steuerzeile[]): Steuerbefund | null {
+export function pruefeSteuerJeBeleg(
+  zeilen: readonly Steuerzeile[],
+  tag: string,
+): Steuerbefund | null {
   /** Je Steuerschlüssel: Summe der Entgelte und Summe der ausgewiesenen Steuer. */
   const gruppen = new Map<string, { entgelt: Money; steuer: Money }>();
 
   for (const zeile of zeilen) {
     const schluessel = zeile.appliedTaxTreatmentCode ?? null;
     if (schluessel == null) continue; // ältere Aufrufer ohne Zeilenschlüssel
-    const satz = SATZ_JE_SCHLUESSEL[schluessel];
+    const satz = satzFuerSchluessel(schluessel, tag);
     // `undefined` = unbekannter Schlüssel (das Schema fängt ihn).
     // `null` = die Steuer liegt nicht auf dem Entgelt.
     if (satz === undefined || satz === null) continue;
@@ -270,7 +312,7 @@ export function pruefeSteuerJeBeleg(zeilen: readonly Steuerzeile[]): Steuerbefun
   // gemeldete Zeile an der Reihenfolge der Eingabe.
   for (const schluessel of [...gruppen.keys()].sort()) {
     const { entgelt, steuer } = gruppen.get(schluessel) as { entgelt: Money; steuer: Money };
-    const satz = SATZ_JE_SCHLUESSEL[schluessel] as string;
+    const satz = satzFuerSchluessel(schluessel, tag) as string;
     const erwartet = entgelt.multiply(satz).round();
     if (steuer.subtract(erwartet).abs().greaterThan(TOLERANZ_BELEG)) {
       return {

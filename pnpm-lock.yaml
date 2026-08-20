@@ -188,6 +188,9 @@ importers:
       '@norns/appointments':
         specifier: workspace:*
         version: link:../../packages/appointments
+      '@norns/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
       '@norns/i18n-de':
         specifier: workspace:*
         version: link:../../packages/i18n-de

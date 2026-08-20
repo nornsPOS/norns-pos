@@ -41,6 +41,7 @@
  *   • sign discipline mirrors storno_of_transaction_id presence
  */
 
+import { alsTag } from '@norns/domain';
 import { Type } from '@sinclair/typebox';
 import { sql as drizzleSql } from 'drizzle-orm';
 import type { FastifyPluginAsync } from 'fastify';
@@ -694,6 +695,9 @@ const transactionsFinalize: FastifyPluginAsync<TransactionsFinalizeOpts> = async
               echterEinkaufCent: zuCent(jeId.get(it.productId)),
               warenart: artJeId.get(it.productId) ?? null,
             })),
+            // Derselbe Tag, mit dem `validateTransactionMath` schon rechnet:
+            // § 25a besteuert die Marge mit dem Regelsatz DIESES Tages.
+            alsTag(body.erfasstAm != null ? new Date(body.erfasstAm) : jetzt),
           );
 
           if (befunde[0]) {

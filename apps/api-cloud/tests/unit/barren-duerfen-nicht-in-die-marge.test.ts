@@ -39,11 +39,18 @@ function barre(warenart: string | null): MargenZeile {
   };
 }
 
+/**
+ * Der Tag, von dem diese Proben sprechen. Seit dem 20.08.2026 besteuert die
+ * Nachrechnung die Marge mit dem Regelsatz DIESES Tages — im Corona-Halbjahr
+ * 2020 waeren es 16 statt 19 Prozent, und die Zahlen unten gingen nicht auf.
+ */
+const TAG = '2026-08-20';
+
 describe('§ 25a Abs. 1 Nr. 3 UStG — tariflich ausgeschlossene Ware', () => {
   it.each(['gold_bar', 'silver_bar', 'platinum_bar'])(
     'weist %s zurück, obwohl die Marge stimmt',
     (art) => {
-      const befunde = pruefeMargen([barre(art)]);
+      const befunde = pruefeMargen([barre(art)], TAG);
       expect(befunde).toHaveLength(1);
       expect(befunde[0]?.field).toBe('items[0].appliedTaxTreatmentCode');
       expect(befunde[0]?.message).toContain('Barrenform');
@@ -67,14 +74,14 @@ describe('§ 25a Abs. 1 Nr. 3 UStG — tariflich ausgeschlossene Ware', () => {
     'antique',
     'other',
   ])('lässt %s durch — dafür ist das Verfahren gemacht', (art) => {
-    expect(pruefeMargen([barre(art)])).toHaveLength(0);
+    expect(pruefeMargen([barre(art)], TAG)).toHaveLength(0);
   });
 
   it('rät nicht, wenn die Warenart fehlt', () => {
     // Ein Aufrufer ohne Bestandszeile darf nicht dazu führen, dass ein
     // rechtmässiger Verkauf abgelehnt wird. Lieber keine Prüfung als eine
     // erfundene.
-    expect(pruefeMargen([barre(null)])).toHaveLength(0);
+    expect(pruefeMargen([barre(null)], TAG)).toHaveLength(0);
   });
 
   it('prüft die Warenart VOR der Rechnung', () => {
@@ -82,7 +89,7 @@ describe('§ 25a Abs. 1 Nr. 3 UStG — tariflich ausgeschlossene Ware', () => {
     // und der Händler korrigierte die Zahl statt den Schlüssel — er landete
     // beim nächsten Versuch wieder in einem Verfahren, das ihm verschlossen ist.
     const falscheZahlUndFalscheWare: MargenZeile = { ...barre('gold_bar'), behaupteteMargeCent: 1n };
-    const befunde = pruefeMargen([falscheZahlUndFalscheWare]);
+    const befunde = pruefeMargen([falscheZahlUndFalscheWare], TAG);
     expect(befunde).toHaveLength(1);
     expect(befunde[0]?.field).toBe('items[0].appliedTaxTreatmentCode');
   });

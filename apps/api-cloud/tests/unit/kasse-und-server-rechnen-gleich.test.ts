@@ -85,7 +85,7 @@ function durchDieKasse(
   }));
 
   for (let i = 0; i < zeilen.length; i++) {
-    const b = pruefeSteuerbetrag(zeilen[i]!, i);
+    const b = pruefeSteuerbetrag(zeilen[i]!, i, TAG);
     if (b) {
       return (
         `${satz.code} ${bruttoCents.map((c) => eur(BigInt(c))).join(' + ')} → Zeile ${i}: ` +
@@ -94,7 +94,7 @@ function durchDieKasse(
       );
     }
   }
-  const belegbefund = pruefeSteuerJeBeleg(zeilen);
+  const belegbefund = pruefeSteuerJeBeleg(zeilen, TAG);
   if (belegbefund) {
     return (
       `${satz.code} ${bruttoCents.map((c) => eur(BigInt(c))).join(' + ')} → ganzer Beleg: ` +
@@ -103,6 +103,13 @@ function durchDieKasse(
   }
   return null;
 }
+
+/**
+ * Der Tag, von dem diese Proben sprechen. Seit dem 20.08.2026 nimmt die
+ * Prüfung den Satz vom TAG des Belegs; eine Probe muss also sagen, wann ihr
+ * Beleg entsteht.
+ */
+const TAG = '2026-08-20';
 
 describe('⛔ Der Server weist KEINEN Beleg ab, den die Kasse selbst gerechnet hat', () => {
   it('zwei Zeilen, 0,01 bis 500,00 EUR, 19 % und 7 %', () => {

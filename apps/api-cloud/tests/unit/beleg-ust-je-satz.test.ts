@@ -63,6 +63,16 @@ const z = (u: Partial<Steuerzeile>): Steuerzeile => ({
   ...u,
 });
 
+/**
+ * Der Tag, von dem diese Proben sprechen.
+ *
+ * ⚠️ 20.08.2026: die Prüfung nimmt den Satz seither vom TAG des Belegs, statt
+ * ihn als feste Zahl zu tragen. Eine Probe muss deshalb sagen, WANN ihr Beleg
+ * entsteht — ein Beleg vom 01.09.2020 trüge 16 Prozent, und die Zahlen unten
+ * gingen nicht auf.
+ */
+const TAG = '2026-08-20';
+
 describe('⚠️ DER GEMESSENE BELEG: 1,28 + 38,84 EUR, beide 19 Prozent', () => {
   /**
    * Die Zahlen stammen aus dem echten Lauf von `harmonisiereUstJeSatz`:
@@ -80,7 +90,7 @@ describe('⚠️ DER GEMESSENE BELEG: 1,28 + 38,84 EUR, beide 19 Prozent', () =>
 
   it('geht Zeile für Zeile durch', () => {
     for (let i = 0; i < zeilen.length; i++) {
-      expect(pruefeSteuerbetrag(zeilen[i] as Steuerzeile, i), `Zeile ${i}`).toBeNull();
+      expect(pruefeSteuerbetrag(zeilen[i] as Steuerzeile, i, TAG), `Zeile ${i}`).toBeNull();
     }
   });
 
@@ -88,15 +98,15 @@ describe('⚠️ DER GEMESSENE BELEG: 1,28 + 38,84 EUR, beide 19 Prozent', () =>
     // 1,08 + 32,63 = 33,71 · × 0,19 = 6,4049 → 6,40
     // 0,20 + 6,21  = 6,41 · ein Cent Unterschied, und das ist die Rundung
     // des Belegs selbst, nicht ein versteckter Betrag.
-    expect(pruefeSteuerJeBeleg(zeilen)).toBeNull();
+    expect(pruefeSteuerJeBeleg(zeilen, TAG)).toBeNull();
   });
 });
 
 describe('⛔ Was der Belegriegel FÄNGT', () => {
   it('die alte Tür: 19 Prozent ausgewiesen, null Steuer gezahlt', () => {
     const zeilen = [z({ lineSubtotalEur: '100.00', lineVatEur: '0.00' })];
-    expect(pruefeSteuerbetrag(zeilen[0] as Steuerzeile, 0)).not.toBeNull();
-    expect(pruefeSteuerJeBeleg(zeilen)).not.toBeNull();
+    expect(pruefeSteuerbetrag(zeilen[0] as Steuerzeile, 0, TAG)).not.toBeNull();
+    expect(pruefeSteuerJeBeleg(zeilen, TAG)).not.toBeNull();
   });
 
   it('⚠️ die NEUE Tür: zwei Cent je Zeile, über viele Zeilen verteilt', () => {
@@ -113,9 +123,9 @@ describe('⛔ Was der Belegriegel FÄNGT', () => {
       z({ lineSubtotalEur: '100.00', lineVatEur: '18.98' }),
     );
     for (let i = 0; i < zeilen.length; i++) {
-      expect(pruefeSteuerbetrag(zeilen[i] as Steuerzeile, i), 'je Zeile im Rahmen').toBeNull();
+      expect(pruefeSteuerbetrag(zeilen[i] as Steuerzeile, i, TAG), 'je Zeile im Rahmen').toBeNull();
     }
-    const befund = pruefeSteuerJeBeleg(zeilen);
+    const befund = pruefeSteuerJeBeleg(zeilen, TAG);
     expect(befund, 'der Beleg als Ganzes muss auffallen').not.toBeNull();
     expect(befund?.expected).toBe('380.00');
     expect(befund?.actual).toBe('379.60');
@@ -132,7 +142,7 @@ describe('⛔ Was der Belegriegel FÄNGT', () => {
         lineVatEur: '5.00', // 2,00 zu wenig
       }),
     ];
-    const befund = pruefeSteuerJeBeleg(zeilen);
+    const befund = pruefeSteuerJeBeleg(zeilen, TAG);
     expect(befund).not.toBeNull();
     expect(befund?.message).toContain('REDUCED_7');
   });
@@ -148,18 +158,18 @@ describe('⛔ Was der Belegriegel FÄNGT', () => {
           appliedVatRate: null,
           lineSubtotalEur: '500.00',
           lineVatEur: '15.97',
-        }),
+        }, TAG),
       ]),
     ).toBeNull();
   });
 
   it('ein leerer Beleg ist kein Befund', () => {
-    expect(pruefeSteuerJeBeleg([])).toBeNull();
+    expect(pruefeSteuerJeBeleg([], TAG)).toBeNull();
   });
 
   it('ältere Aufrufer ohne Zeilenschlüssel gehen unverändert durch', () => {
     expect(
-      pruefeSteuerJeBeleg([z({ appliedTaxTreatmentCode: null, lineVatEur: '0.00' })]),
+      pruefeSteuerJeBeleg([z({ appliedTaxTreatmentCode: null, lineVatEur: '0.00' })], TAG),
     ).toBeNull();
   });
 
@@ -167,10 +177,10 @@ describe('⛔ Was der Belegriegel FÄNGT', () => {
     // Negative Beträge, dieselbe Regel. Ohne diesen Satz wäre der Storno der
     // bequemste Weg an der Prüfung vorbei.
     expect(
-      pruefeSteuerJeBeleg([z({ lineSubtotalEur: '-100.00', lineVatEur: '-19.00' })]),
+      pruefeSteuerJeBeleg([z({ lineSubtotalEur: '-100.00', lineVatEur: '-19.00' })], TAG),
     ).toBeNull();
     expect(
-      pruefeSteuerJeBeleg([z({ lineSubtotalEur: '-100.00', lineVatEur: '0.00' })]),
+      pruefeSteuerJeBeleg([z({ lineSubtotalEur: '-100.00', lineVatEur: '0.00' })], TAG),
     ).not.toBeNull();
   });
 });
@@ -192,9 +202,9 @@ describe('Der Zeilenriegel misst gegen die Zahl, die er NENNT', () => {
      *
      * Wird hier wieder gegen die rohe Zahl gemessen, ist dieser Satz rot.
      */
-    expect(pruefeSteuerbetrag(z({ lineSubtotalEur: '0.03', lineVatEur: '0.03' }), 0)).toBeNull();
+    expect(pruefeSteuerbetrag(z({ lineSubtotalEur: '0.03', lineVatEur: '0.03' }), 0, TAG)).toBeNull();
 
-    const befund = pruefeSteuerbetrag(z({ lineSubtotalEur: '32.63', lineVatEur: '9.00' }), 0);
+    const befund = pruefeSteuerbetrag(z({ lineSubtotalEur: '32.63', lineVatEur: '9.00' }), 0, TAG);
     expect(befund).not.toBeNull();
     expect(befund?.expected, 'die genannte Zahl muss ein Geldbetrag sein').toMatch(/^-?\d+\.\d{2}$/);
   });
@@ -202,9 +212,9 @@ describe('Der Zeilenriegel misst gegen die Zahl, die er NENNT', () => {
   it('zwei Cent gehen durch, drei nicht', () => {
     // Die gemessene Höchstverschiebung der Harmonisierung ist EIN Cent. Zwei
     // ist die Grenze mit einem Cent Luft; bei drei ist es keine Rundung mehr.
-    expect(pruefeSteuerbetrag(z({ lineVatEur: '19.02' }), 0)).toBeNull();
-    expect(pruefeSteuerbetrag(z({ lineVatEur: '18.98' }), 0)).toBeNull();
-    expect(pruefeSteuerbetrag(z({ lineVatEur: '19.03' }), 0)).not.toBeNull();
-    expect(pruefeSteuerbetrag(z({ lineVatEur: '18.97' }), 0)).not.toBeNull();
+    expect(pruefeSteuerbetrag(z({ lineVatEur: '19.02' }), 0, TAG)).toBeNull();
+    expect(pruefeSteuerbetrag(z({ lineVatEur: '18.98' }), 0, TAG)).toBeNull();
+    expect(pruefeSteuerbetrag(z({ lineVatEur: '19.03' }), 0, TAG)).not.toBeNull();
+    expect(pruefeSteuerbetrag(z({ lineVatEur: '18.97' }), 0, TAG)).not.toBeNull();
   });
 });

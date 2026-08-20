@@ -29,16 +29,23 @@ const echt = (ueber: Partial<MargenZeile> = {}): MargenZeile => ({
   ...ueber,
 });
 
+/**
+ * Der Tag, von dem diese Proben sprechen. Seit dem 20.08.2026 besteuert die
+ * Nachrechnung die Marge mit dem Regelsatz DIESES Tages — im Corona-Halbjahr
+ * 2020 waeren es 16 statt 19 Prozent, und die Zahlen unten gingen nicht auf.
+ */
+const TAG = '2026-08-20';
+
 describe('✅ die ehrliche Zeile geht durch', () => {
   it('Goldmuenze VK 270,00 / EK 250,00 → Marge 20,00, Steuer 3,19', () => {
-    expect(pruefeMargen([echt()])).toEqual([]);
+    expect(pruefeMargen([echt()], TAG)).toEqual([]);
   });
 
   it('ein Cent Rundungsspiel bei der Steuer bleibt erlaubt', () => {
     // Sonst stuende ein legitimer Verkauf still — und ein Riegel, der
     // legitime Vorgaenge blockiert, wird abgeschaltet.
-    expect(pruefeMargen([echt({ behaupteteSteuerCent: 320n })])).toEqual([]);
-    expect(pruefeMargen([echt({ behaupteteSteuerCent: 318n })])).toEqual([]);
+    expect(pruefeMargen([echt({ behaupteteSteuerCent: 320n })], TAG)).toEqual([]);
+    expect(pruefeMargen([echt({ behaupteteSteuerCent: 318n })], TAG)).toEqual([]);
   });
 
   it('ein Verlustverkauf: Marge null, Steuer null', () => {
@@ -50,15 +57,15 @@ describe('✅ die ehrliche Zeile geht durch', () => {
         echterEinkaufCent: 480_000n,
         behaupteteMargeCent: 0n,
         behaupteteSteuerCent: 0n,
-      }),
-    ]);
+      }, TAG),
+    ], TAG);
     expect(b).toEqual([]);
   });
 
   it('andere Steuerarten werden hier nicht angefasst', () => {
     for (const k of ['STANDARD_19', 'INVESTMENT_GOLD_25C', 'REVERSE_CHARGE_13B', null]) {
       expect(
-        pruefeMargen([echt({ appliedTaxTreatmentCode: k, echterEinkaufCent: null })]),
+        pruefeMargen([echt({ appliedTaxTreatmentCode: k, echterEinkaufCent: null })], TAG),
         String(k),
       ).toEqual([]);
     }
@@ -70,8 +77,8 @@ describe('⛔ DER ANGRIFF: einen Einkaufspreis erfinden', () => {
     // Der Kern des Befunds. 269,00 statt 250,00 behauptet → Steuer 0,16
     // statt 3,19.
     const b = pruefeMargen([
-      echt({ behaupteterEinkaufCent: 26_900n, behaupteteMargeCent: 100n, behaupteteSteuerCent: 16n }),
-    ]);
+      echt({ behaupteterEinkaufCent: 26_900n, behaupteteMargeCent: 100n, behaupteteSteuerCent: 16n }, TAG),
+    ], TAG);
     expect(b).toHaveLength(1);
     expect(b[0]?.field).toBe('items[0].acquisitionCostEurSnapshot');
     expect(b[0]?.expected).toBe('250,00 EUR');
@@ -81,18 +88,18 @@ describe('⛔ DER ANGRIFF: einen Einkaufspreis erfinden', () => {
   it('und ein zu NIEDRIGER ebenso — der Riegel geht in beide Richtungen', () => {
     // Zu viel ausgewiesene Steuer schuldet man nach § 14c genauso.
     expect(
-      pruefeMargen([echt({ behaupteterEinkaufCent: 10_000n, behaupteteMargeCent: 17_000n })]),
+      pruefeMargen([echt({ behaupteterEinkaufCent: 10_000n, behaupteteMargeCent: 17_000n })], TAG),
     ).toHaveLength(1);
   });
 
   it('⛔ eine Marge, die nicht aus Preis minus Einkauf folgt', () => {
-    const b = pruefeMargen([echt({ behaupteteMargeCent: 500n })]);
+    const b = pruefeMargen([echt({ behaupteteMargeCent: 500n })], TAG);
     expect(b[0]?.field).toBe('items[0].marginEur');
     expect(b[0]?.expected).toBe('20,00 EUR');
   });
 
   it('⛔ eine Steuer, die nicht aus der Marge folgt', () => {
-    const b = pruefeMargen([echt({ behaupteteSteuerCent: 50n })]);
+    const b = pruefeMargen([echt({ behaupteteSteuerCent: 50n })], TAG);
     expect(b[0]?.field).toBe('items[0].lineVatEur');
     expect(b[0]?.expected).toBe('3,19 EUR');
   });
@@ -100,18 +107,18 @@ describe('⛔ DER ANGRIFF: einen Einkaufspreis erfinden', () => {
   it('⛔ ohne hinterlegten Einkaufspreis ist § 25a nicht belegbar', () => {
     // § 25a Abs. 6 UStG verlangt die Aufzeichnung. Ohne sie waere die Marge
     // eine Behauptung ohne Grundlage.
-    const b = pruefeMargen([echt({ echterEinkaufCent: null })]);
+    const b = pruefeMargen([echt({ echterEinkaufCent: null })], TAG);
     expect(b[0]?.message).toContain('§ 25a Abs. 6');
   });
 
   it('⛔ und wenn der Klient GAR KEINEN Einkaufspreis mitschickt', () => {
-    expect(pruefeMargen([echt({ behaupteterEinkaufCent: null })])).toHaveLength(1);
+    expect(pruefeMargen([echt({ behaupteterEinkaufCent: null })], TAG)).toHaveLength(1);
   });
 });
 
 describe('die Meldung taugt fuer einen Menschen am Tresen', () => {
   it('sie nennt BEIDE Zahlen', () => {
-    const b = pruefeMargen([echt({ behaupteterEinkaufCent: 26_900n })]);
+    const b = pruefeMargen([echt({ behaupteterEinkaufCent: 26_900n })], TAG);
     expect(b[0]?.expected).toMatch(/EUR$/);
     expect(b[0]?.actual).toMatch(/EUR$/);
     // Deutsches Komma, nicht der englische Punkt.
@@ -119,7 +126,7 @@ describe('die Meldung taugt fuer einen Menschen am Tresen', () => {
   });
 
   it('und sagt, WORAN es haengt', () => {
-    const b = pruefeMargen([echt({ behaupteterEinkaufCent: 26_900n })]);
+    const b = pruefeMargen([echt({ behaupteterEinkaufCent: 26_900n })], TAG);
     expect(b[0]?.message).toContain('§ 25a');
   });
 });
@@ -127,10 +134,10 @@ describe('die Meldung taugt fuer einen Menschen am Tresen', () => {
 describe('mehrere Zeilen', () => {
   it('jede falsche Zeile wird einzeln benannt', () => {
     const b = pruefeMargen([
-      echt({ index: 0 }),
+      echt({ index: 0 }, TAG),
       echt({ index: 1, behaupteteMargeCent: 1n }),
       echt({ index: 2, behaupteteSteuerCent: 9_999n }),
-    ]);
+    ], TAG);
     expect(b).toHaveLength(2);
     expect(b.map((x) => x.field)).toEqual(['items[1].marginEur', 'items[2].lineVatEur']);
   });
@@ -155,9 +162,9 @@ describe('finalize rechnet WIRKLICH nach', () => {
     // Ohne diese Abfrage waere der Riegel ein Vergleich der Klientenzahl mit
     // sich selbst — gruen und wertlos.
     const q = await lies();
-    const i = q.indexOf('pruefeMargen(');
+    const i = q.indexOf('pruefeMargen(', TAG);
     const block = q.slice(i, q.indexOf('  );', i) + 4);
-    const davor = q.slice(Math.max(0, q.indexOf('pruefeMargen(') - 1200), q.indexOf('pruefeMargen('));
+    const davor = q.slice(Math.max(0, q.indexOf('pruefeMargen(', TAG) - 1200), q.indexOf('pruefeMargen(', TAG));
     expect(davor).toContain('acquisition_cost_eur');
     expect(davor).toContain('FROM products');
 
@@ -187,6 +194,6 @@ describe('finalize rechnet WIRKLICH nach', () => {
      * echten Beginn des fiskalen Blocks.
      */
     const q = await lies();
-    expect(q.indexOf('pruefeMargen(')).toBeLessThan(q.indexOf('.transaction(async (tx) => {'));
+    expect(q.indexOf('pruefeMargen(', TAG)).toBeLessThan(q.indexOf('.transaction(async (tx) => {'));
   });
 });

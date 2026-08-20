@@ -54,6 +54,8 @@
 /** Die Grenze aus § 25a Abs. 4 Satz 1 UStG, in Cent. */
 export const GRENZE_EINKAUFSPREIS_CENT = 75_000n;
 
+import { bruttoBruch, satzAm } from '@norns/domain';
+
 export interface Posten {
   /** Kennung des Gegenstands — für den Riegel gegen Doppelerfassung. */
   produktId: string;
@@ -117,7 +119,10 @@ function rundeHalfEven(zaehler: bigint, nenner: bigint): bigint {
  * Rein: keine Uhr, kein Netz, keine Datenbank. Der Aufrufer bestimmt den
  * Zeitraum und liefert die Posten.
  */
-export function berechneGesamtdifferenz(posten: readonly Posten[]): Gesamtdifferenz {
+export function berechneGesamtdifferenz(
+  posten: readonly Posten[],
+  zeitraum: { von: string; bis: string },
+): Gesamtdifferenz {
   const ausgeschlossen: Befund[] = [];
   let erloese = 0n;
   let einkaeufe = 0n;
@@ -166,8 +171,31 @@ export function berechneGesamtdifferenz(posten: readonly Posten[]): Gesamtdiffer
 
   const differenz = erloese - einkaeufe;
 
+  /*
+   * ── DER SATZ GEHÖRT DEM ZEITRAUM (20.08.2026) ─────────────────────────
+   *
+   * Hier stand `19n/119n` fest. Die Gesamtdifferenz rechnet aber über einen
+   * BESTEUERUNGSZEITRAUM, also über Vergangenes — und § 25a besteuert die
+   * Marge mit dem Regelsatz. Im Corona-Halbjahr 2020 waren das 16 Prozent.
+   *
+   * ⚠️ Und wenn der Zeitraum eine Satzänderung ÜBERSPANNT, gibt es keine
+   * einzelne richtige Zahl. Dann wird nicht die eine oder die andere
+   * gewählt, sondern abgebrochen: der Zeitraum gehört geteilt. Eine still
+   * gewählte Zahl wäre hier der Fehler, den am Beleg niemand mehr sieht.
+   */
+  const satzVon = satzAm('REGEL', zeitraum.von);
+  const satzBis = satzAm('REGEL', zeitraum.bis);
+  if (satzVon !== satzBis) {
+    throw new Error(
+      `Der Zeitraum ${zeitraum.von} bis ${zeitraum.bis} überspannt eine Änderung des ` +
+        `Umsatzsteuersatzes (${satzVon} → ${satzBis}). Die Gesamtdifferenz nach § 25a ` +
+        'Abs. 4 UStG braucht je Satz einen eigenen Zeitraum.',
+    );
+  }
+
   // ── Regel 1: eine negative Differenz ergibt keine negative Steuer ───────
-  const steuer = differenz > 0n ? rundeHalfEven(differenz * 19n, 119n) : 0n;
+  const { zaehler, nenner } = bruttoBruch(satzVon);
+  const steuer = differenz > 0n ? rundeHalfEven(differenz * zaehler, nenner) : 0n;
 
   return { erloeseCent: erloese, einkaeufeCent: einkaeufe, differenzCent: differenz, steuerCent: steuer, anzahl, ausgeschlossen };
 }

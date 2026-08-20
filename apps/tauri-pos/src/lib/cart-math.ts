@@ -21,6 +21,7 @@
  */
 
 import type { TaxTreatmentCode } from '@norns/api-client';
+import { alsTag, bruttoBruch, satzAm } from '@norns/domain';
 // The bigint-cents primitives live in one canonical module (money-core). They
 // were previously copy-pasted here; cart-math re-exports them so its public API
 // (toCents / fromCents) is unchanged for every import site.
@@ -113,6 +114,24 @@ export function computeLineMath(params: {
   acquisitionCostEur: string;
   /** Rabatt to knock off the list price before tax. Clamped to [0, listPrice]. */
   discountEur?: string | undefined;
+  /**
+   * Der Geschäftstag, an dem dieser Verkauf entsteht (`JJJJ-MM-TT`).
+   *
+   * ── WARUM ES EINEN VORGABEWERT GIBT, UND WARUM DAS HIER GEHT ────────────
+   *
+   * Ein stiller Vorgabewert ist meistens die Stelle, an der sich ein Fehler
+   * versteckt. Hier ist er vertretbar, und zwar aus einem gemessenen Grund:
+   * die Kasse rechnet NUR für Verkäufe, die gerade entstehen. Ein Storno
+   * rechnet sie nicht — er spiegelt die Zeilen des Ursprungsbelegs, und der
+   * Satz kommt dort aus der gebuchten Zeile (`transactions-storno.ts`).
+   * Gemessen am 20.08.2026: keine Storno- oder Rückgabefläche ruft diese
+   * Funktion.
+   *
+   * Der Vorgabewert rechnet ausserdem in DEUTSCHER Ortszeit (`alsTag`), nicht
+   * über UTC — sonst fiele ein Verkauf um 00:30 Sommerzeit auf den Vortag,
+   * und an einer Satzgrenze wäre das der falsche Satz.
+   */
+  tag?: string;
 }): LineMath {
   const listTotal = toCents(params.listPriceEur);
   let discount = params.discountEur ? toCents(params.discountEur) : 0n;
@@ -125,35 +144,54 @@ export function computeLineMath(params: {
     params.taxTreatmentCode,
     listTotal - discount,
     toCents(params.acquisitionCostEur),
+    params.tag ?? alsTag(new Date()),
   );
   return { ...breakdown, lineDiscountCents: discount };
 }
 
+/**
+ * Die Steuer einer Zeile.
+ *
+ * ── DER SATZ KOMMT VOM TAG (20.08.2026, Basels Prüfbericht) ────────────────
+ *
+ * Hier standen `19n/119n`, `7n/107n` und die Zeichenketten `'0.1900'`,
+ * `'0.0700'` fest im Quelltext. Am Tag einer Gesetzesänderung wäre die Kasse
+ * damit entweder für neue Verkäufe unbrauchbar oder für alte Belege — beides
+ * Betriebsstillstand. Der Satz kommt jetzt aus `@norns/domain`, und der
+ * ENGINE prüft mit demselben Verzeichnis gegen denselben Tag.
+ *
+ * @param tag Der Geschäftstag, an dem dieser Verkauf entsteht.
+ */
 function computeTaxBreakdown(
   taxTreatmentCode: TaxTreatmentCode,
   total: bigint,
   cost: bigint,
+  tag: string,
 ): Omit<LineMath, 'lineDiscountCents'> {
   switch (taxTreatmentCode) {
     case 'STANDARD_19': {
-      const vat = roundHalfEven(total * 19n, 119n);
+      const satz = satzAm('REGEL', tag);
+      const { zaehler, nenner } = bruttoBruch(satz);
+      const vat = roundHalfEven(total * zaehler, nenner);
       return {
         lineTotalCents: total,
         lineVatCents: vat,
         lineSubtotalCents: total - vat,
         marginCents: null,
-        appliedVatRate: '0.1900',
+        appliedVatRate: satz,
         acquisitionCostSnapshotCents: null,
       };
     }
     case 'REDUCED_7': {
-      const vat = roundHalfEven(total * 7n, 107n);
+      const satz = satzAm('ERMAESSIGT', tag);
+      const { zaehler, nenner } = bruttoBruch(satz);
+      const vat = roundHalfEven(total * zaehler, nenner);
       return {
         lineTotalCents: total,
         lineVatCents: vat,
         lineSubtotalCents: total - vat,
         marginCents: null,
-        appliedVatRate: '0.0700',
+        appliedVatRate: satz,
         acquisitionCostSnapshotCents: null,
       };
     }
@@ -162,7 +200,10 @@ function computeTaxBreakdown(
       // shop took a loss; the Finanzamt doesn't pay VAT back).
       const rawMargin = total - cost;
       const margin = rawMargin < 0n ? 0n : rawMargin;
-      const vat = roundHalfEven(margin * 19n, 119n);
+      // § 25a besteuert die MARGE mit dem REGELSATZ — also demselben Satz wie
+      // ein gewöhnlicher Verkauf, nur auf einer anderen Grundlage.
+      const { zaehler, nenner } = bruttoBruch(satzAm('REGEL', tag));
+      const vat = roundHalfEven(margin * zaehler, nenner);
       return {
         lineTotalCents: total,
         lineVatCents: vat,
@@ -452,9 +493,24 @@ export function harmonisiereUstJeSatz(lines: readonly LineMath[]): LineMath[] {
     const grundlagen = indizes.map((i) => (lines[i] as LineMath).lineTotalCents);
     const summe = grundlagen.reduce((a, b) => a + b, 0n);
 
-    // Der Satz als Bruch, aus dem BRUTTO herausgerechnet.
-    const [zaehler, nenner] =
-      schluessel === '0.1900' ? [19n, 119n] : schluessel === '0.0700' ? [7n, 107n] : [0n, 1n];
+    /*
+     * Der Satz als Bruch, aus dem BRUTTO herausgerechnet.
+     *
+     * ⚠️ 20.08.2026, beim Umbau auf datumsabhängige Sätze gefunden: hier
+     * stand eine Fallunterscheidung auf GENAU zwei Zeichenketten, und alles
+     * andere fiel auf `[0n, 1n]` — also `continue`, also gar keine
+     * Harmonisierung.
+     *
+     * Bei 19 und 7 Prozent fiel das nie auf. Ein Beleg aus dem Corona-
+     * Halbjahr 2020 trägt aber 16 oder 5 Prozent: dort wäre die Steuer je
+     * Zeile einzeln gerundet geblieben, die Belegsumme hätte um einen Cent
+     * danebengelegen, und der Riegel des Motors (`pruefeSteuerJeBeleg`)
+     * hätte den Beleg abgewiesen — mit einem Kunden davor.
+     *
+     * `bruttoBruch` kann JEDEN Satz. Die Sonderregelungen ohne Satz sind
+     * schon oben ausgesiebt (`appliedVatRate === null`).
+     */
+    const { zaehler, nenner } = bruttoBruch(schluessel);
     if (zaehler === 0n) continue;
 
     const zielUst = roundHalfEven(summe * zaehler, nenner);

@@ -46,6 +46,8 @@
  * dann merkt niemand, dass die Kasse falsch rechnet.
  */
 
+import { bruttoBruch, satzAm } from '@norns/domain';
+
 /** Ein Cent Spielraum, aus demselben Grund wie in `steuerbetrag-passt.ts`. */
 const TOLERANZ_CENT = 1n;
 
@@ -150,7 +152,7 @@ const cent = (c: bigint) => `${(Number(c) / 100).toFixed(2).replace('.', ',')} E
  * Rein: keine Uhr, kein Netz, keine Datenbank. Der Aufrufer liefert den echten
  * Einkaufspreis mit.
  */
-export function pruefeMargen(zeilen: readonly MargenZeile[]): Befund[] {
+export function pruefeMargen(zeilen: readonly MargenZeile[], tag: string): Befund[] {
   const befunde: Befund[] = [];
 
   for (const z of zeilen) {
@@ -229,7 +231,13 @@ export function pruefeMargen(zeilen: readonly MargenZeile[]): Befund[] {
     }
 
     // ── 4. Und die Steuer folgt zwingend aus der Marge ───────────────────
-    const steuerSoll = rundeHalfEven(margeSoll * 19n, 119n);
+    //
+    // ⚠️ 20.08.2026: hier stand `19n/119n` fest. § 25a besteuert die Marge mit
+    // dem REGELSATZ, und der hängt am Tag — im Corona-Halbjahr 2020 waren es
+    // 16 Prozent. Mit der festen Zahl hätte diese Nachrechnung jeden Beleg
+    // aus dieser Zeit als falsch gemeldet, obwohl er stimmt.
+    const { zaehler, nenner } = bruttoBruch(satzAm('REGEL', tag));
+    const steuerSoll = rundeHalfEven(margeSoll * zaehler, nenner);
     const abweichung =
       z.behaupteteSteuerCent > steuerSoll
         ? z.behaupteteSteuerCent - steuerSoll
