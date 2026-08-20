@@ -37,13 +37,29 @@ const KASSE = join(HIER, '..');
  * beiden Flächen starben in der 0.6.0-Begehung — ihre Momente mit ihnen.
  */
 const MOMENT_DATEIEN = {
-  bezahlen: join(KASSE, 'screens/verkauf/BezahlenDialog.tsx'),
+  /*
+   * ⚠️ 20.08.2026: zeigte auf `BezahlenDialog.tsx`. Die Zahlfläche trug 4018
+   * Zeilen und ist in ihre Bauteile ausgezogen (Basels „nicht die Welt
+   * ineinanderstopfen"). Die Momente des Bezahlwegs — das Siegel, das sich
+   * setzt, und was daran hängt — wohnen jetzt dort, wo sie gezeigt werden.
+   *
+   * Zwei Dateien, weil der Weg zwei hat: die EINGABE (`PaymentInput`) und das
+   * ERGEBNIS (`ReceiptResult`). Beide zusammen sind derselbe Moment, den
+   * dieser Wächter vorher in einer Datei fand.
+   */
+  bezahlen: [
+    join(KASSE, 'screens/verkauf/PaymentInput.tsx'),
+    join(KASSE, 'screens/verkauf/ReceiptResult.tsx'),
+  ],
   karte: join(KASSE, 'screens/verkauf/CartPanel.tsx'),
   beleg: join(KASSE, 'screens/verkauf/ReceiptPreview.tsx'),
 } as const;
 
-function lese(pfad: string): string {
-  return readFileSync(pfad, 'utf8');
+function lese(pfad: string | readonly string[]): string {
+  // Ein Moment darf über mehrere Bauteile verteilt sein; gemessen wird die
+  // Summe, nicht die Datei.
+  if (Array.isArray(pfad)) return pfad.map((p) => readFileSync(p, 'utf8')).join('\n');
+  return readFileSync(pfad as string, 'utf8');
 }
 
 describe('Die fünf Momente des Bezahlwegs', () => {

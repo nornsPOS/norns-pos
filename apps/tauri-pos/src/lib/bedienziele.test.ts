@@ -36,7 +36,13 @@ describe('Bedienziele', () => {
 
   it('die fünf Flächen schöpfen aus der gemeinsamen Quelle', () => {
     const erwartungen: ReadonlyArray<readonly [string, string]> = [
-      ['screens/verkauf/BezahlenDialog.tsx', 'ZAHLART_ZIEL'],
+      /*
+       * ⚠️ 20.08.2026: zeigte auf `BezahlenDialog.tsx`. Die Zahlfläche trug
+       * 4018 Zeilen und ist in ihre Bauteile ausgezogen (Basels „nicht die
+       * Welt ineinanderstopfen"). Was dieser Satz misst, wohnt jetzt in
+       * `PaymentInput.tsx` — dem Bauteil, das die Zahlwege wirklich zeigt.
+       */
+      ['screens/verkauf/PaymentInput.tsx', 'ZAHLART_ZIEL'],
       ['app/chrome/AppShellHeader.tsx', 'KOPFLEISTE_HOEHE'],
       ['app/chrome/AppShellHeader.tsx', 'KOPF_ZIEL'],
       ['app/chrome/ThemeToggle.tsx', 'KOPF_ZIEL'],

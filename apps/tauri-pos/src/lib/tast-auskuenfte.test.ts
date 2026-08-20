@@ -59,7 +59,11 @@ describe('Tast-Auskünfte: kein title= ist der einzige Träger einer Information
   it('Bezahlen: der gesperrte Kartenchip nennt seinen Grund beim Drücken (Meldungsblase)', () => {
     // Der Sperrgrund („Terminal nicht konfiguriert …") muss in die
     // Meldungsblase fliessen, nicht nur in das title=-Attribut.
-    const sicht = fingerSicht('screens/verkauf/BezahlenDialog.tsx');
+    /*
+     * ⚠️ 20.08.2026: zeigte auf `BezahlenDialog.tsx`. Der gesperrte
+     * Kartenchip wohnt seit dem Ausbau in `PaymentInput.tsx`.
+     */
+    const sicht = fingerSicht('screens/verkauf/PaymentInput.tsx');
     expect(sicht).toMatch(/body:\s*disabledReason/);
   });
 
