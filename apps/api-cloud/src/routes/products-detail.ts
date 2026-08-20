@@ -30,6 +30,7 @@ import {
 } from '@norns/db/schema';
 
 import { requireAuth, requireRole } from '../lib/auth-policy.js';
+import { kurspreiseFuerStuecke } from '../lib/kurspreise-lesen.js';
 import { type ApiErrorCode, DomainError } from '../plugins/error-handler.js';
 
 class ProductNotFoundError extends DomainError {
@@ -78,6 +79,32 @@ export const ProductDetail = Type.Object({
   taxTreatmentCode: Type.String(),
   acquisitionCostEur: Type.String(),
   listPriceEur: Type.String(),
+  /**
+   * Der TAGESPREIS aus dem laufenden Metallkurs plus Verkaufsaufschlag.
+   *
+   * ── DER BEFUND VOM 20.08.2026 ──────────────────────────────────────────
+   *
+   * Die ganze Maschinerie war da: der Motor holt alle fünf Minuten Kurse,
+   * `kurspreiseFuerStuecke` rechnet daraus den Tagespreis, und die
+   * Katalogkachel ZEIGTE ihn. Nur diese Route — die, aus der der Korb sein
+   * Stück nimmt — kannte ihn nicht. Der Korb buchte deshalb
+   * `listPriceEur`, den gespeicherten Preis von vorgestern, und die Fläche
+   * sagte dem Händler wörtlich: „Den Tagespreis übernehmen Sie im Lager:
+   * Zeile anklicken, unter Details den Verkaufspreis eintragen."
+   *
+   * Basels Urteil darüber war eindeutig, und er hatte recht: eine Kasse,
+   * die den richtigen Preis KENNT und den falschen bucht, verlangt jeden
+   * Morgen Handarbeit für etwas, das sie selbst weiss.
+   *
+   * `null` heisst ehrlich: für dieses Stück gibt es keinen Tagespreis —
+   * kein Kurs, kein Feingewicht, oder das Stück trägt einen festen Preis.
+   * Dann gilt `listPriceEur`, und `kurspreisGrund` sagt warum.
+   */
+  kurspreisEur: Type.Union([Type.String(), Type.Null()]),
+  /** Warum es KEINEN Tagespreis gibt. `null`, wenn es einen gibt. */
+  kurspreisGrund: Type.Union([Type.String(), Type.Null()]),
+  /** Folgt dieses Stück dem Kurs, oder hat es einen festen Preis? */
+  festerPreis: Type.Boolean(),
   collectorPremiumEur: Type.Union([Type.String(), Type.Null()]),
   name: Type.String(),
   descriptionDe: Type.Union([Type.String(), Type.Null()]),
@@ -200,6 +227,25 @@ const productsDetailRoute: FastifyPluginAsync = async (app) => {
       const row = productRows[0];
       if (!row) throw new ProductNotFoundError(`Product ${req.params.id} not found`);
 
+      /*
+       * Der TAGESPREIS dieses Stücks — dieselbe Rechnung, die auch die
+       * Katalogliste benutzt (`kurspreiseFuerStuecke`, EINE Quelle).
+       *
+       * ⚠️ Bewusst NACH der Existenzprüfung: für ein Stück, das es nicht
+       * gibt, wird kein Kurs geholt.
+       */
+      const kurspreis = (
+        await kurspreiseFuerStuecke(app.db, [
+          {
+            id: row.id,
+            metal: row.metal,
+            weightGrams: row.weightGrams,
+            finenessDecimal: row.finenessDecimal,
+            festerPreis: row.festerPreis,
+          },
+        ])
+      ).get(row.id);
+
       // WHO reserved it (owner directive): resolve the holder identity for a
       // RESERVED row. POS holds point at a staff user; web/storefront holds
       // walk reservation session → cart → shopper → customer and decrypt the
@@ -273,6 +319,10 @@ const productsDetailRoute: FastifyPluginAsync = async (app) => {
         taxTreatmentCode: row.taxTreatmentCode,
         acquisitionCostEur: row.acquisitionCostEur,
         listPriceEur: row.listPriceEur,
+        kurspreisEur: kurspreis && kurspreis.art === 'gerechnet' ? kurspreis.preisEur : null,
+        kurspreisGrund:
+          kurspreis && kurspreis.art === 'kein_kurspreis' ? kurspreis.grund : null,
+        festerPreis: row.festerPreis,
         collectorPremiumEur: row.collectorPremiumEur,
         name: row.name,
         descriptionDe: row.descriptionDe,

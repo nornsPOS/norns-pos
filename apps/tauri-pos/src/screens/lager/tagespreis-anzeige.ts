@@ -401,8 +401,21 @@ export function standSatz(zeitpunkt: number | null | undefined): string | null {
  * Der Satz nennt jetzt genau diesen Weg.
  */
 export const TAGESPREIS_HINWEIS_LAGER =
-  'Verkauft wird zum gespeicherten Preis. Zum Übernehmen die Zeile anklicken und unter „Details" den Verkaufspreis eintragen; das darf nur die Ladenleitung.';
+  'Kursgebundene Stücke verkauft die Kasse zum Tageskurs; der gespeicherte Preis ist ihr Rückfall, wenn kein Kurs vorliegt. Wer einen festen Preis will, setzt ihn am Stück — das darf nur die Ladenleitung.';
 
-/** Der Hinweis auf der Verkaufsfläche: was die Karte wirklich bucht. */
+/**
+ * Der Hinweis auf der Verkaufsfläche: was die Karte wirklich bucht.
+ *
+ * ── 20.08.2026, DER SATZ HAT SICH UMGEDREHT ────────────────────────────────
+ *
+ * Hier stand: „Gebucht wird der Preis, der auf der Kachel steht. Den
+ * Tagespreis übernehmen Sie im Lager: Zeile anklicken, unter Details den
+ * Verkaufspreis eintragen." Der Satz war WAHR und beschrieb genau den Defekt,
+ * über den Basel zu Recht zornig war: die Kasse kannte den Tagespreis und
+ * verlangte trotzdem Handarbeit, jeden Morgen, für jedes Stück.
+ *
+ * Seit heute bucht der Korb den Tagespreis selbst (`lib/korbpreis.ts`), und
+ * der Satz sagt, was jetzt gilt.
+ */
 export const TAGESPREIS_HINWEIS_KASSE =
-  'Gebucht wird der Preis, der auf der Kachel steht. Den Tagespreis übernehmen Sie im Lager: Zeile anklicken, unter „Details" den Verkaufspreis eintragen.';
+  'Kursgebundene Stücke werden zum Tageskurs verkauft; die Karte rechnet ihn laufend mit. Ein Stück mit festem Preis behält seinen.';

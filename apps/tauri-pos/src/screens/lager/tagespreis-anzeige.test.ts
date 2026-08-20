@@ -414,16 +414,30 @@ describe('beide Flächen übergeben ihren Umfang und zeichnen ihn', () => {
  * suchte im falschen Abschnitt.
  */
 describe('die Hinweise schicken den Händler an die richtige Stelle', () => {
-  it('der Lagerhinweis nennt Zeile, Abschnitt und Recht', () => {
-    expect(TAGESPREIS_HINWEIS_LAGER).toContain('Zeile anklicken');
-    expect(TAGESPREIS_HINWEIS_LAGER).toContain('„Details"');
+  /*
+   * ── 20.08.2026: BEIDE SÄTZE HABEN SICH UMGEDREHT ────────────────────────
+   *
+   * Bis heute schickten sie den Händler ins Lager, um den Tagespreis von
+   * Hand ins Stück zu übertragen — und beschrieben damit korrekt einen
+   * Defekt: die Kasse KANNTE den Preis und buchte den anderen. Seit der Korb
+   * den Tageskurs selbst rechnet (`lib/korbpreis.ts`), wäre diese Anweisung
+   * eine Aufforderung zu überflüssiger Arbeit.
+   *
+   * Der Wächter hält jetzt die neue Wahrheit fest UND verbietet die alte
+   * ausdrücklich: stünde die Handarbeits-Anweisung je wieder da, wäre das
+   * das sichere Zeichen, dass jemand den Kurspfad zurückgebaut hat.
+   */
+  it('der Lagerhinweis erklärt Kurs und Rückfall, nicht Handarbeit', () => {
+    expect(TAGESPREIS_HINWEIS_LAGER).toContain('Tageskurs');
+    expect(TAGESPREIS_HINWEIS_LAGER).toContain('Rückfall');
     expect(TAGESPREIS_HINWEIS_LAGER).toContain('Ladenleitung');
-    expect(TAGESPREIS_HINWEIS_LAGER).not.toContain('„anpassen"');
+    expect(TAGESPREIS_HINWEIS_LAGER).not.toContain('Zeile anklicken');
   });
 
-  it('der Kassenhinweis schickt ins Lager, nicht in die Karte', () => {
-    expect(TAGESPREIS_HINWEIS_KASSE).toContain('im Lager');
-    expect(TAGESPREIS_HINWEIS_KASSE).toContain('„Details"');
+  it('⛔ der Kassenhinweis verspricht den Tageskurs, nicht den Weg ins Lager', () => {
+    expect(TAGESPREIS_HINWEIS_KASSE).toContain('Tageskurs');
+    expect(TAGESPREIS_HINWEIS_KASSE).not.toContain('im Lager');
+    expect(TAGESPREIS_HINWEIS_KASSE).not.toContain('übernehmen');
   });
 
   it('die Aktionsspalte sagt, wohin „anpassen" führt', () => {

@@ -61,6 +61,9 @@ import {
   isDiscountReasonValid,
 } from '../../lib/discount-reason.js';
 import { TAX_TREATMENT_LABEL } from '../../lib/tax-treatment-label.js';
+import { useKurspreise } from '../../hooks/useKurspreise.js';
+import { KursHinweis } from './KursHinweis.js';
+import { geltenderPreis } from '../../lib/korbpreis.js';
 import { type CartLine, useCartStore } from '../../state/cart-store.js';
 import { Geldschimmer } from '../_shared/SanfteMomente.js';
 
@@ -167,10 +170,47 @@ export function CartPanel({
     onBezahlenOpenChange?.(bezahlenOpen);
   }, [bezahlenOpen, onBezahlenOpenChange]);
 
+  /*
+   * ── DER TAGESPREIS GILT (20.08.2026) ──────────────────────────────────
+   *
+   * Basels Befund, und er traf einen echten Defekt: die Kasse KANNTE den
+   * Tagespreis (der Motor holt alle fünf Minuten Kurse) und buchte trotzdem
+   * den gespeicherten. Der Händler sollte ihn von Hand ins Lager übertragen,
+   * jeden Morgen, für jedes Stück.
+   *
+   * Der Motor liefert ihn jetzt laufend; `geltenderPreis` entscheidet an
+   * EINER Stelle, welcher gilt. Die Ersetzung steht bewusst HIER, vor der
+   * Rechnung: alles darunter — Zeilenbetrag, Summe, Steueraufteilung,
+   * Bezahlen-Dialog, Beleg — arbeitet dann mit derselben Zahl, ohne dass
+   * eine einzige weitere Stelle davon wissen muss.
+   */
+  const kurspreisstand = useKurspreise(useMemo(() => lines.map((l) => l.productId), [lines]));
+
+  /** Die Zeilen mit dem Preis, der WIRKLICH gilt. */
+  const geltendeZeilen: readonly CartLine[] = useMemo(
+    () =>
+      lines.map((line) => {
+        const p = geltenderPreis(line.listPriceEur, kurspreisstand.auskuenfte.get(line.productId));
+        return p.preisEur === line.listPriceEur ? line : { ...line, listPriceEur: p.preisEur };
+      }),
+    [lines, kurspreisstand.auskuenfte],
+  );
+
+  /** Wie viele Zeilen ihren Preis aus dem laufenden Kurs beziehen. */
+  const zeilenAusKurs = useMemo(
+    () =>
+      lines.filter(
+        (l) =>
+          geltenderPreis(l.listPriceEur, kurspreisstand.auskuenfte.get(l.productId)).herkunft ===
+          'tagespreis',
+      ).length,
+    [lines, kurspreisstand.auskuenfte],
+  );
+
   // Per-line math (kept stable across renders so we don't re-allocate cents).
   const perLine: ReadonlyArray<{ line: CartLine; math: LineMath }> = useMemo(
     () =>
-      lines.map((line) => ({
+      geltendeZeilen.map((line) => ({
         line,
         math: computeLineMath({
           taxTreatmentCode: line.taxTreatmentCode,
@@ -179,7 +219,7 @@ export function CartPanel({
           discountEur: line.discountEur,
         }),
       })),
-    [lines],
+    [geltendeZeilen],
   );
 
   // ── Dieselbe Naht wie im Bezahlvorgang (28.07.2026) ────────────────────
@@ -394,6 +434,14 @@ export function CartPanel({
           flexShrink:0 + the fixed header keep Bezahlen at FROZEN coordinates
           regardless of cart size. */}
       <ParchmentCard padding="md" style={{ flexShrink: 0 }}>
+        {/* ── DER KURS, DER GERADE GILT (20.08.2026) ──────────────────────
+            Nur sichtbar, wenn wirklich Zeilen aus dem Kurs gerechnet werden.
+            Sie sagt zwei Dinge, die der Tresen braucht: dass diese Preise vom
+            laufenden Kurs kommen (nicht von vorgestern), und wie lange sie
+            noch gelten. Eine Kasse, die den Goldpreis benutzt, ohne es zu
+            sagen, verlangt vom Kassierer Vertrauen statt Auskunft. */}
+        {zeilenAusKurs > 0 && <KursHinweis anzahl={zeilenAusKurs} geholtAm={kurspreisstand.kurseGeholtAm} />}
+
         {/* Die Zierlinie bleibt, ihr Wort ging: „Summe" und darunter „Gesamt"
             benannten dasselbe zweimal. Die Linie trennt, die Zahl spricht. */}
         <Zwischentitel />

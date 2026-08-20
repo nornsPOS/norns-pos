@@ -94,6 +94,7 @@ import photosRoutes from './routes/photos.js';
 import productCategoriesRoute from './routes/product-categories.js';
 import productRelocateRoute from './routes/product-relocate.js';
 import productsDetailRoute from './routes/products-detail.js';
+import productsKurspreiseRoute from './routes/products-kurspreise.js';
 import productsListRoute from './routes/products-list.js';
 import productsRoutes from './routes/products.js';
 import registersRoute from './routes/registers.js';
@@ -282,6 +283,8 @@ export async function buildApp(opts: BuildAppOpts): Promise<FastifyInstance> {
   await app.register(inventoryRelease);
   await app.register(productsRoutes, { env: opts.env });
   await app.register(productsListRoute);
+  // 20.08.2026: die Tagespreise fuer den Korb — Auskunft, keine Buchung.
+  await app.register(productsKurspreiseRoute);
   await app.register(productsDetailRoute);
   await app.register(inventoryAdjustmentRoute);
   await app.register(productRelocateRoute);
