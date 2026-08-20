@@ -58,6 +58,24 @@ export interface SurfaceDescriptor {
   label: string;
 
   /**
+   * Diese Adresse ist eine WEICHE: sie zeigt nichts eigenes, sondern führt in
+   * einen Bereich einer anderen Fläche.
+   *
+   * ── WOZU (20.08.2026) ───────────────────────────────────────────────────
+   *
+   * Basels Anweisung, die Flächen nach Dienst zusammenzulegen, hat vier
+   * Aufsichtsflächen unter EINE Tür gebracht. Ihre Adressen bleiben trotzdem
+   * bestehen — Cmd+K findet sie unter ihren gewohnten Namen, die Startliste
+   * verweist darauf, und das Muskelgedächtnis ist ein Grund für sich.
+   *
+   * ⚠️ Der Wächter über die Gruppen liest dieses Feld: eine Weiche braucht
+   * KEINE eigene Tür in der Einstellungs-Spalte, denn sie führt ohnehin
+   * woandershin. Ohne das Feld müsste er entweder still eine Liste von
+   * Ausnahmen pflegen oder jede Weiche als vergessene Fläche melden.
+   */
+  weicheAuf?: string;
+
+  /**
    * Mid-text German description for tooltips + Spotlight secondary line.
    * One short sentence. No exclamation marks.
    */
@@ -193,15 +211,29 @@ const Kurse = lazy(() =>
 const SteuerExport = lazy(() =>
   import('../../screens/secondary/SteuerExport.js').then((m) => ({ default: m.SteuerExport })),
 );
-const Tagebuch = lazy(() =>
-  import('../../screens/secondary/Tagebuch.js').then((m) => ({ default: m.Tagebuch })),
+/*
+ * ── 20.08.2026: DIE AUFSICHT IST EINE TÜR GEWORDEN ──────────────────────
+ *
+ * Basel: „Leg sie logisch zusammen, nach Dienst und Wichtigkeit." Vier
+ * Flächen beantworteten dieselbe Frage („läuft alles, und was ist
+ * passiert?") und standen als vier Türen nebeneinander. Sie stehen jetzt
+ * als vier BEREICHE hinter einer.
+ *
+ * Die alten Adressen bleiben und führen in ihren Bereich (`aufsicht-weichen`):
+ * Cmd+K findet sie weiter unter ihren gewohnten Namen, die Startliste und der
+ * Leitstand verweisen darauf, und das Muskelgedächtnis ist ein Grund für sich.
+ */
+const TagebuchWeiche = lazy(() =>
+  import('../../screens/leitstand/aufsicht-weichen.js').then((m) => ({
+    default: m.TagebuchWeiche,
+  })),
 );
 const Termine = lazy(() =>
   import('../../screens/termine/Termine.js').then((m) => ({ default: m.Termine })),
 );
-const Konfliktpostfach = lazy(() =>
-  import('../../screens/secondary/Konfliktpostfach.js').then((m) => ({
-    default: m.Konfliktpostfach,
+const KonfliktpostfachWeiche = lazy(() =>
+  import('../../screens/leitstand/aufsicht-weichen.js').then((m) => ({
+    default: m.KonfliktpostfachWeiche,
   })),
 );
 const Zielkarte = lazy(() =>
@@ -210,12 +242,12 @@ const Zielkarte = lazy(() =>
 const Uebersicht = lazy(() =>
   import('../../screens/secondary/Uebersicht.js').then((m) => ({ default: m.Uebersicht })),
 );
-const Risikoanalyse = lazy(() =>
-  import('../../screens/risiko/Risikoanalyse.js').then((m) => ({ default: m.Risikoanalyse })),
+const RisikoWeiche = lazy(() =>
+  import('../../screens/leitstand/aufsicht-weichen.js').then((m) => ({ default: m.RisikoWeiche })),
 );
 const Team = lazy(() => import('../../screens/team/Team.js').then((m) => ({ default: m.Team })));
-const Leitstand = lazy(() =>
-  import('../../screens/leitstand/Leitstand.js').then((m) => ({ default: m.Leitstand })),
+const Aufsicht = lazy(() =>
+  import('../../screens/leitstand/Aufsicht.js').then((m) => ({ default: m.Aufsicht })),
 );
 
 export const SURFACES: readonly SurfaceDescriptor[] = [
@@ -408,20 +440,22 @@ export const SURFACES: readonly SurfaceDescriptor[] = [
   },
   {
     path: '/tagebuch',
+    weicheAuf: '/leitstand?bereich=tagebuch',
     label: 'Tagebuch',
     icon: BookOpen,
     description: 'Vollständige Ereignis-Chronik der Hash-Kette.',
     tier: 'secondary',
-    component: Tagebuch,
+    component: TagebuchWeiche,
     searchAliases: ['ledger', 'history', 'historie', 'chain', 'audit'],
   },
   {
     path: '/compliance-inbox',
+    weicheAuf: '/leitstand?bereich=konflikte',
     label: 'Konfliktpostfach',
     icon: MailWarning,
     description: 'Offline-Vorgänge, die vom Server abweichen und geprüft werden müssen.',
     tier: 'secondary',
-    component: Konfliktpostfach,
+    component: KonfliktpostfachWeiche,
     searchAliases: ['konflikt', 'sync', 'compliance', 'warteschlange', 'outbox'],
   },
   {
@@ -516,11 +550,12 @@ export const SURFACES: readonly SurfaceDescriptor[] = [
   },
   {
     path: '/risiko',
+    weicheAuf: '/leitstand?bereich=risiko',
     label: 'Risikoanalyse',
     icon: ShieldAlert,
     description: 'Warnungen und Kunden-Beobachtungsliste aus den Geldwäsche-Meldern.',
     tier: 'secondary',
-    component: Risikoanalyse,
+    component: RisikoWeiche,
     ownerOnly: true,
     searchAliases: ['risiko', 'aml', 'gwg', 'sanktionen', 'pep', 'warnung', 'watchlist', 'compliance'],
   },
@@ -548,11 +583,11 @@ export const SURFACES: readonly SurfaceDescriptor[] = [
   //    hier über Suche und Spotlight jederzeit erreichbar. ──
   {
     path: '/leitstand',
-    label: 'Leitstand',
+    label: 'Aufsicht',
     icon: Activity,
     description: 'Systemzustand, offene Probleme und der Zugang zu Risiko und Edge-Schutz.',
     tier: 'secondary',
-    component: Leitstand,
+    component: Aufsicht,
     ownerOnly: true,
     searchAliases: [
       'leitstand',

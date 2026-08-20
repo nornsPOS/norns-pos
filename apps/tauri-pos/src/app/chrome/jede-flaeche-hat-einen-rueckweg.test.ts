@@ -126,6 +126,23 @@ describe('⛔ Von jeder sekundären Fläche führt ein Weg zurück', () => {
     expect(rueckwegFuer('/dokumente', stand.vorher)?.label).toBe('Lager');
   });
 
+  it('⛔ eine WEICHE ist kein Herkunftsort — sonst dreht sich der Weg im Kreis', () => {
+    /*
+     * Am Schirm gesehen (20.08.2026): `/tagebuch` leitet seit der
+     * Zusammenlegung sofort nach `/leitstand?bereich=tagebuch` weiter. Wer
+     * die alte Adresse aufrief, hatte „Tagebuch" als vorherige Fläche — und
+     * der Knopf zurück führte auf die Weiche, die ihn postwendend wieder
+     * zurückschickte.
+     */
+    const weichen = SECONDARY_SURFACES.filter((s) => s.weicheAuf !== undefined);
+    expect(weichen.length, 'ohne Weichen beweist dieser Satz nichts').toBeGreaterThan(0);
+
+    for (const w of weichen) {
+      const weg = rueckwegFuer('/dokumente', w.path);
+      expect(weg?.pfad, `„${w.label}" wurde als Herkunft angenommen`).not.toBe(w.path);
+    }
+  });
+
   it('⛔ auch eine unbekannte Adresse führt auf eine WIRKLICHE Fläche', () => {
     // Der Rumpf leitet unbekannte Adressen ohnehin nach Hause; der Knopf
     // sagt dasselbe. Was er NICHT tun darf, ist auf eine Adresse zeigen,

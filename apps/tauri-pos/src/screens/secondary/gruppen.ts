@@ -29,7 +29,24 @@ export const GRUPPEN: ReadonlyArray<{ titel: string; satz: string; pfade: readon
     // ⚠️ 01.08.2026: `/schaufenster` stand hier weiter, nachdem die Fläche
     // ausgezogen war (sie zeigte den Webshop, den diese Kasse nicht hat).
     // Die Kachel führte ins Leere. Der Wächter unten hat es gefangen.
-    pfade: ['/leitstand', '/compliance-inbox', '/risiko', '/zielkarte', '/tagebuch'],
+    /*
+     * ── 20.08.2026, BASELS ANWEISUNG ────────────────────────────────────
+     *
+     * „Leg sie logisch zusammen, nach Dienst und Wichtigkeit — besonders das
+     * Konfliktpostfach."
+     *
+     * Hier standen FÜNF Türen. Vier davon beantworten dieselbe Frage („läuft
+     * alles, und was ist passiert?") und stehen jetzt als vier BEREICHE
+     * hinter EINER: `/leitstand` heisst „Aufsicht" und führt Übersicht,
+     * Konflikte, Risiko und Tagebuch.
+     *
+     * Die Zielkarte bleibt eigenständig: sie zeigt ZIELE, nicht den Zustand.
+     * Sie gehört zum Geschäft, nicht zur Aufsicht.
+     *
+     * ⚠️ Die alten Adressen leben weiter als Weichen — Cmd+K, die Startliste
+     * und das Muskelgedächtnis finden sie unter ihren gewohnten Namen.
+     */
+    pfade: ['/leitstand', '/zielkarte'],
   },
   {
     titel: 'Geld und Steuer',

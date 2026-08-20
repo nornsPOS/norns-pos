@@ -33,7 +33,19 @@ describe('die Gruppen der Übersicht', () => {
     // „Weiteres" faengt zwar alles auf, aber eine Flaeche dort ist unsortiert,
     // nicht eingeordnet. Diese Pruefung haelt die Tabelle vollstaendig.
     const einsortiert = new Set(GRUPPEN.flatMap((g) => g.pfade));
-    const fehlend = SECONDARY_SURFACES.map((s) => s.path)
+    /*
+     * ⚠️ 20.08.2026: WEICHEN brauchen keine eigene Tür. Seit die vier
+     * Aufsichtsflächen unter einer Tür stehen, sind `/risiko`, `/tagebuch`
+     * und `/compliance-inbox` Adressen, die in einen BEREICH führen. Sie
+     * bleiben auffindbar (Cmd+K, Startliste, Muskelgedächtnis), aber eine
+     * zweite Tür in der Spalte wäre genau die Dopplung, die Basel beseitigt
+     * haben wollte.
+     *
+     * Gelesen wird das aus der Registrierung selbst (`weicheAuf`), nicht aus
+     * einer Liste hier — sonst driftet die Ausnahme von der Sache weg.
+     */
+    const fehlend = SECONDARY_SURFACES.filter((s) => s.weicheAuf === undefined)
+      .map((s) => s.path)
       // Die Übersicht selbst gehoert nicht in ihre eigene Liste.
       .filter((p) => p !== '/uebersicht' && !einsortiert.has(p));
     expect(fehlend).toEqual([]);

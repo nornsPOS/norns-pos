@@ -112,7 +112,18 @@ export function rueckwegFuer(pfad: string, vorherigerPfad: string | null): Rueck
   //    ist. Ein Knopf, der auf die eigene Adresse zeigt, tut nichts.
   if (vorherigerPfad !== null && vorherigerPfad !== pfad) {
     const woher = findSurfaceByPath(vorherigerPfad);
-    if (woher) return { pfad: woher.path, label: woher.label };
+    /*
+     * ⚠️ 20.08.2026, am Schirm gesehen: eine WEICHE ist kein Herkunftsort.
+     *
+     * Seit die vier Aufsichtsflächen unter einer Tür stehen, leitet
+     * `/tagebuch` sofort nach `/leitstand?bereich=tagebuch` weiter. Wer die
+     * alte Adresse aufruft, hatte damit „Tagebuch" als vorherige Fläche —
+     * und der Knopf zurück führte auf die Weiche, die ihn postwendend
+     * wieder hierher schickte. Eine Schleife, aus der man nicht herauskommt.
+     */
+    if (woher && woher.weicheAuf === undefined) {
+      return { pfad: woher.path, label: woher.label };
+    }
   }
 
   // 3. Die Gruppe, in der diese Fläche wohnt — sofern ihre Tür nicht diese
