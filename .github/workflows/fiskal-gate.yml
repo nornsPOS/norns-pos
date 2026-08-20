@@ -136,13 +136,9 @@ jobs:
       # Der Waechter `ein-filter-ohne-treffer-muss-rot-werden` misst das jetzt.
       - name: Die Pakete bauen, die der Server als dist liest
         run: |
-          pnpm --fail-if-no-match --filter @norns/db build
-          pnpm --fail-if-no-match --filter @norns/audit build
-          pnpm --fail-if-no-match --filter @norns/inventory-lock build
-          pnpm --fail-if-no-match --filter @norns/domain build
-          pnpm --fail-if-no-match --filter @norns/auth-pin build
-          pnpm --fail-if-no-match --filter @norns/email build
-          pnpm --fail-if-no-match --filter @norns/appointments build
+          # Keine Handliste und keine Handreihenfolge — siehe
+          # `scripts/baue-pakete.mjs`. Der Fiskal-Riegel prueft den MOTOR.
+          node scripts/baue-pakete.mjs @norns/api-cloud
 
       # ── Der Typpruefer sieht die Tests ueberhaupt erst seit dem 26.07.2026 ──
       # `apps/api-cloud/tsconfig.json` hat "include": ["src"] und schliesst

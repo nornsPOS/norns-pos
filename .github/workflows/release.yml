@@ -198,16 +198,10 @@ jobs:
         # to resolve any that is not built. i18n-de + appointments were extracted
         # after v0.4.33, so they MUST be built here alongside the original four.
         run: |
-          pnpm --fail-if-no-match --filter @norns/inventory-lock build
-          pnpm --fail-if-no-match --filter @norns/db build
-          pnpm --fail-if-no-match --filter @norns/audit build
-          pnpm --fail-if-no-match --filter @norns/ui-kit build
-          pnpm --fail-if-no-match --filter @norns/api-client build
-          pnpm --fail-if-no-match --filter @norns/i18n-de build
-          pnpm --fail-if-no-match --filter @norns/appointments build
-          pnpm --fail-if-no-match --filter @norns/domain build
-          pnpm --fail-if-no-match --filter @norns/auth-pin build
-          pnpm --fail-if-no-match --filter @norns/email build
+          # Keine Handliste und keine Handreihenfolge — die Begruendung
+          # steht in `scripts/baue-pakete.mjs`. Beide Anwendungen zusammen,
+          # weil die Auslieferung Kasse UND Motor traegt.
+          node scripts/baue-pakete.mjs @norns/tauri-pos @norns/api-cloud
 
       # ─────────────────────────────────────────────────────────────────────
       # DER MOTOR REIST MIT. Ohne diese vier Schritte baut der Lauf eine Kasse

@@ -77,6 +77,19 @@ const TORDATEIEN = [
   // Dieser Waechter hat das sofort gemeldet, statt still zu ueberspringen —
   // genau dafuer ist der harte Fehlerzweig da.
   'package.json',
+  /*
+   * ── 20.08.2026: DIE BAUAUFRUFE SIND HIERHER GEZOGEN ────────────────────
+   *
+   * Die Arbeitslaeufe bauten die hauseigenen Pakete ueber eine Handliste mit
+   * Handreihenfolge. Sie ist zweimal gebrochen; Menge und Reihenfolge kommen
+   * jetzt aus diesem Skript (Begruendung dort).
+   *
+   * ⚠️ Damit sind ein Dutzend gefilterte pnpm-Aufrufe aus den Toren HIERHIN
+   * gewandert. Stuende die Datei nicht auf dieser Liste, prueefte dieser
+   * Waechter sie nicht — und die Sicherung `--fail-if-no-match` koennte dort
+   * unbemerkt fehlen.
+   */
+  'scripts/baue-pakete.mjs',
 ];
 
 /** Ein Name, den es in diesem Arbeitsbaum sicher nicht gibt. */
@@ -178,8 +191,19 @@ describe('⛔ Ein Filter ohne Treffer muss ROT werden', () => {
       }
 
       inhalt.split('\n').forEach((zeile, i) => {
-        // Nur echte Aufrufe. Ein Kommentar über einen Aufruf ist kein Aufruf.
-        const ohneKommentar = zeile.replace(/(^|\s)(#|\/\/).*$/, '');
+        /*
+         * Nur echte Aufrufe. Ein Kommentar ÜBER einen Aufruf ist kein Aufruf.
+         *
+         * ⚠️ 20.08.2026 erweitert: bis dahin wurden nur `#` und `//` abgestreift.
+         * Seit `scripts/baue-pakete.mjs` auf der Liste steht, kommen auch
+         * BLOCKKOMMENTARE vor — und der Waechter schlug prompt auf die Zeile
+         * an, die erklaert, warum `pnpm --filter "…^..."` nicht reicht. Ein
+         * Waechter, der seine eigene Begruendung als Befund meldet, misst
+         * nicht die Sache.
+         */
+        const ohneKommentar = /^\s*\*/.test(zeile)
+          ? ''
+          : zeile.replace(/(^|\s)(#|\/\/).*$/, '');
         if (!/\bpnpm\b[^\n]*--filter\b/.test(ohneKommentar)) return;
         gesehen += 1;
         if (!ohneKommentar.includes('--fail-if-no-match')) {
@@ -194,7 +218,12 @@ describe('⛔ Ein Filter ohne Treffer muss ROT werden', () => {
       'Kein einziger gefilterter pnpm-Aufruf gefunden. Entweder hat sich die ' +
         'Schreibweise geändert, oder dieser Wächter sucht am falschen Ort. ' +
         'So oder so beweist er gerade nichts.',
-    ).toBeGreaterThan(20);
+      // 20.08.2026 von 20 auf 8 gesenkt, und zwar mit Grund: ein Dutzend
+      // Aufrufe war eine HANDLISTE, die zweimal gebrochen ist. Sie sind durch
+      // EINEN abgeleiteten Aufruf je Tor ersetzt. Weniger Aufrufe sind hier
+      // ein Fortschritt, keine geschwaechte Probe — was zaehlt, ist dass
+      // JEDER verbliebene die Sicherung traegt.
+    ).toBeGreaterThan(8);
 
     expect(
       ungesichert,
@@ -266,7 +295,8 @@ describe('⛔ Ein Filter ohne Treffer muss ROT werden', () => {
     }
 
     // „null ist nicht grün".
-    expect(gezielt, 'kein einziger treffender Aufruf gefunden').toBeGreaterThan(20);
+    // Siehe oben: die Handliste ist einem abgeleiteten Aufruf gewichen.
+    expect(gezielt, 'kein einziger treffender Aufruf gefunden').toBeGreaterThan(3);
     expect(
       leerlauf,
       'Diese Zeilen sehen aus wie Arbeitsschritte, tun aber NICHTS und melden ' +
@@ -288,7 +318,10 @@ describe('⛔ Ein Filter ohne Treffer muss ROT werden', () => {
       mitFilter.length,
       'Das Fiskaltor fährt plötzlich keine gefilterten Schritte mehr. Das kann ' +
         'stimmen, gehört dann aber angesehen.',
-    ).toBeGreaterThan(5);
+      // Das Fiskaltor baut seine Pakete seit dem 20.08.2026 ueber das
+      // abgeleitete Skript; die uebrigen gefilterten Schritte (Typpruefung,
+      // fiskale Kette, Proben) sind geblieben.
+    ).toBeGreaterThan(2);
     for (const z of mitFilter) {
       expect(z, `ungesicherter Schritt im FISKALTOR: ${z.trim()}`).toContain('--fail-if-no-match');
     }

@@ -175,16 +175,18 @@ jobs:
       - name: Build internal packages the desktop apps consume
         if: steps.changes.outputs.desktop == 'true'
         run: |
-          # REIHENFOLGE IST PFLICHT (30.07.2026). i18n-de importiert api-client,
-          # stand aber davor: der Baulauf fand `@norns/api-client` nicht
-          # und dieser Auftrag war seit dem 23.07. ROT, ohne dass es jemandem
-          # auffiel. „CI grün" war in der Zeit kein Signal. Wer hier etwas
-          # verschiebt: ein Paket kommt NACH allem, was es importiert.
-          pnpm --fail-if-no-match --filter @norns/inventory-lock build
-          pnpm --fail-if-no-match --filter @norns/db build
-          pnpm --fail-if-no-match --filter @norns/ui-kit build
-          pnpm --fail-if-no-match --filter @norns/api-client build
-          pnpm --fail-if-no-match --filter @norns/i18n-de build
+          # ── ⛔ KEINE HANDLISTE, UND KEINE HANDREIHENFOLGE (20.08.2026) ───
+          #
+          # Hier standen Pakete namentlich, in einer Reihenfolge, die von Hand
+          # stimmen musste. Diese Art Liste ist ZWEIMAL gebrochen (23.07. und
+          # 20.08.2026, Begruendung in `scripts/baue-pakete.mjs`).
+          #
+          # `pnpm --filter "…^..."` allein reicht NICHT: in diesem Werk sortiert
+          # pnpm nicht topologisch, weil `node-linker=hoisted` den
+          # Abhaengigkeitsbaum einebnet. Gemessen: `audit` lief vor `db` und
+          # der Bau brach. Das Skript leitet Menge UND Reihenfolge aus den
+          # `package.json` ab.
+          node scripts/baue-pakete.mjs @norns/tauri-pos
 
       - name: Der Läufer, sonst findet tauri-build den Beipack nicht
         if: steps.changes.outputs.desktop == 'true'
@@ -298,14 +300,19 @@ jobs:
 
       - name: Hauseigene Pakete bauen
         if: steps.changes.outputs.desktop == 'true'
-        # REIHENFOLGE IST PFLICHT, dieselbe wie bei `desktop-build`, und aus
-        # demselben Grund: ein Paket kommt NACH allem, was es importiert.
         run: |
-          pnpm --fail-if-no-match --filter @norns/inventory-lock build
-          pnpm --fail-if-no-match --filter @norns/db build
-          pnpm --fail-if-no-match --filter @norns/ui-kit build
-          pnpm --fail-if-no-match --filter @norns/api-client build
-          pnpm --fail-if-no-match --filter @norns/i18n-de build
+          # ── ⛔ KEINE HANDLISTE, UND KEINE HANDREIHENFOLGE (20.08.2026) ───
+          #
+          # Hier standen Pakete namentlich, in einer Reihenfolge, die von Hand
+          # stimmen musste. Diese Art Liste ist ZWEIMAL gebrochen (23.07. und
+          # 20.08.2026, Begruendung in `scripts/baue-pakete.mjs`).
+          #
+          # `pnpm --filter "…^..."` allein reicht NICHT: in diesem Werk sortiert
+          # pnpm nicht topologisch, weil `node-linker=hoisted` den
+          # Abhaengigkeitsbaum einebnet. Gemessen: `audit` lief vor `db` und
+          # der Bau brach. Das Skript leitet Menge UND Reihenfolge aus den
+          # `package.json` ab.
+          node scripts/baue-pakete.mjs @norns/tauri-pos
 
       - name: Fenster bauen (damit tauri-build den dist-Ordner findet)
         if: steps.changes.outputs.desktop == 'true'
