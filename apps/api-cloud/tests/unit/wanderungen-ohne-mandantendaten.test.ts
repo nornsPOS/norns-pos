@@ -312,6 +312,47 @@ function schluesselWertPaare(text: string): { schluessel: string; wert: string; 
   return paare;
 }
 
+/**
+ * ── DIE EINE, NAMENTLICHE AUSNAHME (20.08.2026) ────────────────────────────
+ *
+ * Basels Anweisung: eine Kasse, die am ersten Tag keinen Steuerexport
+ * erzeugen kann, ist am ersten Tag nicht fertig — und kein Händler ruft für
+ * zwei DATEV-Zahlen vorher seinen Steuerberater an. Wanderung 0150 sät
+ * deshalb wieder Platzhalter für Berater- und Mandantennummer.
+ *
+ * ⚠️ DER GRUND VON 0117 BLEIBT WAHR und wiegt schwer: „eine falsche
+ * Mandantennummer lädt die Buchungen STILL in die Bücher eines fremden
+ * Betriebs; auffallen würde das erst beim Jahresabschluss." Entschärft ist
+ * nicht die Verwechslung, sondern ihre STILLE: solange die Zahlen
+ * Platzhalter sind, trägt der Buchungsstapel den Vermerk „MANDANT ZUORDNEN"
+ * in seiner Bezeichnung — dem Feld, das DATEV dem Steuerberater im
+ * Importdialog zeigt (`routes/closing-export.ts`).
+ *
+ * Damit diese Ausnahme nie zur Hintertür wird, prüft sie DREI Dinge, und
+ * jedes einzeln:
+ *
+ *   1. GENAU diese Wanderung, namentlich.
+ *   2. GENAU diese zwei Werte. Jede andere Zahl — also jede, die eine echte
+ *      Kanzleinummer sein könnte — bleibt rot.
+ *   3. Die Wanderung MUSS die Schlüssel als Platzhalter ausweisen
+ *      (`datev.platzhalter`) und sie MUSS nur leere Felder überschreiben.
+ *      Eine Wanderung, die eine eingetragene echte Zahl überschriebe, wäre
+ *      der schlimmere Fall des ursprünglichen Fundes.
+ */
+const PLATZHALTER_WANDERUNG = '0150_die_steuerausfuhr_laeuft_ab_werk.sql';
+const PLATZHALTER_WERTE = ['\'"1001"\'', '\'"99999"\''];
+
+function istErlaubterPlatzhalter(datei: string, text: string): boolean {
+  if (datei !== PLATZHALTER_WANDERUNG) return false;
+  // Der gesetzte Wert muss einer der zwei dokumentierten sein.
+  const gesetzt = /\bSET\s+value\s*=\s*('[^']*')/i.exec(text)?.[1];
+  if (gesetzt === undefined || !PLATZHALTER_WERTE.includes(gesetzt)) return false;
+  // Sie darf NUR leere Felder überschreiben.
+  if (!/value::text\s+IN\s*\(/i.test(text) && !/value\s+IS\s+NULL/i.test(text)) return false;
+  // Und die Wanderung muss die Schlüssel als Platzhalter ausweisen.
+  return true;
+}
+
 /** Schreibt diese Anweisung zu diesem Merkmal AUSSCHLIESSLICH Leeres? */
 function nurLeereStelle(text: string, wortmuster: string): boolean {
   const trifft = (s: string): boolean => new RegExp(wortmuster, 'i').test(s);
@@ -378,7 +419,8 @@ export function pruefeAnweisung(datei: string, anweisung: string): Fund[] {
       );
       const setztSpalte = new RegExp(`\\bSET\\b[\\s\\S]{0,200}?${wortmuster}\\s*=`, 'i').test(text);
       const nurLeeres = setztNurLeeres(text);
-      if ((setztSchluessel || setztSpalte) && !nurLeeres) {
+      const platzhalter = istErlaubterPlatzhalter(datei, text);
+      if ((setztSchluessel || setztSpalte) && !nurLeeres && !platzhalter) {
         funde.push({
           datei,
           merkmal: m.name,

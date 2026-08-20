@@ -67,8 +67,13 @@ export function KursHinweis({ anzahl, geholtAm }: KursHinweisProps): JSX.Element
         background: 'rgb(var(--w14-gilt-rgb) / 0.10)',
       }}
     >
-      {/* Der Balken läuft ab wie der Kurs: reine Breite, keine Bewegung, die
-          das Auge am Tresen ablenkt. */}
+      {/* Der Balken läuft ab wie der Kurs — ruhig, ohne das Auge am Tresen
+          zu ziehen.
+
+          ⚠️ Gestaucht wird mit `transform: scaleX`, NICHT mit `width`. Eine
+          laufende Breite rechnet der Browser jede Sekunde neu durch das
+          Layout des ganzen Korbfusses; `scaleX` bleibt beim Compositor. Der
+          Bewegungs-Wächter misst genau das. */}
       <span
         aria-hidden
         style={{
@@ -85,9 +90,10 @@ export function KursHinweis({ anzahl, geholtAm }: KursHinweisProps): JSX.Element
           style={{
             position: 'absolute',
             inset: 0,
-            width: `${Math.round(anteil * 100)}%`,
             background: 'var(--w14-gilt-deep)',
-            transition: 'width 1s linear',
+            transformOrigin: 'left center',
+            transform: `scaleX(${anteil.toFixed(3)})`,
+            transition: 'transform 1s linear',
           }}
         />
       </span>

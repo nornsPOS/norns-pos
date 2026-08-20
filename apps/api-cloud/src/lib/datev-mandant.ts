@@ -24,6 +24,8 @@
 
 import { sql } from 'drizzle-orm';
 
+import type { AppDb } from '@norns/db/client';
+
 import { type ApiErrorCode, DomainError } from '../plugins/error-handler.js';
 import type { DatevMandant } from './datev-format.js';
 import { normalisiereRahmen } from './kontenrahmen.js';
@@ -217,4 +219,71 @@ export async function ladeDatevMandant(
     festschreibung: festschreibung === true || String(festschreibung) === 'true',
     sachkontenrahmen: rahmenText,
   };
+}
+
+/**
+ * Sind die KANZLEIZAHLEN noch Platzhalter?
+ *
+ * ── WOZU (20.08.2026) ──────────────────────────────────────────────────────
+ *
+ * Seit Wanderung 0150 startet eine frische Kasse mit Platzhaltern für
+ * Berater- und Mandantennummer (1001 / 99999), damit sie am ersten Tag einen
+ * Steuerexport erzeugen kann. Das war Basels ausdrückliche Anweisung, und sie
+ * ist richtig: kein Händler ruft für zwei Zahlen vorher seinen Steuerberater
+ * an.
+ *
+ * ⚠️ ABER: Wanderung 0117 hatte genau solche Platzhalter einmal wieder
+ * ausgebaut, mit einem schweren Grund — „eine falsche Mandantennummer lädt die
+ * Buchungen STILL in die Bücher eines fremden Betriebs". Dieser Grund ist
+ * nicht erledigt; entschärft ist nur das Wort STILL. Solange die Zahlen
+ * Platzhalter sind, trägt der Stapel den Vermerk „MANDANT ZUORDNEN" in seiner
+ * BEZEICHNUNG — dem Feld, das DATEV dem Steuerberater im Importdialog zeigt.
+ *
+ * ── WIE GEMESSEN WIRD ──────────────────────────────────────────────────────
+ *
+ * Nicht am WERT (eine echte Kanzlei könnte zufällig 1001 heissen), sondern an
+ * der Liste `datev.platzhalter`: dort trägt der Server jeden Schlüssel ein,
+ * dessen Wert aus einer Vorgabe stammt, und nimmt ihn heraus, sobald ein
+ * Mensch ihn gespeichert hat. Wer seine echten Zahlen einträgt, bekommt vom
+ * nächsten Export an eine Datei ohne Vermerk.
+ */
+export async function datevPlatzhalterOffen(db: AppDb): Promise<boolean> {
+  const zeilen = await db.execute<{ liste: unknown }>(sql`
+    SELECT value AS liste FROM system_settings WHERE key = 'datev.platzhalter'`);
+  return offeneKanzleiPlatzhalter(zeilen[0]?.liste).length > 0;
+}
+
+/**
+ * WELCHE der zwei Kanzleizahlen noch aus einer Vorgabe stammen.
+ *
+ * ── WARUM DAS EINE EIGENE, REINE FUNKTION IST ──────────────────────────────
+ *
+ * Zwei Stellen brauchen dieselbe Antwort und sehen die Liste in
+ * verschiedener Gestalt: der Export liest sie als JSON-Feld aus der
+ * Datenbank, die Startliste bekommt sie in der Textform, in der sie alle
+ * Einstellungen einsammelt. Zwei eigene Auswertungen wären der nächste
+ * stille Widerspruch — die eine sagte „bestätigt", die andere „Vorgabe",
+ * und niemand wüsste, welche gilt.
+ *
+ * Nimmt beide Gestalten und gibt bei allem Unbekannten die leere Liste:
+ * ein unlesbares Feld darf keine Vorgabe zur bestätigten Zahl erklären …
+ * und auch keine echte Zahl fälschlich anzweifeln.
+ */
+export function offeneKanzleiPlatzhalter(roh: unknown): readonly string[] {
+  const liste = alsListe(roh);
+  return [DATEV_SCHLUESSEL.beraternummer, DATEV_SCHLUESSEL.mandantennummer].filter((k) =>
+    liste.includes(k),
+  );
+}
+
+/** Ein JSON-Feld ODER dessen Textform als Liste von Zeichenketten. */
+function alsListe(roh: unknown): readonly string[] {
+  if (Array.isArray(roh)) return roh.filter((x): x is string => typeof x === 'string');
+  if (typeof roh !== 'string' || roh.trim() === '') return [];
+  try {
+    const geparst: unknown = JSON.parse(roh);
+    return Array.isArray(geparst) ? geparst.filter((x): x is string => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
 }

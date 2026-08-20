@@ -411,6 +411,29 @@ export function SteuerExport(): JSX.Element {
         </p>
       </header>
 
+      {/* ── DER EINE SATZ AN DEN HÄNDLER (20.08.2026) ────────────────────
+          Basels Anweisung, sinngemäss: die DATEV-Kontonummern kennt kein
+          Händler, und keiner ruft dafür vorher seinen Berater an. Die Kasse
+          liefert deshalb ab Werk brauchbare Vorgaben — und sagt in EINEM
+          Satz, dass der Berater einmal darüberschauen soll. Kein Formular,
+          keine Belehrung, kein Riegel. */}
+      <p
+        style={{
+          margin: 'var(--w14-abstand-12) 0 0',
+          padding: 'var(--w14-abstand-10) var(--w14-abstand-12)',
+          borderRadius: 'var(--w14-radius-button)',
+          background: 'rgb(var(--w14-gilt-rgb) / 0.10)',
+          color: 'var(--w14-ink-aged)',
+          fontSize: 'var(--w14-schrift-feld)',
+          lineHeight: 1.55,
+          textWrap: 'pretty',
+        }}
+      >
+        Die Ausfuhr läuft mit den üblichen Vorgaben. Bitte lassen Sie sie einmal von
+        Ihrem Steuerberater ansehen, damit die Konten zu seiner Buchführung passen —
+        ändern lässt sich alles unter Einstellungen, Steuer und Buchhaltung.
+      </p>
+
       <Zwischentitel />
 
       {/* Die Wahl des ZEITRAUMS. Sie entscheidet, welche Kassentage der Server

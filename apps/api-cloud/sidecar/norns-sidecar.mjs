@@ -141,6 +141,10 @@ const NACHZUEGLER = [
   // neun Tabellen, eine Spalte, und die Loeschung kennt sie nicht mehr.
   // Muss auch auf BESTEHENDE Kassen, deren Grundriss sie noch traegt.
   '0149_das_kanalerbe_des_webshops_zieht_aus.sql',
+  // 20.08.2026: die Steuerausfuhr laeuft ab Werk — Berater- und
+  // Mandantennummer bekommen ihren Platzhalter, sauber als UNBESTAETIGT
+  // ausgewiesen. Muss auch auf BESTEHENDE Kassen, deren Felder leer sind.
+  '0150_die_steuerausfuhr_laeuft_ab_werk.sql',
 ];
 
 const melde = (s) => process.stderr.write(`[norns-sidecar] ${s}\n`);

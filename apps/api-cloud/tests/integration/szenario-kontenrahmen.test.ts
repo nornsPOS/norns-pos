@@ -1076,36 +1076,48 @@ describe('Szenario Kontenrahmen — derselbe Tag in SKR03 und in SKR04', () => {
       'datev.wirtschaftsjahr_beginn',
     ]);
 
-    // Und die entscheidende Probe dazu: die beiden tragen KEINEN Wert. Stuende
-    // dort eine Zahl, gehoerte sie einer bestimmten Kanzlei und liefe bei
-    // jedem kuenftigen Kunden mit.
+    /*
+     * ── 20.08.2026: DIE ZWEI TRAGEN PLATZHALTER, UND DAS IST ABSICHT ─────
+     *
+     * Basels Anweisung: eine Kasse, die am ersten Tag keinen Steuerexport
+     * erzeugen kann, ist am ersten Tag nicht fertig — und kein Haendler ruft
+     * fuer zwei DATEV-Zahlen vorher seinen Steuerberater an.
+     *
+     * ⚠️ Die Sorge von 0117 bleibt wahr („eine falsche Mandantennummer laedt
+     * die Buchungen STILL in die Buecher eines fremden Betriebs"). Was sie
+     * entschaerft, ist nicht Optimismus, sondern der Wegfall der STILLE:
+     * solange die Zahlen Platzhalter sind, traegt der Stapel den Vermerk
+     * MANDANT ZUORDNEN in seiner Bezeichnung — dem Feld, das DATEV dem
+     * Steuerberater im Importdialog zeigt. Genau das wird unten geprueft.
+     */
     const werteJeSchluessel = new Map(gesetzt.map((z) => [z.key, z.value]));
-    expect(werteJeSchluessel.get('datev.beraternummer')).toBe('');
-    expect(werteJeSchluessel.get('datev.mandantennummer')).toBe('');
+    expect(werteJeSchluessel.get('datev.beraternummer')).toBe('1001');
+    expect(werteJeSchluessel.get('datev.mandantennummer')).toBe('99999');
 
-    // Und in der Platzhalterliste steht KEINE der beiden Ordnungsnummern mehr.
+    // Und BEIDE weisen sich als Platzhalter aus — eine Vorgabe, die sich als
+    // bestaetigte Angabe ausgaebe, waere der gefaehrlichere Defekt.
     const [liste] = await buehne.migratorSql<{ value: string[] }[]>`
       SELECT value FROM system_settings WHERE key = 'datev.platzhalter'`;
     expect(liste?.value).toEqual([
+      'datev.beraternummer',
       'datev.festschreibung',
+      'datev.mandantennummer',
       'datev.sachkontenlaenge',
       'datev.sachkontenrahmen',
       'datev.wirtschaftsjahr_beginn',
     ]);
 
-    // ── 2. Ohne die zwei Zahlen gibt es KEINE Datei ──────────────────────
+    // ── 2. Der Export LAEUFT ab Werk — aber die Datei sagt es ────────────
     const { abschlussId } = await baueDenTag({ ordnungsnummern: false });
 
     const ohne = await holeStapel(abschlussId);
-    expect(ohne.statusCode).toBe(409);
-    const fehler = (ohne.json() as FehlerAntwort).error;
-    // Der eigene Code, an dem die Flaeche ein Einrichtungsformular zeigt
-    // statt einer roten Meldung.
-    expect(fehler.code).toBe('DATEV_MANDANT_FEHLT');
-    expect(fehler.message).toContain('Beraternummer');
-    expect(fehler.message).toContain('Mandantennummer');
-    expect(fehler.message).toContain('Steuerberater');
-    expect(fehler.message).toContain('fremden Betriebs');
+    expect(ohne.statusCode, ohne.body.slice(0, 300)).toBe(200);
+    const abWerk = zerlege(ohne);
+    // Die Platzhalter stehen in der Kopfzeile …
+    expect(abWerk.kopf[KOPF.BERATERNUMMER]).toBe('1001');
+    expect(abWerk.kopf[KOPF.MANDANTENNUMMER]).toBe('99999');
+    // … UND die Bezeichnung ruft den Berater an, bevor er importiert.
+    expect(abWerk.kopf[KOPF.BEZEICHNUNG]).toContain('MANDANT ZUORDNEN');
 
     // ── 3. Der Haendler traegt sie EINMAL ein, dann laeuft es ────────────
     await trageOrdnungsnummernEin();
@@ -1118,6 +1130,10 @@ describe('Szenario Kontenrahmen — derselbe Tag in SKR03 und in SKR04', () => {
     expect(datei.kopf[KOPF.BERATERNUMMER]).toBe('29098');
     expect(datei.kopf[KOPF.MANDANTENNUMMER]).toBe('55003');
     expect(datei.dateiname).toBe(`EXTF_Buchungsstapel_29098_55003_${TAG}_${TAG}.csv`);
+
+    // Und der Vermerk ist WEG, sobald die echten Zahlen stehen.
+    expect(datei.kopf[KOPF.BEZEICHNUNG]).not.toContain('MANDANT ZUORDNEN');
+    expect(datei.kopf[KOPF.BEZEICHNUNG]).toContain('Kasse');
 
     // Die vier neutralen Vorgabewerte gelten unveraendert weiter.
     expect(datei.kopf[KOPF.SACHKONTENLAENGE]).toBe('4');
@@ -1161,33 +1177,29 @@ describe('Szenario Kontenrahmen — derselbe Tag in SKR03 und in SKR04', () => {
       // Zu jeder Zahl steht, woher sie stammt — im Klartext, nicht als Kuerzel.
       expect(k.quelle.length).toBeGreaterThan(20);
     }
-    // ── Die sechs Mandantenangaben zerfallen seit 0117 in ZWEI Gruppen ───
-    // VIER mandantenneutrale Vorgabewerte stehen da und sind unbestaetigt.
-    // ZWEI gehoeren dem Steuerberater und FEHLEN schlicht — sie standen nie
-    // in einer Wanderung und werden auch nie darin stehen.
+    /*
+     * ── 20.08.2026: ALLE SECHS sind jetzt unbestaetigte Vorschlaege ──────
+     *
+     * Seit 0150 tragen auch die zwei Kanzleizahlen eine Vorgabe (1001 /
+     * 99999), damit die Kasse am ersten Tag exportieren kann. Sie stehen
+     * damit genau dort, wo die anderen vier stehen: als VORSCHLAG, den
+     * niemand bestaetigt hat. Der Unterschied zu einer echten Angabe ist
+     * damit ablesbar — und genau darauf kommt es an.
+     */
     expect(frisch.mandant).toHaveLength(6);
-    const NEUTRAL = [
+    const ALLE_SECHS = [
       'datev.wirtschaftsjahr_beginn',
       'datev.sachkontenlaenge',
       'datev.festschreibung',
       'datev.sachkontenrahmen',
+      'datev.beraternummer',
+      'datev.mandantennummer',
     ];
-    const DEM_BERATER = ['datev.beraternummer', 'datev.mandantennummer'];
     for (const f of frisch.mandant) {
-      if (DEM_BERATER.includes(f.schluessel)) {
-        expect(f.herkunft, `${f.schluessel} darf aus KEINER Wanderung kommen`).toBe('FEHLT');
-        // ⚠️ Seit Wanderung 0126 gibt es das Fach, und es ist LEER — also der
-        // leere Text und nicht `null`. Die Oberflaeche gibt den gespeicherten
-        // Wert unveraendert wieder, statt ihn umzudeuten; die Aussage
-        // „eingetragen oder nicht" traegt `herkunft`, und die steht auf FEHLT.
-        // Dass daran wirklich der Export haengt, misst die Probe darueber:
-        // ohne die zwei Zahlen antwortet sie mit 409 DATEV_MANDANT_FEHLT.
-        expect(f.wert, `${f.schluessel} darf keinen Wert tragen`).toBe('');
-        continue;
-      }
-      expect(NEUTRAL).toContain(f.schluessel);
+      expect(ALLE_SECHS).toContain(f.schluessel);
       expect(f.herkunft, `${f.schluessel} sollte ein Vorschlag sein`).toBe('VORSCHLAG');
-      expect(f.wert).not.toBeNull();
+      expect(f.wert, `${f.schluessel} sollte eine Vorgabe tragen`).not.toBeNull();
+      expect(f.wert, `${f.schluessel} sollte eine Vorgabe tragen`).not.toBe('');
     }
 
     // ── Ein Konto speichern ──────────────────────────────────────────────
@@ -1205,10 +1217,11 @@ describe('Szenario Kontenrahmen — derselbe Tag in SKR03 und in SKR04', () => {
       if (k.schluessel === schluesselKasse) continue;
       expect(k.herkunft, `${k.schluessel} wurde faelschlich bestaetigt`).toBe('VORSCHLAG');
     }
-    // Die Mandantenangaben hat niemand angefasst: die vier neutralen stehen
-    // weiter als Vorschlag, die zwei des Beraters fehlen weiter.
+    // Die Mandantenangaben hat niemand angefasst: alle sechs stehen weiter
+    // als unbestaetigter Vorschlag. Ein Kontowechsel darf eine fremde Angabe
+    // nicht nebenbei zur bestaetigten machen.
     for (const f of nachKonto.mandant) {
-      expect(f.herkunft).toBe(DEM_BERATER.includes(f.schluessel) ? 'FEHLT' : 'VORSCHLAG');
+      expect(f.herkunft, `${f.schluessel} wurde faelschlich bestaetigt`).toBe('VORSCHLAG');
     }
 
     // Der andere Rahmen bleibt unberuehrt: dieselbe Kasse, dort weiterhin
@@ -1221,8 +1234,8 @@ describe('Szenario Kontenrahmen — derselbe Tag in SKR03 und in SKR04', () => {
     expect(((await holeEinstellungen()).json() as DatevEinstellungenAntwort).rahmen).toBe('SKR03');
 
     // ── Eine Mandantenangabe speichern ───────────────────────────────────
-    // Die Beraternummer fehlt, bis ein Mensch sie eintraegt. Sobald er das
-    // tut, gilt sie als bestaetigt — und NUR sie.
+    // Die Beraternummer traegt eine Vorgabe, bis ein Mensch seine eintraegt.
+    // Sobald er das tut, gilt sie als bestaetigt — und NUR sie.
     expect((await aendere('datev.beraternummer', '29098')).statusCode).toBe(200);
 
     const nachMandant = (await holeEinstellungen()).json() as DatevEinstellungenAntwort;
@@ -1231,10 +1244,17 @@ describe('Szenario Kontenrahmen — derselbe Tag in SKR03 und in SKR04', () => {
     expect(berater?.herkunft).toBe('BESTAETIGT');
     for (const f of nachMandant.mandant) {
       if (f.schluessel === 'datev.beraternummer') continue;
-      expect(f.herkunft, `${f.schluessel} wurde faelschlich bestaetigt`).toBe(
-        f.schluessel === 'datev.mandantennummer' ? 'FEHLT' : 'VORSCHLAG',
-      );
+      expect(f.herkunft, `${f.schluessel} wurde faelschlich bestaetigt`).toBe('VORSCHLAG');
     }
+
+    // Und der gespeicherte Schluessel faellt aus der Platzhalterliste — nur
+    // deshalb verschwindet der Vermerk spaeter wieder. Bliebe er darin
+    // stehen, truege jeder kuenftige Stapel MANDANT ZUORDNEN, und der
+    // Vermerk verkaeme zur Tapete, die niemand mehr liest.
+    const [nachliste] = await buehne.migratorSql<{ value: string[] }[]>`
+      SELECT value FROM system_settings WHERE key = 'datev.platzhalter'`;
+    expect(nachliste?.value).not.toContain('datev.beraternummer');
+    expect(nachliste?.value).toContain('datev.mandantennummer');
 
     // Und die Zahl steht danach wirklich in der Datei, nicht nur in der
     // Oberflaeche.
@@ -1267,18 +1287,30 @@ describe('Szenario Kontenrahmen — derselbe Tag in SKR03 und in SKR04', () => {
    * Einschraenkung in der Bezeichnung, weil eine ausgelieferte Datei nie eine
    * braucht.
    */
-  it('liefert eine Datei OHNE Entwurfsvermerk — oder gar keine', async () => {
-    // Ohne die zwei Zahlen: keine Datei. Kein Entwurf, kein Vorbehalt.
+  it('⛔ ruft den Steuerberater an, solange die Zahlen Platzhalter sind', () => {
+    // Der Satz steht als eigene Probe da, weil er die Entscheidung vom
+    // 20.08.2026 traegt: die Kasse liefert ab Werk eine Datei (Basels
+    // Anweisung) — und macht die Verwechslungsgefahr von 0117 SICHTBAR,
+    // statt sie zu verschweigen.
+    expect(true).toBe(true);
+  });
+
+  it('liefert ab Werk eine Datei MIT Vermerk, nach dem Eintragen eine ohne', async () => {
+    // Ohne die zwei Zahlen: eine Datei, aber die Bezeichnung ruft den
+    // Berater an, bevor er importiert. Feld 17 ist der Name, den DATEV in
+    // seiner Stapelliste anzeigt.
     const { abschlussId } = await baueDenTag({ ordnungsnummern: false });
     const ohne = await holeStapel(abschlussId);
-    expect(ohne.statusCode).toBe(409);
-    expect((ohne.json() as FehlerAntwort).error.code).toBe('DATEV_MANDANT_FEHLT');
+    expect(ohne.statusCode, ohne.body.slice(0, 300)).toBe(200);
+    const abWerk = zerlege(ohne);
+    expect(abWerk.kopf[KOPF.BEZEICHNUNG]).toContain('MANDANT ZUORDNEN');
+    expect(abWerk.kopf[KOPF.BERATERNUMMER]).toBe('1001');
+    expect(abWerk.kopf[KOPF.MANDANTENNUMMER]).toBe('99999');
 
-    // Mit seinen Zahlen: eine Datei, und die Bezeichnung nennt schlicht die
-    // Kasse und den Tag.
+    // Mit seinen Zahlen: derselbe Weg, ohne Vermerk.
     await trageOrdnungsnummernEin();
     const datei = zerlege(await holeStapel(abschlussId));
-    // Feld 17 ist der Name, den DATEV in seiner Stapelliste anzeigt.
+    expect(datei.kopf[KOPF.BEZEICHNUNG]).not.toContain('MANDANT ZUORDNEN');
     expect(datei.kopf[KOPF.BEZEICHNUNG]).not.toContain('ENTWURF');
     expect(datei.kopf[KOPF.BEZEICHNUNG]).toContain('Kasse');
     expect(datei.kopf[KOPF.BERATERNUMMER]).toBe('29098');

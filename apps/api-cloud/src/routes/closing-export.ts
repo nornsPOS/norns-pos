@@ -40,7 +40,7 @@ import {
   zuBelegdatum,
   zuDatevBetrag,
 } from '../lib/datev-format.js';
-import { ladeDatevMandant } from '../lib/datev-mandant.js';
+import { ladeDatevMandant , datevPlatzhalterOffen } from '../lib/datev-mandant.js';
 import { erzwingeLadenname } from '../lib/laden-identitaet.js';
 import {
   type Kontenplan,
@@ -1187,18 +1187,43 @@ const closingExportRoute: FastifyPluginAsync = async (app) => {
 
       const zeitraum = { von: closing.business_day, bis: closing.business_day };
 
-      // ── KEIN ENTWURFSVERMERK MEHR (26.07.2026, Wanderung 0117) ──────────
-      // Hier stand bis heute ein „ENTWURF" vor der Bezeichnung, solange
-      // Beraternummer und Mandantennummer nur die Platzhalter aus Wanderung
-      // 0115 waren. Der Vermerk war ein Pflaster auf der falschen Wunde: er
-      // liess eine Datei ohne echte Anschrift HINAUS und schrieb „Entwurf"
-      // darauf. Seit 0117 gibt es die Platzhalter nicht mehr, `ladeDatevMandant`
-      // oben verweigert ohne die echten Zahlen — die Datei geht gar nicht erst
-      // hinaus, und der Vermerk hatte keinen erreichbaren Fall mehr.
+      /*
+       * ── DER VERMERK IST ZURÜCK, UND DIESMAL AN DER RICHTIGEN WUNDE ──────
+       *
+       * Die Geschichte dieser Stelle, weil sie die Entscheidung trägt:
+       *
+       *   0115 (26.07.) säte Platzhalter für Berater- und Mandantennummer.
+       *   0117 nahm sie wieder heraus, mit einem schweren Grund: „eine
+       *   falsche Mandantennummer lädt die Buchungen STILL in die Bücher
+       *   eines fremden Betriebs; auffallen würde das erst beim
+       *   Jahresabschluss." Seither verweigerte der Export ohne echte Zahlen.
+       *   0150 (20.08., Basels Anweisung) sät sie wieder — denn eine Kasse,
+       *   die am ersten Tag keinen Steuerexport erzeugen kann, ist am ersten
+       *   Tag nicht fertig, und kein Händler ruft dafür vorher seinen
+       *   Steuerberater an.
+       *
+       * ⚠️ DER GRUND VON 0117 IST DAMIT NICHT ERLEDIGT, und ich nehme ihn
+       * ernst. Was ihn entschärft, ist nicht Optimismus, sondern das Wort
+       * STILL: die Gefahr lag darin, dass niemand es merkt. Deshalb trägt die
+       * BEZEICHNUNG des Stapels den Vermerk, solange die Zahlen Platzhalter
+       * sind — und die Bezeichnung ist genau das Feld, das DATEV dem
+       * Steuerberater im Importdialog anzeigt. Aus einer stillen Verwechslung
+       * wird eine, die dem Berater ins Auge springt, bevor er importiert.
+       *
+       * Der Vermerk von damals war ein Pflaster auf der falschen Wunde, weil
+       * er nur „ENTWURF" sagte. Dieser hier nennt die Sache: der Mandant ist
+       * noch zuzuordnen.
+       */
+      const platzhalterOffen = await datevPlatzhalterOffen(app.db);
+      const bezeichnung = platzhalterOffen
+        ? // 30 Zeichen sind das Feldmass; der Vermerk steht deshalb VORNE.
+          `MANDANT ZUORDNEN ${closing.business_day}`
+        : `Kasse ${closing.business_day}`;
+
       const csv = baueBuchungsstapel(
         mandant,
         zeitraum,
-        `Kasse ${closing.business_day}`,
+        bezeichnung,
         [
           ...datevRows.map(zuDatevZeile),
           ...bewegungsZeilen.map((b) => bewegungsZeile(b, closing.business_day)),

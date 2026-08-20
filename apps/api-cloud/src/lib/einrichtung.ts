@@ -164,7 +164,10 @@ export interface Bestandsaufnahme {
   // es keinen solchen Beleg mehr, und die Startliste braucht die Zahl nicht.
 }
 
-import { DATEV_SCHLUESSEL, KLARTEXT } from './datev-mandant.js';
+import { DATEV_SCHLUESSEL, KLARTEXT, offeneKanzleiPlatzhalter } from './datev-mandant.js';
+
+/** Die Liste der Schlüssel, deren Wert aus einer Vorgabe stammt. */
+const SCHLUESSEL_PLATZHALTER = 'datev.platzhalter';
 
 function leer(w: string | null | undefined): boolean {
   return w === null || w === undefined || w.trim() === '';
@@ -530,6 +533,21 @@ export function alleSchritte(b: Bestandsaufnahme): Schritt[] {
     const datevAlle = Object.values(DATEV_SCHLUESSEL);
     const datevFehlt = datevAlle.filter((k) => leer(e[k]));
     const erster = datevFehlt[0];
+    /*
+     * ── ⛔ 20.08.2026: „EINGETRAGEN" IST NICHT „BESTAETIGT" ────────────────
+     *
+     * Seit Wanderung 0150 startet die Kasse mit Platzhaltern fuer Berater-
+     * und Mandantennummer, damit sie am ersten Tag exportieren kann. Damit
+     * ist `leer()` fuer alle sechs falsch — und dieser Punkt haette dem
+     * Haendler ab sofort „Alle sechs Angaben des Steuerberaters sind
+     * eingetragen" gemeldet.
+     *
+     * Das waere GENAU die Stille, vor der Wanderung 0117 gewarnt hat, nur an
+     * eine neue Stelle verschoben: der Haendler haette der Startliste
+     * geglaubt und die zwei Zahlen nie angefasst. Der Punkt kennt deshalb
+     * einen dritten Stand — da, aber noch niemandes Zahl.
+     */
+    const nurVorgabe = offeneKanzleiPlatzhalter(e[SCHLUESSEL_PLATZHALTER]);
     if (erster !== undefined) {
       const namen = datevFehlt.map((k) => KLARTEXT[k] ?? k).join('; ');
       schritte.push({
@@ -545,6 +563,26 @@ export function alleSchritte(b: Bestandsaufnahme): Schritt[] {
         riegel: 'datev-mandant.ts',
         schluessel: erster,
         weitereSchluessel: datevFehlt.slice(1),
+        erledigt: false,
+      });
+    } else if (nurVorgabe.length > 0) {
+      const namen = nurVorgabe.map((k) => KLARTEXT[k] ?? k).join(' und ');
+      schritte.push({
+        titel: 'DATEV: die Zahlen vom Steuerberater bestätigen lassen',
+        erklaerung:
+          `Der Export läuft — er benutzt für ${namen} vorläufig die üblichen ` +
+          'Vorgaben. Solange sie stehen, trägt jede Datei den Vermerk ' +
+          '„MANDANT ZUORDNEN", damit der Steuerberater die Buchungen nicht ' +
+          'versehentlich einem fremden Betrieb zuordnet. Fragen Sie ihn ' +
+          'einmal nach seinen Zahlen und tragen Sie sie hier ein.',
+        // Hält nichts auf: die Datei entsteht, und sie sagt selbst, dass sie
+        // noch zugeordnet werden muss. Es bleibt aber eine offene Aufgabe.
+        sperre: 'KOSMETIK',
+        wohin: 'Einstellungen, Steuer und Buchhaltung',
+        ziel: { pfad: '/einstellungen', bereich: 'steuer', nurInhaber: true },
+        riegel: 'datev-mandant.ts',
+        ...(nurVorgabe[0] !== undefined ? { schluessel: nurVorgabe[0] } : {}),
+        weitereSchluessel: nurVorgabe.slice(1),
         erledigt: false,
       });
     } else {

@@ -148,18 +148,61 @@ describe('Die Erstsaat ist mandantenneutral', () => {
     expect(treffer, `Fremde Betriebsdaten in der Saat:\n  ${treffer.join('\n  ')}`).toEqual([]);
   });
 
+  /*
+   * ── DIE EINE, ENG GEFASSTE AUSNAHME (20.08.2026) ────────────────────────
+   *
+   * Basels Befund: die DATEV-Kanzleizahlen kennt kein Händler, und keiner
+   * ruft dafür vorher seinen Steuerberater an. Eine Kasse, die deshalb am
+   * ersten Tag KEINEN Steuerexport erzeugen kann, ist am ersten Tag nicht
+   * fertig. Berater- und Mandantennummer bekommen darum einen dokumentierten
+   * PLATZHALTER (1001 / 99999 — die verbreiteten Werte; der Berater biegt den
+   * Stapel beim Import auf seinen Bestand um).
+   *
+   * ⚠️ DIE SORGE DIESES WÄCHTERS BLEIBT VOLLSTÄNDIG BESTEHEN, und sie ist
+   * berechtigt: hier lagen einmal die ECHTEN Betriebsdaten eines Menschen.
+   * Deshalb ist die Ausnahme so eng wie möglich geschnitten:
+   *
+   *   · Sie gilt für GENAU zwei Schlüssel, namentlich.
+   *   · Sie gilt nur für GENAU diese zwei Zahlen. Jede andere Zahl — also
+   *     jede, die eine echte Kanzleinummer sein könnte — ist weiterhin rot.
+   *   · Und der Wert MUSS in `datev.platzhalter` stehen. Eine Vorgabe, die
+   *     sich als bestätigte Angabe ausgibt, wäre die gefährlichere Variante
+   *     des alten Defekts: der Händler hielte eine Zahl für abgestimmt, die
+   *     niemand je gesehen hat.
+   *
+   * Alles andere unter `shop.`, `steuer.` und den übrigen DATEV-Schlüsseln
+   * bleibt unverändert leer.
+   */
+  const PLATZHALTER_ERLAUBT: ReadonlyMap<string, string> = new Map([
+    ['datev.beraternummer', `'"1001"'`],
+    ['datev.mandantennummer', `'"99999"'`],
+  ]);
+
   it('liefert jeden Schlüssel, der dem Händler gehört, LEER aus', () => {
     const gefuellt: string[] = [];
     for (const { rolle, pfad } of SAATEN) {
-      for (const zeile of lies(pfad).split('\n')) {
+      const inhalt = lies(pfad);
+      for (const zeile of inhalt.split('\n')) {
         const schluessel = schluesselVon(zeile);
         if (schluessel === null) continue;
         if (!GEHOERT_DEM_HAENDLER.some((p) => schluessel.startsWith(p))) continue;
         const wert = wertVon(zeile);
         // `''""''` ist der leere JSON-Text, `'""'` ebenso. Alles andere zählt.
-        if (wert !== null && wert !== `'""'` && wert !== 'NULL' && wert !== `''`) {
-          gefuellt.push(`${rolle}: ${schluessel} = ${wert}`);
+        if (wert === null || wert === `'""'` || wert === 'NULL' || wert === `''`) continue;
+
+        // Die enge Ausnahme: GENAU dieser Schlüssel mit GENAU diesem Wert,
+        // und nur, wenn er sich selbst als Platzhalter ausweist.
+        const erlaubt = PLATZHALTER_ERLAUBT.get(schluessel);
+        if (erlaubt !== undefined && wert === erlaubt) {
+          if (!inhalt.includes(`"${schluessel}"`)) {
+            gefuellt.push(
+              `${rolle}: ${schluessel} traegt einen Platzhalter, steht aber NICHT in datev.platzhalter`,
+            );
+          }
+          continue;
         }
+
+        gefuellt.push(`${rolle}: ${schluessel} = ${wert}`);
       }
     }
     expect(

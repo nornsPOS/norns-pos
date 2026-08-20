@@ -200,15 +200,15 @@ INSERT INTO public.system_settings VALUES
 	('datev.wirtschaftsjahr_beginn', '"01-01"', 'Beginn des Wirtschaftsjahres als MM-TT. Regelfall 01-01 (Kalenderjahr), abweichend etwa 07-01. Das JAHR wird seit dem 06.08.2026 aus dem Buchungstag gerechnet: ein fester Jahreswert buchte ab dem 1. Januar des zweiten Betriebsjahres JEDE Ausfuhr ein Jahr zu frueh.', NULL, '2026-07-26 16:05:10.855796+00', '2026-07-26 16:05:10.855796+00'),
 	('steuer.modus', '""', 'Umsatzsteuer-Status des Betriebs: REGELBESTEUERUNG oder KLEINUNTERNEHMER_19. LEER AUSGELIEFERT, und das ist Absicht: ohne diesen Wert verweigert finalize jeden Verkauf (lib/steuermodus.ts). Eine Kasse, die nicht weiss, ob ihr Betreiber Kleinunternehmer nach Paragraph 19 UStG ist, darf keine Umsatzsteuer ausweisen. Der Haendler erklaert ihn im Einrichtungsprogramm.', NULL, '2026-07-27 02:48:14.128594+00', '2026-07-27 02:48:14.128594+00'),
 	('steuer.modus_gilt_ab', '""', 'Ab wann der Modus gilt, JJJJ-MM-TT. LEER ausgeliefert; wird mit dem Modus zusammen gesetzt und muss VOR dem aeltesten Vorgang liegen.', NULL, '2026-07-27 02:48:14.128594+00', '2026-07-27 02:48:14.128594+00'),
-	('datev.platzhalter', '["datev.festschreibung", "datev.sachkontenlaenge", "datev.sachkontenrahmen", "datev.wirtschaftsjahr_beginn"]', 'Die DATEV-Schluessel, deren Wert aus einem Vorgabewert stammt und den NIEMAND bestaetigt hat. Die Oberflaeche weist sie als UNBESTAETIGT aus. Wird ein Schluessel gespeichert, nimmt der Server ihn aus dieser Liste.', NULL, '2026-07-26 16:05:10.855796+00', '2026-07-27 15:18:31.945785+00'),
+	('datev.platzhalter', '["datev.beraternummer", "datev.festschreibung", "datev.mandantennummer", "datev.sachkontenlaenge", "datev.sachkontenrahmen", "datev.wirtschaftsjahr_beginn"]', 'Die DATEV-Schluessel, deren Wert aus einem Vorgabewert stammt und den NIEMAND bestaetigt hat. Die Oberflaeche weist sie als UNBESTAETIGT aus. Wird ein Schluessel gespeichert, nimmt der Server ihn aus dieser Liste.', NULL, '2026-07-26 16:05:10.855796+00', '2026-07-27 15:18:31.945785+00'),
 	('shop.legal_name', '""', NULL, NULL, '2026-07-28 00:59:11.855887+00', '2026-07-28 00:59:11.855887+00'),
 	('shop.street', '""', NULL, NULL, '2026-07-28 00:59:11.855887+00', '2026-07-28 00:59:11.855887+00'),
 	('shop.postal_code', '""', NULL, NULL, '2026-07-28 00:59:11.855887+00', '2026-07-28 00:59:11.855887+00'),
 	('shop.city', '""', NULL, NULL, '2026-07-28 00:59:11.855887+00', '2026-07-28 00:59:11.855887+00'),
 	('shop.country_code', '""', NULL, NULL, '2026-07-28 00:59:11.855887+00', '2026-07-28 00:59:11.855887+00'),
 	('shop.tax_number', '""', NULL, NULL, '2026-07-28 00:59:11.855887+00', '2026-07-28 00:59:11.855887+00'),
-	('datev.beraternummer', '""', NULL, NULL, '2026-07-28 00:59:11.855887+00', '2026-07-28 00:59:11.855887+00'),
-	('datev.mandantennummer', '""', NULL, NULL, '2026-07-28 00:59:11.855887+00', '2026-07-28 00:59:11.855887+00'),
+	('datev.beraternummer', '"1001"', 'Beraternummer der Kanzlei (Kopf-Feld 4). Vorgabewert 1001 als Platzhalter; der Steuerberater biegt den Stapel beim Import um. Steht in datev.platzhalter.', NULL, '2026-07-28 00:59:11.855887+00', '2026-07-28 00:59:11.855887+00'),
+	('datev.mandantennummer', '"99999"', 'Mandantennummer dieses Ladens im Bestand der Kanzlei (Kopf-Feld 5). Vorgabewert 99999 als Platzhalter, siehe datev.beraternummer.', NULL, '2026-07-28 00:59:11.855887+00', '2026-07-28 00:59:11.855887+00'),
 	('kasse.seriennummer', '""', NULL, NULL, '2026-07-28 00:59:11.855887+00', '2026-07-28 00:59:11.855887+00'),
 	('appointments.ics_feed_token', '""', 'Geheimer Zugriffstoken für den iCalendar-Termin-Feed (GET /api/appointments/feed.ics). Rotation über POST /api/appointments/feed-token.', NULL, '2026-07-29 15:35:01.935965+00', '2026-07-29 15:35:11.248271+00');
 
