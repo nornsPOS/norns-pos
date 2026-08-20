@@ -18,7 +18,7 @@
  * client prevents the operator from wasting effort.
  */
 
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import {
@@ -29,10 +29,12 @@ import {
 } from '@norns/api-client';
 import { Button, Zwischentitel, MoneyAmount, ParchmentCard } from '@norns/ui-kit';
 
+import { standSatz } from '../../lib/abfragestand.js';
 import { useApiClient } from '../../lib/api-context.js';
 import { germanDateToIso } from '../../lib/german-date.js';
 import { KundenSucher, VertrauensZeichen, useKundenSuche } from '../kunden/KundenSucher.js';
-import { selectAnkaufCustomerId, useAnkaufCartStore } from '../../state/ankauf-cart-store.js';
+import { type VerkaeuferStand, useVerkaeuferStand } from './verkaeufer-stand.js';
+import { useAnkaufCartStore } from '../../state/ankauf-cart-store.js';
 import { useToastStore } from '../../state/toast-store.js';
 import { describeError } from '@norns/i18n-de';
 import { eingereihtHinweis, istSicherEingereiht, ohneApiFehlerSatz } from '../../lib/eingereiht.js';
@@ -40,13 +42,16 @@ import { eingereihtHinweis, istSicherEingereiht, ohneApiFehlerSatz } from '../..
 type Mode = 'SEARCH' | 'CREATE';
 
 export function CustomerPanel(): JSX.Element {
-  const customerId = useAnkaufCartStore(selectAnkaufCustomerId);
   const setCustomerId = useAnkaufCartStore((s) => s.setCustomerId);
+  // DIESELBE Quelle, die auch den Boden entscheiden lässt. Zwei eigene
+  // Abfragen könnten verschiedener Meinung sein: die Spalte zeigte einen
+  // Verkäufer, das Formular bliebe gesperrt (oder umgekehrt).
+  const stand = useVerkaeuferStand();
 
-  if (customerId === null) {
+  if (stand.kennung === null) {
     return <SearchOrCreate onSelect={(id) => setCustomerId(id)} />;
   }
-  return <SelectedCustomer customerId={customerId} onClear={() => setCustomerId(null)} />;
+  return <SelectedCustomer stand={stand} onClear={() => setCustomerId(null)} />;
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -144,19 +149,28 @@ function SearchMode({
 // ────────────────────────────────────────────────────────────────────────
 
 function SelectedCustomer({
-  customerId,
+  stand: vs,
   onClear,
 }: {
-  customerId: string;
+  stand: VerkaeuferStand;
   onClear: () => void;
 }): JSX.Element {
-  const api = useApiClient();
 
-  const q = useQuery({
-    queryKey: ['customers', customerId],
-    queryFn: () => customersApi.get(api, customerId),
-    staleTime: 10_000,
-  });
+  /*
+   * ── 20.08.2026: DIESE SPALTE WAR LEER, UND ZWAR STUMM ───────────────────
+   *
+   * An der laufenden Kasse gemessen: die Abfrage hing in
+   * `fetchStatus: 'paused'` — einmal gescheitert, dann schlafen gelegt, weil
+   * react-query die Anwendung für offline hielt. Dabei ist `isLoading`
+   * falsch, `isError` falsch und `data` leer. Die drei Zweige, die hier
+   * standen, trafen alle drei nicht, und der Mensch am Tresen sah eine halbe
+   * Fläche Nichts. `lib/abfragestand.ts` trägt die Begründung.
+   *
+   * Beides — der Stand der Abfrage und die Frage, ob der Verkäufer wirklich
+   * feststeht — kommt jetzt aus `verkaeufer-stand.ts`, damit die Spalte und
+   * der Boden nicht verschiedener Meinung sein können.
+   */
+  const { stand, geist, verkaeufer } = vs;
 
   return (
     <section
@@ -202,35 +216,57 @@ function SelectedCustomer({
         </button>
       </header>
 
-      {q.isLoading && <SkeletonCard />}
-      {q.isError && (
+      {verkaeufer !== null ? (
+        <CustomerCard detail={verkaeufer} />
+      ) : (
         <ParchmentCard padding="md">
-          <p role="alert" style={{ color: 'var(--w14-wax-red)', margin: 0, fontSize: 'var(--w14-schrift-betont)' }}>
-            Verkäuferdaten konnten nicht geladen werden.
+          <p
+            role={stand.art === 'fehler' ? 'alert' : 'status'}
+            style={{
+              margin: 0,
+              color: stand.art === 'fehler' ? 'var(--w14-wax-red)' : 'var(--w14-ink-aged)',
+              fontSize: 'var(--w14-schrift-betont)',
+              lineHeight: 1.5,
+              textWrap: 'pretty',
+            }}
+          >
+            {standSatz(stand, 'Der Verkäufer')}
           </p>
+
+          {/*
+            ── DER GEIST IM WARENKORB (20.08.2026) ────────────────────────
+            Ist der gemerkte Verkäufer WEG — geloescht nach der
+            Datenschutz-Grundverordnung, oder die Buecher kamen aus einer
+            Sicherung zurueck —, dann hilft kein Warten. Die Kasse sagt das
+            und bietet den einen Griff an, der weiterhilft.
+          */}
+          {geist && (
+            <p style={{ margin: 'var(--w14-abstand-10) 0 0', color: 'var(--w14-ink-faded)', lineHeight: 1.5 }}>
+              Vielleicht wurde die Person gelöscht, oder dieser Ankauf wurde an
+              einer anderen Kasse begonnen. Wählen Sie sie neu aus.
+            </p>
+          )}
+
+          {(geist || stand.art === 'fehler') && (
+            <div style={{ marginTop: 'var(--w14-abstand-14)' }}>
+              <Button variant="primary" size="sm" onClick={onClear}>
+                Verkäufer neu wählen
+              </Button>
+            </div>
+          )}
         </ParchmentCard>
       )}
-      {q.data && <CustomerCard detail={q.data} />}
     </section>
   );
 }
 
-function SkeletonCard(): JSX.Element {
-  return (
-    <ParchmentCard padding="md">
-      <p
-        style={{
-          margin: 0,
-          color: 'var(--w14-ink-faded)',
-          fontFamily: 'var(--w14-font-display)',
-          fontStyle: 'italic',
-        }}
-      >
-        Lädt Verkäufer…
-      </p>
-    </ParchmentCard>
-  );
-}
+/*
+ * 20.08.2026: hier stand `SkeletonCard`, die Ladekarte dieser Spalte. Ihr
+ * einziger Leser war der `isLoading`-Zweig; er ist der erschöpfenden
+ * Fallunterscheidung gewichen (`lib/abfragestand.ts`), die das Laden mit
+ * demselben Satzbau sagt wie das Warten und das Scheitern.
+ */
+
 
 function CustomerCard({ detail }: { detail: CustomerDetail }): JSX.Element {
   const blocked = detail.sanctionsMatch || detail.trustLevel === 'BANNED';

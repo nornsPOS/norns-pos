@@ -24,7 +24,6 @@ import { zifferFuerFlaeche } from '../../app/chrome/surface-registry.js';
 
 import { useCurrentShift } from '../../hooks/useCurrentShift.js';
 import {
-  selectAnkaufCustomerId,
   selectAnkaufItems,
   useAnkaufCartStore,
 } from '../../state/ankauf-cart-store.js';
@@ -36,6 +35,7 @@ import { ApiError } from '@norns/api-client';
 
 import { AnkaufBezahlenDialog } from './AnkaufBezahlenDialog.js';
 import { CustomerPanel } from './CustomerPanel.js';
+import { useVerkaeuferStand } from './verkaeufer-stand.js';
 import { IntakeList } from './IntakeList.js';
 
 export function Ankauf(): JSX.Element {
@@ -72,11 +72,20 @@ export function Ankauf(): JSX.Element {
 
 function AnkaufFloor(): JSX.Element {
   const navigate = useNavigate();
-  const customerId = useAnkaufCartStore(selectAnkaufCustomerId);
   const items = useAnkaufCartStore(selectAnkaufItems);
   const [bezahlenOpen, setBezahlenOpen] = useState<boolean>(false);
 
-  const hasCustomer = customerId !== null;
+  /*
+   * ⛔ 20.08.2026: hier stand `customerId !== null` — also die Frage an den
+   * KORB statt an die BÜCHER. Eine Kundenkennung aus einem geparkten Ankauf,
+   * die es nicht mehr gibt (Löschung nach Datenschutz-Grundverordnung, eine
+   * zurückgespielte Sicherung), galt damit als Verkäufer: das Formular ging
+   * auf, die Schrittleiste sprang auf Schritt 2, und aufgefallen wäre es
+   * erst beim Bezahlen, mit einem Menschen davor. Die Begründung in ganzer
+   * Länge steht in `verkaeufer-stand.ts`.
+   */
+  const verkaeufer = useVerkaeuferStand();
+  const hasCustomer = verkaeufer.steht;
   const hasItems = items.length > 0;
 
   return (

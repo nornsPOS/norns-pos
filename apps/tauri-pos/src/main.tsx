@@ -31,10 +31,45 @@ initTextScale();
 // plugin; outside a Tauri webview it no-ops and the cache stays memory-only.
 installDurableReadCache();
 
+/*
+ * ── ⛔ DER MOTOR WOHNT IM GERAET — „OFFLINE" GEHT IHN NICHTS AN ────────────
+ *
+ * DER BEFUND (20.08.2026, an der laufenden Kasse gemessen): die Ankaufsflaeche
+ * zeigte eine LEERE linke Spalte. Im Abfragespeicher stand
+ *
+ *     status: 'pending'   fetchStatus: 'paused'   fehlversuche: 1
+ *
+ * react-query PAUSIERT einen Wiederholungsversuch, solange sein
+ * `onlineManager` die Anwendung fuer offline haelt — und der war auf offline
+ * gesprungen, obwohl `navigator.onLine` in demselben Augenblick `true`
+ * meldete und der Motor die Metallkurse munter weiterlieferte. Ein einziges
+ * verirrtes `offline`-Ereignis genuegt; zurueck springt er erst bei einem
+ * `online`-Ereignis, das nie kommen muss.
+ *
+ * Fuer DIESE Anwendung ist die Frage ohnehin falsch gestellt. Der Motor ist
+ * ein Beiprogramm auf demselben Geraet; ob das Haus am Netz haengt, sagt
+ * nichts darueber, ob er antwortet. Eine Kasse, die ausdruecklich OHNE Netz
+ * arbeitet, darf ihre Abfragen nicht an einer Netzvermutung aufhaengen.
+ *
+ * `networkMode: 'always'` heisst deshalb: immer versuchen, und ehrlich
+ * scheitern, wenn der Motor schweigt. Die Haltbarkeit besorgt die Kasse
+ * selbst — die eigene Ausgangswarteschlange und der Sicherungsschalter in
+ * `lib/api-context.tsx`. Zwei Mechanismen fuer dieselbe Sache waren einer zu
+ * viel, und der geliehene war der schlechtere.
+ *
+ * ⚠️ Der zweite Teil der Antwort steht in `lib/abfragestand.ts`: eine Flaeche
+ * darf auch dann nicht stumm bleiben, wenn eine Abfrage in einen Zustand
+ * faellt, den ihre drei Zweige nicht kennen.
+ */
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { staleTime: 30_000, retry: 1, refetchOnWindowFocus: false },
-    mutations: { retry: 0 },
+    queries: {
+      staleTime: 30_000,
+      retry: 1,
+      refetchOnWindowFocus: false,
+      networkMode: 'always',
+    },
+    mutations: { retry: 0, networkMode: 'always' },
   },
 });
 
