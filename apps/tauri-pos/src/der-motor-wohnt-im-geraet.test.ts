@@ -66,6 +66,47 @@ describe('⛔ Der Motor wohnt im Gerät', () => {
     expect(vorher).toContain('20.08.2026');
   });
 
+  it('⛔ keine Fläche mit der Dreier-Verzweigung hängt an einer BEDINGTEN Abfrage', () => {
+    /*
+     * Warum das die zweite Hälfte der Antwort ist:
+     *
+     * `networkMode: 'always'` schliesst das Loch für jede EINGESCHALTETE
+     * Abfrage — sie läuft, und sie endet in Daten oder in einem Fehler.
+     * Offen bleibt genau ein Fall: eine Abfrage mit `enabled: false` steht
+     * auf `pending` und fetcht NICHT. Dann ist `isLoading` falsch,
+     * `isError` falsch, `data` leer — und eine Fläche, die nur diese drei
+     * kennt, ist wieder stumm.
+     *
+     * Am 20.08.2026 gemessen: neun Flächen tragen die Dreier-Verzweigung,
+     * und keine davon hat eine bedingte Abfrage. Das Loch ist also
+     * geschlossen. Dieser Satz hält es geschlossen — wer einer dieser
+     * Flächen ein `enabled:` gibt, muss `abfragestand` benutzen.
+     */
+    const flaechen = [
+      'app/chrome/MetalTicker.tsx',
+      'screens/werkstatt/DayControl.tsx',
+      'screens/kasse/NextHourPanel.tsx',
+      'screens/kasse/Kasse.tsx',
+      'screens/verkauf/KaeuferPicker.tsx',
+      'screens/verkauf/CatalogGrid.tsx',
+      'screens/secondary/Tagebuch.tsx',
+    ];
+    const gefaehrdet: string[] = [];
+    for (const f of flaechen) {
+      const text = readFileSync(join(HIER, f), 'utf8');
+      const dreier = text.includes('isLoading &&') && text.includes('isError &&');
+      // Ein `enabled:` im Abfrage-Sinn, nicht das eines beliebigen Hakens.
+      const bedingt = /useQuery\([\s\S]{0,600}?enabled:/.test(text);
+      if (dreier && bedingt && !text.includes('abfragestand')) gefaehrdet.push(f);
+    }
+    expect(
+      gefaehrdet,
+      'Diese Fläche kennt nur isLoading/isError/data UND schaltet ihre ' +
+        'Abfrage bedingt ab. In diesem Zustand zeigt sie NICHTS. ' +
+        'Benutze `lib/abfragestand.ts`.',
+    ).toEqual([]);
+  });
+
   it('⛔ die Kasse besorgt ihre Haltbarkeit SELBST — sonst wäre die Zeile leichtsinnig', () => {
     // `networkMode: always` ist nur deshalb richtig, weil es eine eigene
     // Ausgangswarteschlange und einen eigenen Sicherungsschalter gibt.

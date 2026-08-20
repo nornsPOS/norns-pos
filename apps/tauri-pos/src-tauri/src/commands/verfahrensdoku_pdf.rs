@@ -125,10 +125,16 @@ pub async fn generate_verfahrensdoku_pdf(daten: VerfahrensdokuDaten) -> HwResult
 
 /// Das N mit dem Faden, in der Geometrie aus `icons/generate.py`.
 ///
-/// 19.08.2026, Basels Anweisung: der Faden IST die Schräge des N. Vorher lag
-/// er QUER über einem vollen N und las sich als durchgestrichener Buchstabe.
-/// Zwei Stämme in Tinte, die Diagonale in Weinrot (0,11 der Höhe), die runden
-/// Kappen um ihren Radius eingerückt — Zahl für Zahl wie in der Quelle.
+/// 20.08.2026, Basels Anweisung: die Schräge IST der Buchstabe.
+///
+/// Vorher lag der Faden als runder Strich ÜBER den Stämmen — er las sich
+/// weiter als Stab quer über zwei Pfosten. Jetzt ist er ein Vieleck mit
+/// senkrechten Schnitten von Ecke zu Ecke, wie die Schräge eines N gebaut
+/// ist, und senkrecht gemessen so dick wie ein Stamm (`d / cos`). Keine
+/// runden Kappen, kein Überstand.
+///
+/// Zahl für Zahl der Symbolschnitt aus `icons/generate.py` und
+/// `NornsZeichen.tsx` (`SCHNITT_SYMBOL`).
 ///
 /// `kante` ist die Kantenlänge des gedachten Quadrats in Millimetern; alle
 /// Masse darin sind Verhältnisse, genau wie in der Quelle.
@@ -140,21 +146,21 @@ pub(crate) fn zeichen(kante_mm: f64) -> String {
     let (l, r) = (c / 2.0 - w / 2.0, c / 2.0 + w / 2.0);
     let (t, b) = (c / 2.0 - s / 2.0, c / 2.0 + s / 2.0);
 
-    // Der Faden läuft von der Spitze des LINKEN Stamms zum Fuss des RECHTEN,
-    // auf den Mittellinien der Stämme; die runde Kappe endet bündig auf den
-    // Kanten des N.
-    let dicke = 0.11 * s;
-    let kappe = dicke / 2.0;
-    let (x1, y1) = (l + d / 2.0, t + kappe);
-    let (x2, y2) = (r - d / 2.0, b - kappe);
+    // Eine geneigte Strecke wirkt dünner als eine senkrechte gleicher Dicke;
+    // `d / cos` macht die Schräge senkrecht gemessen genau so dick wie ein
+    // Stamm.
+    let kosinus = s / (w * w + s * s).sqrt();
+    let dh = d / kosinus;
 
     format!(
         "#box(width: {c:.3}mm, height: {c:.3}mm)[\n\
          #place(dx: {l:.3}mm, dy: {t:.3}mm)[#rect(width: {d:.3}mm, height: {s:.3}mm, fill: rgb(\"{TINTE}\"), stroke: none)]\n\
          #place(dx: {rd:.3}mm, dy: {t:.3}mm)[#rect(width: {d:.3}mm, height: {s:.3}mm, fill: rgb(\"{TINTE}\"), stroke: none)]\n\
-         #place(dx: 0mm, dy: 0mm)[#line(start: ({x1:.3}mm, {y1:.3}mm), end: ({x2:.3}mm, {y2:.3}mm), stroke: (paint: rgb(\"{FADEN}\"), thickness: {dicke:.3}mm, cap: \"round\"))]\n\
+         #place(dx: 0mm, dy: 0mm)[#polygon(fill: rgb(\"{FADEN}\"), stroke: none, ({l:.3}mm, {t:.3}mm), ({lx:.3}mm, {t:.3}mm), ({r:.3}mm, {b:.3}mm), ({rx:.3}mm, {b:.3}mm))]\n\
          ]",
         rd = r - d,
+        lx = l + dh,
+        rx = r - dh,
     )
 }
 
@@ -593,22 +599,35 @@ mod tests {
     /// UND die Palette, direkt aus der Quelldatei.
     #[test]
     fn zeichen_stimmt_mit_der_quelle() {
-        // 19.08.2026, Basels Anweisung: der Faden IST die Schräge (0.11 der
-        // Höhe); die alte Tintenschräge (Versatz 1.35) und der alte Querfaden
-        // (0.075) sind aus der Quelle ausgezogen. Dieser Wächter hat den
-        // Umbau selbst gefangen (CI-Lauf 32310888165) — genau seine Aufgabe.
+        // 20.08.2026, Basels Anweisung: die Schraege IST der Buchstabe. Der
+        // alte runde Faden (0.11 der Hoehe, ueber die Staemme gelegt) ist
+        // aus der Quelle ausgezogen; die Dicke ist jetzt ABGELEITET
+        // (`d / kosinus`), damit die Schraege senkrecht gemessen so dick ist
+        // wie ein Stamm. Dieser Waechter hat schon einen Umbau gefangen
+        // (CI-Lauf 32310888165) — genau seine Aufgabe.
         let quelle = include_str!("../../icons/generate.py");
-        for wert in ["0.60 * c", "0.78 * s", "0.16 * s", "0.11 * s"] {
+        for wert in ["0.60 * c", "0.78 * s", "0.16 * s", "d / kosinus"] {
             assert!(
                 quelle.contains(wert),
                 "die Geometrie in generate.py hat sich geaendert: {wert} fehlt dort"
             );
         }
-        // Kein Tintenbalken mehr unter dem Faden: sonst kreuzen sich zwei
+        // ⚠️ Die GEFAHR ist eine Schraege in TINTE: dann kreuzen sich zwei
         // Diagonalen und das Zeichen liest sich wieder als durchgestrichen.
+        // Die Schraege in Weinrot ist seit dem 20.08. genau das Vieleck, das
+        // den Buchstaben ausmacht — sie darf und muss ein Vieleck sein.
         assert!(
-            !quelle.contains("z.polygon"),
-            "die Tintenschraege ist zurueck; der Faden wuerde wieder zur Streichung"
+            !quelle.contains("fill=TINTE)")
+                || quelle.matches("z.rectangle").count() == 2,
+            "in Tinte darf nur gezeichnet werden, was ein Stamm ist"
+        );
+        assert!(
+            !quelle.contains("z.ellipse"),
+            "die runden Kappen sind seit dem 20.08. abgeschafft"
+        );
+        assert!(
+            quelle.matches("z.polygon").count() == 1,
+            "zwei Schraegen ergaeben wieder ein X"
         );
         assert!(
             quelle.contains("0x26, 0x20, 0x19"),
@@ -618,11 +637,12 @@ mod tests {
             quelle.to_lowercase().contains("9c2630"),
             "der Faden hat sich geaendert"
         );
-        // Und die Zeichnung selbst benutzt beide Farben und KEINE Schraege
-        // in Tinte.
+        // Und die Zeichnung selbst benutzt beide Farben, hat GENAU eine
+        // Schraege, und keine runden Kappen mehr.
         let z = zeichen(22.0);
         assert!(z.contains(TINTE) && z.contains(FADEN));
-        assert!(!z.contains("polygon"), "die Zeichnung traegt wieder eine Tintenschraege");
+        assert_eq!(z.matches("#polygon").count(), 1, "genau eine Schraege");
+        assert!(!z.contains("cap: \"round\""), "die runden Kappen sind abgeschafft");
     }
 }
 

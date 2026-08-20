@@ -13,8 +13,12 @@ DURCHGESTRICHENES N — ein Verbotszeichen als Marke. Basel hat genau das
 am 19.08.2026 benannt und die neue Form angewiesen; sie hebt seine
 Anweisung vom 04.08. („nicht verändern") auf.
 
-Basels Korrektur vom 30.07. gilt weiter: die runden Kappen rücken um
-ihren Radius nach innen, damit kein Punkt über die Kanten des N hinaussteht.
+Basels Anweisung vom 20.08.2026 hat die runden Kappen abgeschafft: der
+Faden ist jetzt die Schräge SELBST, ein Parallelogramm mit senkrechten
+Schnitten von Ecke zu Ecke. Damit erledigt sich auch Basels Korrektur vom
+30.07. (die Kappen um ihren Radius nach innen zu rücken) — es gibt keine
+Kappen mehr, und überstehen kann nichts, dessen Ecken die Ecken des
+Buchstabens sind.
 
 Palette (identisch mit dem Bericht und norns.de):
   Tinte  #262019   Papier #faf6ee   Faden #9c2630
@@ -26,6 +30,7 @@ Erzeugt alles, was das Tauri-Bündel braucht:
 Aufruf:  python3 generate.py   (aus diesem Ordner; braucht Pillow)
 """
 
+import math
 import os
 import shutil
 import subprocess
@@ -54,17 +59,32 @@ def male(n: int) -> Image.Image:
     z.rectangle([l, t, l + d, b], fill=TINTE)
     z.rectangle([r - d, t, r, b], fill=TINTE)
 
-    # Der Faden ist die Schräge (19.08.2026): Spitze des linken Stamms zum
-    # Fuss des rechten, auf den Mittellinien der Stämme. 0.11 der Höhe —
-    # kräftiger als der alte Querfaden (0.075), weil er die Schräge trägt
-    # und in der 16-Punkt-Fensterleiste lesbar bleiben muss.
-    dicke = 0.11 * s
-    kappe = dicke / 2
-    x1, y1 = l + d / 2, t + kappe
-    x2, y2 = r - d / 2, b - kappe
-    z.line([x1, y1, x2, y2], fill=ROT, width=round(dicke))
-    for px, py in ((x1, y1), (x2, y2)):
-        z.ellipse([px - kappe, py - kappe, px + kappe, py + kappe], fill=ROT)
+    # ── BASELS ANWEISUNG VOM 20.08.2026 ──────────────────────────────────
+    #
+    # Der Faden WAR die Schraege — als runder Strich ueber den Staemmen. Am
+    # gerenderten Symbol nebeneinander gelegt und angesehen: er las sich
+    # weiter als Stab, der quer ueber zwei Pfosten liegt, nicht als
+    # Buchstabe. Drei Gruende, alle sichtbar:
+    #
+    #   1. Runde Kappen. Kein Buchstabe endet in einer Linse.
+    #   2. Er lag OBEN AUF den Staemmen statt in sie hineinzulaufen; an
+    #      beiden Enden sah man Rot auf Tinte.
+    #   3. Er war duenner als die Staemme (senkrecht gemessen 0,079 der
+    #      Hoehe gegen 0,16) und schwebte quer durch den weiten Innenraum.
+    #
+    # JETZT ist er die Schraege selbst: ein Parallelogramm mit SENKRECHTEN
+    # Schnitten, von der oberen linken Ecke des Buchstabenfeldes zur unteren
+    # rechten — so, wie die Schraege eines N gebaut ist. Es kann nicht
+    # ueberstehen, weil seine Ecken die Ecken des Buchstabens SIND.
+    #
+    # Die Dicke ist abgeleitet, nicht geraten: eine geneigte Strecke wirkt
+    # duenner als eine senkrechte. `d / cos` macht die Schraege SENKRECHT
+    # GEMESSEN genau so dick wie ein Stamm (Faktor 1,268 bei dieser Breite).
+    kosinus = s / math.hypot(w, s)
+    z.polygon(
+        [(l, t), (l + d / kosinus, t), (r, b), (r - d / kosinus, b)],
+        fill=ROT,
+    )
     return im.resize((n, n), Image.LANCZOS)
 
 

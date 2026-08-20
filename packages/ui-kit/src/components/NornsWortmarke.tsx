@@ -41,7 +41,13 @@
 
 import type { CSSProperties } from 'react';
 
-import { FADEN_DICKE, NORNS_FADEN, NORNS_TINTE, ZEICHEN_KASTEN } from './NornsZeichen.js';
+import {
+  NORNS_FADEN,
+  NORNS_TINTE,
+  SCHNITT_WORT,
+  ZEICHEN_KASTEN,
+  ZeichenGestalt,
+} from './NornsZeichen.js';
 
 /**
  * Versalhöhe der Anzeigeschrift als Anteil der Schriftgrösse.
@@ -109,17 +115,16 @@ export function NornsWortmarke({
           overflow: 'visible',
         }}
       >
-        <rect x="26.6" y="20" width="9.6" height="60" fill={tinte} />
-        <rect x="63.8" y="20" width="9.6" height="60" fill={tinte} />
-        <line
-          x1="31.4"
-          y1={20 + FADEN_DICKE / 2}
-          x2="68.6"
-          y2={80 - FADEN_DICKE / 2}
-          stroke={faden}
-          strokeWidth={FADEN_DICKE}
-          strokeLinecap="round"
-        />
+        {/*
+          ⚠️ 20.08.2026: hier standen dieselben Rechtecke und dieselbe
+          Schräge ein ZWEITES Mal, mit den Zahlen von Hand abgeschrieben
+          („26.6", „9.6", „31.4"…). Zwei Zeichnungen desselben Zeichens
+          driften: eine Änderung am Zeichen hätte die Wortmarke unverändert
+          gelassen, und in der Kopfleiste stünde ein anderes N als auf dem
+          Programmsymbol. Jetzt setzt sie DIESELBE Gestalt und unterscheidet
+          sich nur im Ausschnitt.
+        */}
+        <ZeichenGestalt tinte={tinte} faden={faden} schnitt={SCHNITT_WORT} />
       </svg>
       <span
         style={{

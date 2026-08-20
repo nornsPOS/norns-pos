@@ -302,17 +302,26 @@ mod tests {
             q.contains(TINTE) && q.contains(FADEN),
             "die Hausfarben fehlen"
         );
-        // 19.08.2026: das Zeichen sind zwei Tintenstämme und der weinrote
-        // Faden als Schräge (icons/generate.py). Eine Polygon-Schräge in
-        // Tinte wäre der alte, durchgestrichen wirkende Stand.
+        // 20.08.2026: das Zeichen sind zwei Tintenstämme und die weinrote
+        // Schräge — und die ist seither ein VIELECK, nicht mehr ein runder
+        // Strich über den Stämmen (Basels Anweisung; die Begründung steht
+        // bei `zeichen()` in verfahrensdoku_pdf.rs).
+        //
+        // ⚠️ Der alte Satz hier verbot JEDES `#polygon`. Gemeint war die
+        // Schräge in TINTE, die den Buchstaben wieder durchgestrichen
+        // wirken liesse; getroffen hätte es die Schräge selbst. Der Satz
+        // misst deshalb jetzt die Gefahr statt der Bauform.
         assert!(q.contains("#rect"), "die Stämme des Zeichens fehlen");
         assert!(
-            q.contains("cap: \"round\""),
-            "der Faden des Zeichens fehlt"
+            q.matches("#polygon").count() == 1,
+            "die Schräge des Zeichens fehlt, oder es sind zwei (dann wieder ein X)"
         );
+        // ⚠️ NUR am Zeichen gemessen, nicht am ganzen Dokument: die
+        // Zierlinien dieses Briefes tragen absichtlich runde Enden, und ein
+        // Satz über das ganze Dokument hätte SIE getroffen statt der Marke.
         assert!(
-            !q.contains("#polygon"),
-            "die Tintenschraege ist zurueck; das Zeichen wuerde wieder durchgestrichen wirken"
+            !crate::commands::verfahrensdoku_pdf::zeichen(22.0).contains("cap: \"round\""),
+            "die runden Kappen des Zeichens sind seit dem 20.08. abgeschafft"
         );
     }
 

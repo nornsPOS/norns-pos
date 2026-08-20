@@ -105,14 +105,16 @@ const FLAECHEN = [
 describe('Das Zeichen von Norns', () => {
   it('⛔ das Bauteil ist eine ABSCHRIFT, kein eigener Entwurf', () => {
     // Jede Zahl muss auch im Erzeuger stehen. Sonst sind es zwei Zeichen.
-    // 19.08.2026: der Faden wuchs von 0.075 auf 0.11 — er trägt jetzt die
-    // Schräge und muss in der 16-Punkt-Fensterleiste lesbar bleiben. Den
-    // Versatz der alten Tintenschräge (1.35) gibt es nicht mehr.
+    // 20.08.2026: die Dicke der Schräge steht hier NICHT mehr als Zahl. Sie
+    // ist abgeleitet (`STRICH / KOSINUS`), damit die Schräge senkrecht
+    // gemessen genau so dick ist wie ein Stamm; der eigene Satz weiter
+    // unten prüft die Ableitung in beiden Dateien. Eine gewählte Zahl an
+    // dieser Stelle war der Grund, warum sich das Zeichen als aufgelegter
+    // Strich las.
     for (const [was, faktor] of [
       ['Höhe', '0.60'],
       ['Breite', '0.78'],
       ['Strichdicke', '0.16'],
-      ['Faden', '0.11'],
     ] as const) {
       expect(ERZEUGER, `${was} fehlt im Erzeuger`).toContain(faktor.replace(/0$/, ''));
       expect(BAUTEIL, `${was} fehlt im Bauteil`).toContain(
@@ -136,20 +138,87 @@ describe('Das Zeichen von Norns', () => {
      * woertlich das Weinrot des Erzeugers, und der Strich haengt am Parameter.
      */
     expect(BAUTEIL).toContain('faden = NORNS_FADEN');
-    expect(rumpf).toContain('stroke={faden}');
+    // 20.08.2026: die Schräge ist ein gefülltes Vieleck, kein Strich mehr.
+    expect(BAUTEIL).toContain('<polygon points={schraege} fill={faden} />');
     expect(rumpf, 'im Zeichen hat Gold nichts zu suchen').not.toMatch(/gilt|gold/i);
     /*
      * ⚠️ DER KERN VON BASELS ANWEISUNG VOM 19.08.2026: sobald wieder eine
-     * Tintenschräge unter dem Faden liegt, kreuzen sich zwei Diagonalen,
-     * und das Zeichen liest sich erneut als durchgestrichen. Ein <polygon>
-     * im Bauteil oder ein z.polygon im Erzeuger ist deshalb ROT.
+     * TINTENSCHRÄGE unter dem Faden liegt, kreuzen sich zwei Diagonalen,
+     * und das Zeichen liest sich erneut als durchgestrichen.
+     *
+     * ── 20.08.2026: DIESER SATZ WAR ZU GROB GEFASST ──────────────────────
+     *
+     * Er verbot JEDES <polygon> und jedes z.polygon. Gemeint war die
+     * Tintenschräge; getroffen hätte es auch die Schräge SELBST. Und genau
+     * die ist heute ein Vieleck geworden: Basels Anweisung vom 20.08. macht
+     * den Faden zur echten Schräge des N — ein Parallelogramm mit
+     * senkrechten Schnitten statt eines runden Strichs, der oben auf den
+     * Stämmen lag.
+     *
+     * Der Satz misst deshalb jetzt die GEFAHR statt der Bauform: eine
+     * Schräge in TINTE. Die Schräge in Weinrot ist erlaubt, und dass es bei
+     * EINER bleibt, prüft der Satz darunter.
      */
-    expect(rumpf, 'eine Tintenschräge macht den Faden wieder zur Streichung').not.toContain(
-      '<polygon',
+    const tintenschraege = /<polygon[^>]*fill=\{tinte\}/.test(rumpf);
+    expect(tintenschraege, 'eine Tintenschräge macht den Faden wieder zur Streichung').toBe(
+      false,
     );
-    expect(ERZEUGER, 'die Tintenschräge ist auch im Erzeuger verboten').not.toContain(
-      'z.polygon',
+    expect(ERZEUGER, 'die Tintenschräge ist auch im Erzeuger verboten').not.toMatch(
+      /z\.polygon\([^)]*fill=TINTE/s,
     );
+
+    /*
+     * Und es bleibt bei EINER Schräge. Zwei wären wieder ein X — egal in
+     * welcher Farbe.
+     */
+    const schraegenImErzeuger = (ERZEUGER.match(/z\.polygon\(/g) ?? []).length;
+    expect(schraegenImErzeuger, 'zwei Schrägen ergeben wieder ein X').toBeLessThanOrEqual(1);
+    expect(ERZEUGER, 'die runden Kappen sind seit dem 20.08. abgeschafft').not.toContain(
+      'z.ellipse',
+    );
+  });
+
+  it('⛔ die Schräge des SYMBOLS ist abgeleitet, nicht geraten', () => {
+    /*
+     * 20.08.2026: der alte Faden war senkrecht gemessen 0,079 der Höhe dick,
+     * ein Stamm 0,16 — er las sich als dünner Stab quer über zwei Pfosten.
+     * Im Symbolschnitt macht `stamm / kosinus` die Schräge senkrecht
+     * gemessen genau so dick wie ein Stamm. Steht dort wieder eine gewählte
+     * Zahl, ist das Zeichen wieder ein aufgelegter Strich.
+     */
+    expect(BAUTEIL).toContain('const kosinus = 1 / Math.hypot(breite, 1)');
+    expect(BAUTEIL).toContain('schraege: stamm / kosinus');
+    expect(ERZEUGER).toContain('kosinus = s / math.hypot(w, s)');
+    expect(ERZEUGER).toContain('d / kosinus');
+  });
+
+  it('⛔ der SCHRIFTZUG-Schnitt trägt die GEMESSENEN Verhältnisse des Hausschnitts', () => {
+    /*
+     * ── BASELS ANWEISUNG VOM 20.08.2026 ──────────────────────────────────
+     *
+     * „Das Zeichen soll mit dem Wort verschmelzen wie bei einer grossen
+     * Firma, zwei Fliegen mit einer Klappe."
+     *
+     * Am laufenden Bild gemessen (Fraunces 500): Tintenbreite 0,986 der
+     * Versalhöhe, Stämme 0,079, Schräge 0,243. Das ist die klassische
+     * römische Antiqua — DÜNNE Stämme, DICKE Schräge. Das Zeichen trug die
+     * Verhältnisse genau andersherum und stand deshalb als schmales,
+     * schweres N vor vier breiten, leichten Buchstaben.
+     *
+     * Wer diese Zahlen ändert, ändert nicht den Geschmack, sondern hebt
+     * eine MESSUNG auf. Dann bitte neu messen und die neue Zahl hier
+     * eintragen.
+     */
+    expect(BAUTEIL).toContain('breite: 0.986');
+    expect(BAUTEIL).toContain('stamm: 0.079');
+    expect(BAUTEIL).toContain('schraege: 0.243');
+
+    const marke = lies('../../../../../packages/ui-kit/src/components/NornsWortmarke.tsx');
+    expect(
+      marke,
+      'Der Schriftzug setzt wieder den Symbolschnitt — das N steht dann als ' +
+        'Fremdkörper zwischen O R N S.',
+    ).toContain('SCHNITT_WORT');
   });
 
   it('⛔ es steht auf allen drei Flächen, auf denen die Marke gehört', () => {
@@ -184,12 +253,25 @@ describe('Das Zeichen von Norns', () => {
 
   it('⛔ die Wortmarke setzt das Zeichen als Buchstaben, nicht als Bild daneben', () => {
     const marke = lies('../../../../../packages/ui-kit/src/components/NornsWortmarke.tsx');
-    // Sie zeichnet dieselben zwei Stämme und denselben Faden.
-    expect(marke).toContain('<rect');
-    expect(marke).toContain('strokeLinecap="round"');
-    // Und sie holt Dicke und Ausschnitt aus dem EINEN Zeichen, statt sie
-    // ein zweites Mal zu erfinden.
-    expect(marke).toContain('FADEN_DICKE');
+    /*
+     * ── 20.08.2026: SIE ZEICHNET GAR NICHT MEHR SELBST ──────────────────
+     *
+     * Bis heute standen hier dieselben Rechtecke und dieselbe Schräge ein
+     * ZWEITES Mal, mit den Zahlen von Hand abgeschrieben („26.6", „9.6",
+     * „31.4"…). Der alte Satz hat das sogar geprüft — er verlangte `<rect`
+     * in der Wortmarke und hielt die Abschrift damit fest.
+     *
+     * Zwei Zeichnungen desselben Zeichens driften. Eine Änderung am Zeichen
+     * hätte die Wortmarke unverändert gelassen, und in der Kopfleiste
+     * stünde ein anderes N als auf dem Programmsymbol. Sie setzt jetzt
+     * DIESELBE Gestalt und unterscheidet sich nur im Ausschnitt.
+     */
+    expect(marke).toContain('ZeichenGestalt');
+    expect(
+      /<rect|<polygon|<line/.test(marke),
+      'Die Wortmarke zeichnet das Zeichen wieder selbst. Zwei Zeichnungen ' +
+        'desselben Zeichens driften auseinander.',
+    ).toBe(false);
     expect(marke).toContain('ZEICHEN_KASTEN');
     // Der Rest des Namens ist gesetzte Schrift.
     expect(marke).toContain('ORNS');
