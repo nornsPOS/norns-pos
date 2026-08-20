@@ -45,6 +45,7 @@ import { describe, expect, it } from 'vitest';
 const HIER = dirname(fileURLToPath(import.meta.url));
 const KORB = readFileSync(join(HIER, 'CartPanel.tsx'), 'utf8');
 const BEZAHLEN = readFileSync(join(HIER, 'BezahlenDialog.tsx'), 'utf8');
+const KATALOG = readFileSync(join(HIER, 'CatalogGrid.tsx'), 'utf8');
 
 /** Der Quelltext ohne Kommentare — sonst misst der Wächter seine Begründung. */
 function ohneKommentare(text: string): string {
@@ -102,6 +103,35 @@ describe('⛔ Der Tagespreis erreicht auch den B2B-Weg', () => {
     // `perLine` wird aus `geltendeZeilen` gebildet. Käme es aus `lines`,
     // stimmten Zeilen und Beträge wieder nicht überein.
     expect(/perLine[\s\S]{0,200}?geltendeZeilen\.map/.test(korb)).toBe(true);
+  });
+
+  it('⛔ die KACHEL zeigt denselben Preis, den die Karte bucht', () => {
+    /*
+     * ── DER DRITTE FUND DERSELBEN NACHPRÜFUNG ────────────────────────────
+     *
+     * Die Verkaufskachel zeigte `product.listPriceEur` — den gespeicherten
+     * Preis. Solange die Karte ihn auch buchte, war das richtig, und im
+     * Quelltext stand sogar der begründete Satz dazu: „Der Tagespreis steht
+     * UNTER dem Preis, nie an seiner Stelle. Gebucht wird, was in die Karte
+     * wandert."
+     *
+     * Dieser Satz war heute früh noch wahr. Meine eigene Änderung hat ihn
+     * umgedreht — und ich habe die Kachel dabei nicht angefasst. Am Tresen
+     * hätte auf der Kachel 1158,16 € gestanden und in der Karte 160,93 €.
+     * Das sieht aus wie ein kaputtes Programm, und der Kassierer weiss
+     * nicht, welche Zahl gilt.
+     *
+     * ⚠️ Der Lehrsatz: wer eine Regel ändert, muss JEDE Stelle nachziehen,
+     * die von der alten Regel lebte — auch die, die gar nichts von der
+     * Änderung weiss und deren Kommentar sie für richtig erklärt.
+     */
+    const katalog = ohneKommentare(KATALOG);
+    expect(katalog).toContain('geltenderPreis');
+    expect(
+      /<MoneyAmount valueEur=\{product\.listPriceEur\}/.test(katalog),
+      'Die Kachel zeigt wieder den gespeicherten Preis, während die Karte ' +
+        'den Tageskurs bucht. Zwei Zahlen für dasselbe Stück.',
+    ).toBe(false);
   });
 
   it('der B2B-Weg rechnet wirklich NEU — sonst wäre der Fund harmlos', () => {

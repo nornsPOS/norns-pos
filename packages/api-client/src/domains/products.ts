@@ -73,6 +73,37 @@ export interface ProductListRow {
   metal: Metal | null;
   weightGrams: string | null;
   listPriceEur: string;
+  /**
+   * Der aus dem TAGESKURS gerechnete Verkaufspreis, wenn es einen gibt.
+   *
+   * ── WARUM DAS HIER STEHEN MUSS (20.08.2026) ────────────────────────────
+   *
+   * Der Motor schickt dieses Feld seit langem (`schemas/product-list.ts`),
+   * aber es stand in KEINEM Typ des Klienten. Wer es lesen wollte, musste
+   * die Zeile als `unknown` behandeln und von Hand herausgreifen — genau das
+   * tut `screens/lager/tagespreis-anzeige.ts` bis heute.
+   *
+   * Die Folge war eine Kasse mit zwei Wahrheiten: das LAGER zeigte den
+   * Tagespreis, die Verkaufskachel den gespeicherten. Solange die Karte
+   * ebenfalls den gespeicherten buchte, fiel es nicht auf. Seit die Karte
+   * zum Tageskurs verkauft, stünde auf der Kachel 1158,16 € und in der Karte
+   * 160,93 € — das sieht am Tresen aus wie ein kaputtes Programm.
+   *
+   * `null` heisst: für dieses Stück wird nicht gerechnet. Warum, sagt
+   * `kurspreisGrund` — nie geraten, nie erfunden.
+   */
+  kurspreisEur: string | null;
+  /** Der Grund, wenn kein Kurspreis gerechnet wurde. Ein Kennwort. */
+  kurspreisGrund:
+    | 'kein_metall'
+    | 'kein_gewicht'
+    | 'kein_feingehalt'
+    | 'kein_tageskurs'
+    | 'aufschlag_unplausibel'
+    | 'fest_gepflegt'
+    | null;
+  /** Wahr, wenn der Händler diesen Preis ausdrücklich fest pflegt. */
+  festerPreis: boolean;
   name: string;
   descriptionDe: string | null;
   // Netzverkaufs-Felder am 14.08.2026 mit der Trennung entfernt (der Motor

@@ -26,13 +26,12 @@ import { Button, MagnifierIcon, MoneyAmount, ParchmentCard } from '@norns/ui-kit
 
 import { useInventoryCounts } from '../../hooks/useInventoryCounts.js';
 import { AVAILABILITY_BUCKETS, bucketCount } from '../../lib/availability-ui.js';
-import { formatEur } from '../../lib/decimal.js';
 import { useApiClient } from '../../lib/api-context.js';
+import { geltenderPreis } from '../../lib/korbpreis.js';
 import {
   TAGESPREIS_HINWEIS_KASSE,
   fasseTagespreiseZusammen,
   standSatz,
-  tagespreisAnzeige,
 } from '../lager/tagespreis-anzeige.js';
 import { Eintreffen, SkelettBalken } from '../_shared/SanfteMomente.js';
 
@@ -477,6 +476,18 @@ const ProductTile = memo(function ProductTile({
   onSelect,
 }: ProductTileProps): JSX.Element {
   const metalLabel = product.metal ? METAL_LABEL[product.metal] : null;
+  /*
+   * Was diese Kachel kostet, wenn man sie antippt — DIESELBE Regel, die der
+   * Korb anwendet (`lib/korbpreis.ts`). Eine zweite Regel hier wäre der
+   * Anfang von zwei Preisen für dasselbe Stück.
+   */
+  const kachelPreis = geltenderPreis(product.listPriceEur, {
+    productId: product.id,
+    listPriceEur: product.listPriceEur,
+    kurspreisEur: product.kurspreisEur,
+    kurspreisGrund: product.kurspreisGrund,
+    festerPreis: product.festerPreis,
+  });
   const tileRef = useRef<HTMLButtonElement>(null);
   // Keep the keyboard-highlighted tile visible as the operator arrows through.
   useEffect(() => {
@@ -599,7 +610,19 @@ const ProductTile = memo(function ProductTile({
             gap: 'var(--w14-abstand-8)',
           }}
         >
-          <MoneyAmount valueEur={product.listPriceEur} emphasis />
+          {/*
+            ⛔ 20.08.2026, bei der Nachpruefung gefunden: hier stand
+            `product.listPriceEur` — der GESPEICHERTE Preis.
+
+            Seit die Karte zum Tageskurs verkauft, war das die zweite
+            Wahrheit derselben Kasse: auf der Kachel 1158,16 €, in der Karte
+            160,93 €. Am Tresen sieht das aus wie ein kaputtes Programm, und
+            der Kassierer weiss nicht, welche Zahl gilt.
+
+            Die Kachel zeigt jetzt, was die Karte auch buchen wird — DIESELBE
+            Regel (`geltenderPreis`), nicht eine zweite daneben.
+          */}
+          <MoneyAmount valueEur={kachelPreis.preisEur} emphasis />
           {inCart && (
             <span
               className="w14-smallcaps"
@@ -626,44 +649,52 @@ const ProductTile = memo(function ProductTile({
           )}
         </div>
 
-        {/* ⚠️ Der Tagespreis steht UNTER dem Preis, nie an seiner Stelle.
-            Gebucht wird, was in die Karte wandert, und das ist der
-            gespeicherte Preis; ihn hier still zu vertauschen hiesse, eine
-            Zahl zu zeigen, die der Beleg nicht trägt. Die Zeile erscheint
-            nur bei echter Abweichung, sonst wäre jede Kachel zweizeilig. */}
-        <TagespreisZeile product={product} />
+        {/*
+          ── 20.08.2026: DIESER SATZ STAND HIER UND WAR HEUTE FRÜH NOCH WAHR ──
+
+          „Der Tagespreis steht UNTER dem Preis, nie an seiner Stelle.
+           Gebucht wird, was in die Karte wandert, und das ist der
+           gespeicherte Preis."
+
+          Er war richtig, solange die Karte den gespeicherten Preis buchte.
+          Seit heute bucht sie den Tageskurs — und damit hat sich der Satz
+          umgedreht: die grosse Zahl auf der Kachel MUSS jetzt der Tagespreis
+          sein, sonst zeigt die Kachel eine Zahl, die der Beleg nicht trägt.
+
+          Darunter steht keine zweite ZAHL mehr (zwei Preise nebeneinander
+          waren genau die Verwirrung), sondern nur noch der Grund, warum sich
+          diese Zahl bewegt.
+        */}
+        {kachelPreis.herkunft === 'tagespreis' && (
+          <span
+            className="w14-smallcaps"
+            title="Der Preis dieses Stücks folgt dem Metallkurs und ändert sich mit ihm."
+            style={{
+              fontSize: 'var(--w14-schrift-kuerzel)',
+              letterSpacing: '0.06em',
+              lineHeight: 1.3,
+              color: 'var(--w14-ink-faded)',
+            }}
+          >
+            folgt dem Tageskurs
+          </span>
+        )}
       </div>
     </button>
   );
 });
 
-/**
- * Die Tagespreiszeile unter dem Preis einer Kachel.
+/*
+ * 20.08.2026: hier stand `TagespreisZeile` — die zweite Zahl unter dem
+ * Preis. Sie hatte ihren Sinn, solange die Kachel den gespeicherten Preis
+ * zeigte und die Karte ihn buchte. Jetzt zeigt die Kachel den geltenden
+ * Preis, und eine zweite Zahl daneben wäre wieder die Verwirrung, die sie
+ * einmal aufgelöst hat.
  *
- * Zeigt sich NUR, wenn der Motor einen gerechneten Tagespreis geschickt hat
- * UND er vom gespeicherten Preis abweicht. Bei Gleichstand, ohne Kurs oder
- * bei einem Stück ohne Metall bleibt die Kachel einzeilig — eine Fläche, die
- * bei jedem Stück etwas anmerkt, wird nicht mehr gelesen.
+ * ⚠️ `tagespreis-anzeige.ts` bleibt und wird weiter gebraucht: im LAGER
+ * gehören beide Zahlen nebeneinander, denn dort geht es um den Bestand und
+ * seinen gepflegten Wert, nicht um den Preis an der Kasse.
  */
-function TagespreisZeile({ product }: { product: ProductListRow }): JSX.Element | null {
-  const anzeige = tagespreisAnzeige(product);
-  if (anzeige.art !== 'tagespreis' || anzeige.richtung === 'gleich') return null;
-
-  return (
-    <span
-      className="w14-smallcaps"
-      title={anzeige.satz}
-      style={{
-        fontSize: 'var(--w14-schrift-kuerzel)',
-        letterSpacing: '0.06em',
-        lineHeight: 1.3,
-        color: anzeige.richtung === 'hoeher' ? 'var(--w14-accent)' : 'var(--w14-ink-faded)',
-      }}
-    >
-      {`Tagespreis ${formatEur(anzeige.tagespreisEur)} €`}
-    </span>
-  );
-}
 
 /**
  * Square image header for a tile. Renders the WebP thumb when present, else a
