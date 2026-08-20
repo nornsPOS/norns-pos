@@ -37,10 +37,16 @@
  *      Export lehnt dann ab, und die Liste sagt dasselbe.
  */
 
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import type { LightMyRequestResponse } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { baueFiskalBuehne } from '../helfer/fiskal-buehne.js';
+
+const HIER = dirname(fileURLToPath(import.meta.url));
 
 interface Schritt {
   titel: string;
@@ -142,6 +148,45 @@ describe('⛔ Die Startliste nennt eine Vorgabe eine Vorgabe', () => {
     const abgewiesen = await schreibe('datev.mandantennummer', '');
     expect(abgewiesen.statusCode).toBe(400);
     expect(abgewiesen.body).toContain('Mandantennummer');
+  });
+
+  it('⛔ eine Kasse mit ECHTEN Zahlen bekommt KEINEN Vermerk angehängt', async () => {
+    /*
+     * ── DER FEHLER, DEN DIESE PROBE GEFUNDEN HAT (20.08.2026) ────────────
+     *
+     * Wanderung 0150 schrieb BEIDE Schlüssel bedingungslos in die
+     * Platzhalterliste. Auf einer frischen Kasse richtig — auf einer
+     * BESTEHENDEN, deren Händler seine echten Zahlen längst eingetragen
+     * hatte, eine Falschmeldung mit Folgen: seine Zahlen galten wieder als
+     * unbestätigt, die Startliste mahnte, und JEDER Buchungsstapel trug
+     * MANDANT ZUORDNEN — bei einer korrekt zugeordneten Kasse.
+     *
+     * Ein Vermerk, der auch dann steht, wenn alles stimmt, wird zur Tapete.
+     *
+     * Hier wird der Fall nachgestellt: echte Zahlen stehen, die Wanderung
+     * läuft NOCH EINMAL (sie ist ein Nachzügler und läuft bei jedem Start),
+     * und danach darf sich nichts verschlechtert haben.
+     */
+    expect((await schreibe('datev.beraternummer', '29098')).statusCode).toBe(200);
+    expect((await schreibe('datev.mandantennummer', '55003')).statusCode).toBe(200);
+    expect(datevPunkt(await startliste()).erledigt).toBe(true);
+
+    const wanderung = readFileSync(
+      join(HIER, '../../sidecar/erststart/nachzuegler/0150_die_steuerausfuhr_laeuft_ab_werk.sql'),
+      'utf8',
+    );
+    await buehne.migratorSql.unsafe(wanderung);
+
+    const punkt = datevPunkt(await startliste());
+    expect(
+      punkt.erledigt,
+      'Die Wanderung hat die echten Zahlen des Händlers wieder zu Vorgaben erklärt.',
+    ).toBe(true);
+
+    const [liste] = await buehne.migratorSql<{ value: string[] }[]>`
+      SELECT value FROM system_settings WHERE key = 'datev.platzhalter'`;
+    expect(liste?.value ?? []).not.toContain('datev.beraternummer');
+    expect(liste?.value ?? []).not.toContain('datev.mandantennummer');
   });
 
   it('⛔ steht ein Feld dennoch leer, kehrt die harte Sperre zurück', async () => {

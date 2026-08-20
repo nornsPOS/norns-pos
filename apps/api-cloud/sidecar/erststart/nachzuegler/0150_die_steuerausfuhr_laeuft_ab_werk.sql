@@ -43,33 +43,65 @@
 -- Die zwei Zahlen bekommen ihren Platzhalter — aber NUR, wenn sie leer sind.
 -- Eine Kasse, auf der der Händler seine echten Zahlen längst eingetragen hat,
 -- bleibt unberührt.
-UPDATE system_settings
-   SET value = '"1001"'::jsonb,
-       description = 'Beraternummer der Kanzlei (Kopf-Feld 4). Vorgabewert 1001 als Platzhalter: '
-                     || 'der Steuerberater biegt den Stapel beim Import auf seinen Bestand um '
-                     || '(Stapelverarbeitung, Zusatzfunktionen). Steht in datev.platzhalter und '
-                     || 'wird als UNBESTAETIGT ausgewiesen, bis er bestaetigt ist.',
-       updated_at = now()
- WHERE key = 'datev.beraternummer'
-   AND (value IS NULL OR value::text IN ('""', 'null'));
-
-UPDATE system_settings
-   SET value = '"99999"'::jsonb,
-       description = 'Mandantennummer dieses Ladens im Bestand der Kanzlei (Kopf-Feld 5). '
-                     || 'Vorgabewert 99999 als Platzhalter, siehe datev.beraternummer.',
-       updated_at = now()
- WHERE key = 'datev.mandantennummer'
-   AND (value IS NULL OR value::text IN ('""', 'null'));
-
--- Und sie sagen, dass sie Platzhalter sind. Die Liste wird als Menge geführt,
--- damit ein zweiter Lauf nichts doppelt einträgt.
-UPDATE system_settings
+-- ⛔ NUR die Schluessel eintragen, die DIESER Lauf wirklich vorbelegt hat.
+--
+-- ── DER FEHLER, DEN DIESE FASSUNG BEHEBT (20.08.2026, Nachpruefung) ────────
+--
+-- Hier stand ein UPDATE, das BEIDE Schluessel bedingungslos in die
+-- Platzhalterliste schrieb. Auf einer FRISCHEN Kasse war das richtig. Auf
+-- einer BESTEHENDEN Kasse, deren Haendler seine echten Zahlen laengst
+-- eingetragen hatte, war es eine Falschmeldung mit Folgen:
+--
+--   * die zwei Zahlen standen ploetzlich als UNBESTAETIGT in den
+--     Einstellungen,
+--   * die Startliste meldete den DATEV-Punkt wieder als offen,
+--   * und JEDER Buchungsstapel trug den Vermerk MANDANT ZUORDNEN — bei einer
+--     Kasse, die korrekt zugeordnet war.
+--
+-- Das ist die Umkehrung der Gefahr, gegen die der Vermerk gebaut ist, und in
+-- der Wirkung fast so schlimm: ein Vermerk, der auch dann steht, wenn alles
+-- stimmt, wird zur Tapete, die niemand mehr liest.
+--
+-- Die zwei UPDATEs oben fassen nur LEERE Felder an. Ihr RETURNING sagt
+-- deshalb genau, welche Schluessel wirklich eine Vorgabe bekommen haben —
+-- und nur die kommen in die Liste. Beim zweiten Lauf (die Wanderung ist ein
+-- Nachzuegler und laeuft bei jedem Start) ist `frisch` leer und nichts
+-- aendert sich.
+WITH vorgabe_berater AS (
+  UPDATE system_settings
+     SET value = '"1001"'::jsonb,
+         description = 'Beraternummer der Kanzlei (Kopf-Feld 4). Vorgabewert 1001 als Platzhalter: '
+                       || 'der Steuerberater biegt den Stapel beim Import auf seinen Bestand um '
+                       || '(Stapelverarbeitung, Zusatzfunktionen). Steht in datev.platzhalter und '
+                       || 'wird als UNBESTAETIGT ausgewiesen, bis er bestaetigt ist.',
+         updated_at = now()
+   WHERE key = 'datev.beraternummer'
+     AND (value IS NULL OR value::text IN ('""', 'null'))
+  RETURNING key
+), vorgabe_mandant AS (
+  UPDATE system_settings
+     SET value = '"99999"'::jsonb,
+         description = 'Mandantennummer dieses Ladens im Bestand der Kanzlei (Kopf-Feld 5). '
+                       || 'Vorgabewert 99999 als Platzhalter, siehe datev.beraternummer.',
+         updated_at = now()
+   WHERE key = 'datev.mandantennummer'
+     AND (value IS NULL OR value::text IN ('""', 'null'))
+  RETURNING key
+), frisch AS (
+  SELECT key FROM vorgabe_berater
+  UNION ALL
+  SELECT key FROM vorgabe_mandant
+)
+UPDATE system_settings AS liste
    SET value = (
          SELECT jsonb_agg(DISTINCT k ORDER BY k)
-           FROM jsonb_array_elements_text(
-                  value || '["datev.beraternummer","datev.mandantennummer"]'::jsonb
-                ) AS t(k)
+           FROM (
+             SELECT k FROM jsonb_array_elements_text(liste.value) AS t(k)
+             UNION ALL
+             SELECT key FROM frisch
+           ) AS alle(k)
        ),
        updated_at = now()
- WHERE key = 'datev.platzhalter'
-   AND jsonb_typeof(value) = 'array';
+ WHERE liste.key = 'datev.platzhalter'
+   AND jsonb_typeof(liste.value) = 'array'
+   AND EXISTS (SELECT 1 FROM frisch);

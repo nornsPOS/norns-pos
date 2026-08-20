@@ -67,10 +67,17 @@ const UNTEN = M + HOEHE / 2; // 80
  *
  * Am 20.08.2026 am laufenden Bild gemessen, im Hausschnitt Fraunces 500:
  *
- *     Versalhöhe                     140
- *     Tintenbreite des N             138      → 0,986 der Versalhöhe
- *     Stämme auf halber Höhe          11      → 0,079
- *     Schräge auf halber Höhe         34      → 0,243
+ *     Tintenbreite des N          → 0,993 der Versalhöhe
+ *     Stämme auf halber Höhe      → 0,086
+ *     Schräge auf halber Höhe     → 0,243
+ *
+ * ⚠️ NACHGEMESSEN am selben Abend, und die erste Messung war zu ungenau.
+ * Sie stammte aus EINER Probe bei kleiner Schriftgrösse (0,986 / 0,079);
+ * bei dieser Grösse verfälscht die Rasterung um einen ganzen Bildpunkt.
+ * Über drei Grössen (70, 36, 26) gemessen stehen die Verhältnisse stabil
+ * bei 0,993 und 0,086 — die Stämme waren also neun Hundertstel ZU LEICHT,
+ * und genau das sah man: auf dem Startbild stand das N blasser da als
+ * seine vier Nachbarn.
  *
  * Das ist die klassische römische Antiqua: DÜNNE Stämme und eine DICKE
  * Schräge — die Schräge trägt das Gewicht des Buchstabens, mehr als das
@@ -124,8 +131,8 @@ export const SCHNITT_SYMBOL: Schnitt = (() => {
  * nicht wie ein eingesetztes Bild.
  */
 export const SCHNITT_WORT: Schnitt = {
-  breite: 0.986,
-  stamm: 0.079,
+  breite: 0.993,
+  stamm: 0.086,
   schraege: 0.243,
 };
 

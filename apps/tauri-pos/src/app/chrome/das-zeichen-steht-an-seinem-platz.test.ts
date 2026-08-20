@@ -199,8 +199,9 @@ describe('Das Zeichen von Norns', () => {
      * „Das Zeichen soll mit dem Wort verschmelzen wie bei einer grossen
      * Firma, zwei Fliegen mit einer Klappe."
      *
-     * Am laufenden Bild gemessen (Fraunces 500): Tintenbreite 0,986 der
-     * Versalhöhe, Stämme 0,079, Schräge 0,243. Das ist die klassische
+     * Am laufenden Bild gemessen (Fraunces 500), über DREI Grössen (70, 36,
+     * 26 Punkt), damit die Rasterung nicht mitmisst: Tintenbreite 0,993 der
+     * Versalhöhe, Stämme 0,086, Schräge 0,243. Das ist die klassische
      * römische Antiqua — DÜNNE Stämme, DICKE Schräge. Das Zeichen trug die
      * Verhältnisse genau andersherum und stand deshalb als schmales,
      * schweres N vor vier breiten, leichten Buchstaben.
@@ -209,8 +210,8 @@ describe('Das Zeichen von Norns', () => {
      * eine MESSUNG auf. Dann bitte neu messen und die neue Zahl hier
      * eintragen.
      */
-    expect(BAUTEIL).toContain('breite: 0.986');
-    expect(BAUTEIL).toContain('stamm: 0.079');
+    expect(BAUTEIL).toContain('breite: 0.993');
+    expect(BAUTEIL).toContain('stamm: 0.086');
     expect(BAUTEIL).toContain('schraege: 0.243');
 
     const marke = lies('../../../../../packages/ui-kit/src/components/NornsWortmarke.tsx');
