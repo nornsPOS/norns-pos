@@ -130,6 +130,26 @@ const SONDERREGELUNGEN: ReadonlySet<Steuerart> = new Set([
   'REVERSE_CHARGE_13B',
 ]);
 
+/**
+ * Der Steuerstatus des BETRIEBS, nicht der Zeile.
+ *
+ * ⚠️ 20.08.2026, ein echter Fund: bis heute kannte diese Funktion nur die
+ * Steuerart je ZEILE. Der Kleinunternehmer nach § 19 UStG ist aber ein
+ * Zustand des ganzen Betriebs — und sein Beleg MUSS den Hinweis tragen.
+ * Der Server prüfte den Zustand bereits (`lib/steuermodus.ts`) und warf
+ * seinen fertigen Hinweissatz weg; auf dem Bon stand er nie. Damit war
+ * jeder Beleg eines Kleinunternehmers unvollständig.
+ */
+export type BetriebsSteuermodus = 'REGELBESTEUERUNG' | 'KLEINUNTERNEHMER_19';
+
+/**
+ * Der Wortlaut des Hinweises. WÖRTLICH derselbe wie auf dem Server
+ * (`apps/api-cloud/src/lib/steuermodus.ts`, `HINWEIS_19`) — ein Wächter hält
+ * beide zusammen, denn zwei Fassungen desselben Rechtssatzes sind eine zu
+ * viel.
+ */
+export const HINWEIS_KLEINUNTERNEHMER = 'Steuerfrei als Kleinunternehmer gemäß § 19 UStG.';
+
 export function steuerausweisFuerBeleg(
   zeilen: readonly BelegZeile[],
   /**
@@ -146,6 +166,12 @@ export function steuerausweisFuerBeleg(
    * Arbeit beendet hat.
    */
   reverseChargeNachweis?: string | null,
+  /**
+   * Der Steuerstatus des Betriebs. Fehlt er, verhält sich die Funktion wie
+   * bisher (Regelbesteuerung) — eine Kasse, die den Status noch nicht kennt,
+   * darf ohnehin nicht verkaufen: der Server weist sie ab.
+   */
+  betriebsmodus?: BetriebsSteuermodus | null,
 ): Steuerausweis {
   let ausweisbar = 0n;
   let nichtAusweisbar = 0n;
@@ -182,10 +208,24 @@ export function steuerausweisFuerBeleg(
     }
   }
 
+  /*
+   * ── DER KLEINUNTERNEHMER (20.08.2026) ──────────────────────────────────
+   *
+   * Sein Hinweis steht ZULETZT und gilt für den ganzen Beleg, nicht für eine
+   * Zeile. Und er verträgt keinen Steuerausweis daneben: wer als
+   * Kleinunternehmer Steuer ausweist, SCHULDET sie nach § 14c Abs. 2 UStG,
+   * auch wenn er sie nie eingenommen hat. Deshalb wird der ausweisbare
+   * Betrag hier hart auf null gesetzt statt nur „nicht gedruckt" — der
+   * Server weist einen Beleg mit Steuerbetrag unter § 19 ohnehin ab, und
+   * zwei Wege zur selben Wahrheit sind besser als einer.
+   */
+  const kleinunternehmer = betriebsmodus === 'KLEINUNTERNEHMER_19';
+  if (kleinunternehmer) hinweise.push(HINWEIS_KLEINUNTERNEHMER);
+
   return {
     // Keine Steuerzeile, wenn nichts ausweisbar ist. Bei einem reinen
     // § 25a-Beleg bleibt der Platz leer, und der Hinweis darunter sagt warum.
-    ausweisbareVatCents: ausweisbar > 0n ? ausweisbar : null,
+    ausweisbareVatCents: kleinunternehmer || ausweisbar <= 0n ? null : ausweisbar,
     hinweise,
     nichtAusweisbareVatCents: nichtAusweisbar,
   };

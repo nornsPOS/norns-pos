@@ -73,6 +73,7 @@ import { ZvtSpinner } from '../../components/hardware/ZvtSpinner.js';
 import { currentShiftQueryKey, useCurrentShift } from '../../hooks/useCurrentShift.js';
 import { dashboardQueryKey } from '../../hooks/useDashboardSummary.js';
 import { useReceiptFooterLines } from '../../hooks/useReceiptFooter.js';
+import { useSteuermodus } from '../../hooks/useSteuermodus.js';
 import {
   RECEIPT_VAT_LOCK_REASON,
   isReceiptShopValid,
@@ -495,6 +496,10 @@ export function BezahlenDialog({
    * nachgespielter Beleg die richtige Schicht.
    */
   const { data: aktuelleSchicht } = useCurrentShift();
+  // 20.08.2026: der Steuerstatus des BETRIEBS. Unter § 19 UStG traegt der
+  // Beleg den Pflichthinweis und KEINEN Steuerausweis (§ 14c Abs. 2 UStG:
+  // ausgewiesene Steuer wird geschuldet, auch wenn sie nie kassiert wurde).
+  const betriebsmodus = useSteuermodus();
 
   /**
    * Die Leser-Abfrage mit ruhigem Zwischenspeicher (gleicher Schlüssel wie
@@ -954,6 +959,7 @@ export function BezahlenDialog({
               appliedVatRate: m.appliedVatRate,
             })),
             viesBelegvermerk,
+            betriebsmodus,
           );
           return {
             vatDisclosableEur:
@@ -1411,6 +1417,7 @@ export function BezahlenDialog({
               appliedVatRate: m.appliedVatRate,
             })),
             viesBelegvermerk,
+            betriebsmodus,
           );
           return {
             vatDisclosableEur:

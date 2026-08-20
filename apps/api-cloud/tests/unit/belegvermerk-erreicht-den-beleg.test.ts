@@ -126,8 +126,22 @@ describe('die Kasse reicht ihn an den Beleg durch', () => {
     const q = await liesKasse();
     const aufrufe = q.split('steuerausweisFuerBeleg(').length - 1;
     expect(aufrufe, 'die Zahl der Aufrufstellen hat sich geändert').toBe(2);
-    // Das zweite Argument steht unmittelbar vor der schliessenden Klammer.
-    const mitVermerk = q.split('viesBelegvermerk,\n          );').length - 1;
+    /*
+     * ⚠️ 20.08.2026: dieser Satz zählte die WÖRTLICHE Zeichenfolge
+     * „viesBelegvermerk,\n          );" — also den Vermerk als LETZTES
+     * Argument. Als der Steuerstatus des Betriebs dahinterkam (§ 19 UStG,
+     * `betriebsmodus`), zählte er null und wurde rot, obwohl der Vermerk
+     * unverändert durchgereicht wird.
+     *
+     * Ein Wächter, der die Schreibweise misst statt die Sache, wird bei
+     * jeder Erweiterung rot und erzieht dazu, ihn abzuschalten. Er zählt
+     * jetzt die Aufrufstellen, in deren Argumentliste der Vermerk STEHT —
+     * gleich an welcher Stelle.
+     */
+    const mitVermerk = q
+      .split('steuerausweisFuerBeleg(')
+      .slice(1)
+      .filter((teil) => teil.slice(0, teil.indexOf(');')).includes('viesBelegvermerk')).length;
     expect(mitVermerk, 'nicht jede Aufrufstelle reicht den Vermerk durch').toBe(2);
   });
 

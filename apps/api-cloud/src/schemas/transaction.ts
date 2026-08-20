@@ -142,6 +142,23 @@ export const FinalizeBody = Type.Object({
   totalEur: SignedDecimalString,
   taxTreatmentCode: TaxTreatmentCode,
 
+  /**
+   * Die Rechtshinweise, die auf dem GEDRUCKTEN Beleg stehen.
+   *
+   * ── 20.08.2026, EIN STILLER FUND ───────────────────────────────────────
+   *
+   * Die Kasse schickte dieses Feld (und `vatDisclosableEur`) seit jeher mit,
+   * und das Schema kannte es NICHT — TypeBox liess es stillschweigend fallen.
+   * Der Motor konnte also nie nachsehen, was der Bon wirklich sagt. Solange
+   * es nur um Bequemlichkeit ging, war das folgenlos; beim Kleinunternehmer
+   * ist es das nicht: sein Beleg MUSS den Hinweis nach § 19 UStG tragen, und
+   * ohne dieses Feld kann der Motor das nicht prüfen.
+   *
+   * Optional, damit eine ältere Kasse weiterverkauft. Die Prüfung im
+   * Verkaufsweg greift nur dort, wo der Betrieb wirklich § 19 führt.
+   */
+  specialSchemeNotices: Type.Optional(Type.Array(Type.String({ maxLength: 200 }), { maxItems: 12 })),
+
   items: Type.Array(FinalizeLineItem, { minItems: 1, maxItems: 200 }),
   payments: Type.Array(FinalizePayment, { minItems: 1, maxItems: 16 }),
 

@@ -495,6 +495,32 @@ const transactionsFinalize: FastifyPluginAsync<TransactionsFinalizeOpts> = async
           });
           if (!u.erlaubt) throw new VatCheckRequiredError(u.grund ?? 'Steuermodus unklar.');
         }
+
+        /*
+         * ── DER HINWEIS MUSS AUF DEM BELEG STEHEN (20.08.2026) ───────────
+         *
+         * ⚠️ EIN ECHTER FUND, und er lag seit jeher hier: `pruefeSteuermodus`
+         * stellt für den Kleinunternehmer den fertigen Pflichtsatz her
+         * (`belegzusatz`), und diese Route hat ihn WEGGEWORFEN. Die Kasse
+         * fragte den Status nie ab, also stand er auf keinem Bon. Ein Beleg
+         * eines Kleinunternehmers ohne den Hinweis nach § 19 UStG ist
+         * unvollständig — und die Kasse hat ihn in jeder Fassung so gedruckt.
+         *
+         * Ab jetzt gilt dieselbe Härte wie bei § 13b (Block 1b darunter): der
+         * Beleg TRÄGT den Satz, oder es gibt keinen Beleg. Die Kasse setzt
+         * ihn (`beleg-steuerausweis.ts`), hier wird nachgesehen — zwei Wege
+         * zu derselben Wahrheit, und der Server hat das letzte Wort.
+         */
+        if (stand.modus === 'KLEINUNTERNEHMER_19') {
+          const notizen = body.specialSchemeNotices ?? [];
+          if (!notizen.some((n) => n.includes('§ 19 UStG'))) {
+            throw new VatCheckRequiredError(
+              'Dieser Betrieb ist Kleinunternehmer nach § 19 UStG. Der Beleg muss den ' +
+                'Hinweis darauf tragen; er fehlt. Bitte die Kasse aktualisieren, damit ' +
+                'sie den Hinweis mitdruckt.',
+            );
+          }
+        }
       }
 
       // ── 1b. § 13b: die Steuerfreiheit muss BELEGT sein ──────────────
