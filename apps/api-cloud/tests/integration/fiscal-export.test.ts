@@ -1916,6 +1916,105 @@ describe('GET /api/closings/:id/export/{datev,dsfinvk} — fiscal-export E2E', (
       });
     }
 
+    /*
+     * ── DIE ERSTATTUNG GEHT DEN WEG ZURUECK, DEN DAS GELD KAM ──────────────
+     *
+     * ⚠️ DER BEFUND VOM 20.08.2026: die Route buchte JEDE Rueckgabe als
+     * Barauszahlung. Bei einem Kartenkunden, der sein Geld auf die Karte
+     * zurueckbekommt, verlaesst KEIN Bargeld die Lade — die Kasse zog es
+     * trotzdem vom erwarteten Bestand ab. Der Kassensturz ging um genau
+     * diesen Betrag daneben, und die TSE bezeugte eine Barbewegung, die es
+     * nie gab.
+     */
+    describe('die Erstattung folgt der Zahlart des Originals', () => {
+      /** Denselben Beleg noch einmal, aber mit KARTE bezahlt. */
+      async function kartenBeleg(): Promise<string> {
+        const pid = await seedProduct();
+        await migratorSql`UPDATE products SET status = 'SOLD'::product_status, sold_at = now()
+          WHERE id = ${pid}::uuid`;
+        const beleg = await seedTransaction({
+          direction: 'VERKAUF',
+          treatment: 'STANDARD_19',
+          subtotal: '100.00',
+          vat: '19.00',
+          total: '119.00',
+          customerId: null,
+          finalizedAt: new Date().toISOString(),
+          items: [
+            { productId: pid, treatment: 'STANDARD_19', vatRate: '0.1900',
+              lineSubtotal: '100.00', lineVat: '19.00', lineTotal: '119.00', displayOrder: 0 },
+          ],
+          payment: { method: 'ZVT_CARD', amount: '119.00' },
+          tse: false,
+        });
+        return `${beleg.id}|${pid}`;
+      }
+
+      it('⛔ ein KARTEN-Beleg wird auf die Karte erstattet, nicht aus der Lade', async () => {
+        const [belegId, pid] = (await kartenBeleg()).split('|');
+        const res = await rueckgabe({
+          originalTransactionId: belegId,
+          productIds: [pid],
+          reason: 'Kunde hat es sich anders ueberlegt',
+        });
+        expect(res.statusCode, res.body).toBe(200);
+        const body = res.json() as { id: string; erstattungsart: string; zahlartTse: string };
+        // Ohne Angabe gilt die Zahlart des Originals.
+        expect(body.erstattungsart).toBe('KARTE');
+        // Und die SIGNATUR bezeugt keine Barbewegung.
+        expect(body.zahlartTse).toBe('NON_CASH');
+
+        // Die gebuchte Zahlung traegt die Art des Originals, nicht pauschal Bar.
+        const [zahlung] = await migratorSql<{ method: string; amount: string }[]>`
+          SELECT payment_method AS method, amount_eur AS amount
+            FROM transaction_payments WHERE transaction_id = ${body.id}::uuid`;
+        expect(zahlung!.method).toBe('ZVT_CARD');
+        expect(Number(zahlung!.amount)).toBeLessThan(0);
+      });
+
+      it('ein BAR-Beleg bleibt bar — der alte Weg ist unveraendert', async () => {
+        const res = await rueckgabe({
+          originalTransactionId: originalId,
+          productIds: [ringId],
+          reason: 'Ring passt nicht',
+        });
+        expect(res.statusCode, res.body).toBe(200);
+        const body = res.json() as { id: string; erstattungsart: string; zahlartTse: string };
+        expect(body.erstattungsart).toBe('BAR');
+        expect(body.zahlartTse).toBe('CASH');
+        const [zahlung] = await migratorSql<{ method: string }[]>`
+          SELECT payment_method AS method FROM transaction_payments
+           WHERE transaction_id = ${body.id}::uuid`;
+        expect(zahlung!.method).toBe('CASH');
+      });
+
+      it('⛔ eine Kartenerstattung auf einen BAR-Beleg wird abgewiesen', async () => {
+        // Es gibt dort keine Karte, auf die man gutschreiben koennte.
+        const res = await rueckgabe({
+          originalTransactionId: originalId,
+          productIds: [ringId],
+          reason: 'Versuch, auf eine nicht vorhandene Karte zu erstatten',
+          erstattungsart: 'KARTE',
+        });
+        expect(res.statusCode, res.body).toBe(422);
+        expect(res.body).toContain('bar bezahlt');
+      });
+
+      it('der Tresen darf einen Kartenbeleg ausdruecklich BAR erstatten (Kulanz)', async () => {
+        const [belegId, pid] = (await kartenBeleg()).split('|');
+        const res = await rueckgabe({
+          originalTransactionId: belegId,
+          productIds: [pid],
+          reason: 'Kunde wuenscht ausdruecklich Bargeld',
+          erstattungsart: 'BAR',
+        });
+        expect(res.statusCode, res.body).toBe(200);
+        const body = res.json() as { erstattungsart: string; zahlartTse: string };
+        expect(body.erstattungsart).toBe('BAR');
+        expect(body.zahlartTse).toBe('CASH');
+      });
+    });
+
     it('die Positionen nennen den Rueckgabe-Stand und die § 25a-Sperre', async () => {
       const res = await get(`/api/transactions/${originalId}/positionen`);
       expect(res.statusCode).toBe(200);

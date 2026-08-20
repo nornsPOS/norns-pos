@@ -121,7 +121,27 @@ function codeVerlangendeEndpunkte(): Fund[] {
       const zeile = zeilen[i] ?? '';
       const m = /app\.(get|post|patch|put|delete)/.exec(zeile);
       if (m) {
-        const pfadTreffer = /'([^']+)'/.exec(zeile) ?? /'([^']+)'/.exec(zeilen[i + 1] ?? '');
+        /*
+         * ⚠️ 20.08.2026: hier wurde nur die EIGENE und die naechste Zeile
+         * gelesen. Als die Rueckgabe-Route ihren Rumpftyp auf mehrere Zeilen
+         * verteilte (ein Feld kam dazu), stand der Pfad ploetzlich zehn Zeilen
+         * weiter — der Waechter sah `POST ?` und meldete die Route gleich
+         * doppelt: einmal als „verlangt den Code, obwohl widerruflich",
+         * einmal als „Bestaetigung fehlt". Beides falsch; der Code stand
+         * unveraendert an seiner Stelle.
+         *
+         * Ein Waechter, der an der Schreibweise haengt, meldet Unschuldige.
+         * Gesucht wird jetzt bis zur oeffnenden Klammer des Aufrufs, hoechstens
+         * zwoelf Zeilen weit — so weit reicht kein Rumpftyp und kein Schema.
+         */
+        let pfadTreffer: RegExpExecArray | null = null;
+        for (let j = i; j < Math.min(i + 12, zeilen.length); j += 1) {
+          // NUR ein Weg zaehlt, also eine Zeichenkette, die mit / beginnt.
+          // Ohne diese Schranke fing der Blick das erste beste Wort in
+          // Anfuehrungszeichen aus dem Rumpftyp ein (gemessen: 'BAR').
+          pfadTreffer = /'(\/[^']*)'/.exec(zeilen[j] ?? '');
+          if (pfadTreffer) break;
+        }
         letztes = { verb: (m[1] ?? '').toUpperCase(), pfad: pfadTreffer?.[1] ?? '?' };
       }
       if (/^\s*require(Owner)?StepUp\(req\)/.test(zeile) && letztes) {

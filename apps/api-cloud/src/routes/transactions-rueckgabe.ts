@@ -120,6 +120,24 @@ const RueckgabeBody = Type.Object({
   erfasstAm: Type.Optional(Type.String({ format: 'date-time' })),
   /** Ausweisverifizierter Kunde — Pflicht ab 2.000 EUR Barauszahlung (GwG). */
   customerId: Type.Optional(Type.Union([Type.String({ format: 'uuid' }), Type.Null()])),
+  /**
+   * Wie erstattet wird.
+   *
+   * ── DER BEFUND VOM 20.08.2026 ────────────────────────────────────────
+   *
+   * Die erste Fassung buchte JEDE Rückgabe als Barauszahlung, mit der
+   * Begründung „bar ist die ehrliche Wahrheit der Lade". Das stimmt nur,
+   * wenn wirklich bar ausgezahlt wird. Zahlte der Kunde mit KARTE und
+   * bekommt sein Geld auf die Karte zurück, dann verlässt KEIN Bargeld die
+   * Lade — die Kasse zog es trotzdem vom erwarteten Bestand ab, und der
+   * Kassensturz ging um genau diesen Betrag daneben.
+   *
+   * Fehlt die Angabe, gilt die Zahlart des URSPRUNGSBELEGS: das ist der
+   * Normalfall (zurück, wie gekommen) und niemals eine Erfindung.
+   */
+  erstattungsart: Type.Optional(
+    Type.Union([Type.Literal('BAR'), Type.Literal('KARTE')]),
+  ),
 });
 
 const RueckgabeResponse = Type.Object({
@@ -132,6 +150,8 @@ const RueckgabeResponse = Type.Object({
     Type.Object({ taxTreatmentCode: Type.String(), bruttoCents: Type.Number() }),
   ),
   zahlartTse: Type.Union([Type.Literal('CASH'), Type.Literal('NON_CASH')]),
+  /** Wie wirklich erstattet wurde — die Kasse sagt es dem Tresen zurück. */
+  erstattungsart: Type.Union([Type.Literal('BAR'), Type.Literal('KARTE')]),
 });
 
 const ErrorResponse = Type.Object({
@@ -222,7 +242,17 @@ const transactionsRueckgabeRoute: FastifyPluginAsync = async (app) => {
   );
 
   // ── Die Rücknahme selbst ──────────────────────────────────────────────────
-  app.post<{ Body: { originalTransactionId: string; productIds: string[]; reason: string; erfasstAm?: string; customerId?: string | null } }>(
+  app.post<{
+    Body: {
+      originalTransactionId: string;
+      productIds: string[];
+      reason: string;
+      erfasstAm?: string;
+      customerId?: string | null;
+      /** 20.08.2026: zurueck, wie das Geld gekommen ist. Siehe RueckgabeBody. */
+      erstattungsart?: 'BAR' | 'KARTE';
+    };
+  }>(
     '/api/transactions/rueckgabe',
     {
       schema: {
@@ -230,7 +260,8 @@ const transactionsRueckgabeRoute: FastifyPluginAsync = async (app) => {
         summary: 'Warenrücknahme: ausgewählte Positionen eines Verkaufs zurücknehmen (Tz. 4.2.5).',
         description:
           'Neuer Beleg mit negativen Beträgen, BON_STORNO = 0, Referenz auf das Original. ' +
-          'Barauszahlung; ab 2.000 EUR nur mit ausweisverifiziertem Kunden (GwG). ' +
+          'Erstattung zurueck auf dem Weg der Urspruengszahlung (bar oder Karte); ' +
+          'bar ab 2.000 EUR nur mit ausweisverifiziertem Kunden (GwG). ' +
           '§ 25a-Positionen sind gesperrt — sie gehen über den Ankauf.',
         body: RueckgabeBody,
         response: {
@@ -247,6 +278,7 @@ const transactionsRueckgabeRoute: FastifyPluginAsync = async (app) => {
       requireStepUp(req);
 
       const { originalTransactionId, productIds, reason, customerId } = req.body;
+      const gewuenschteErstattung = req.body.erstattungsart;
       const actorId = req.actor.id;
       const deviceId = req.deviceId ?? null;
 
@@ -373,8 +405,41 @@ const transactionsRueckgabeRoute: FastifyPluginAsync = async (app) => {
           return BigInt(euros!) * 100n + BigInt(cents.padEnd(2, '0').slice(0, 2));
         })();
 
-        // 4. GwG: Barauszahlung ab 2.000 EUR nur mit ausweisverifiziertem Kunden.
-        if (totalCentAbs >= GWG_BAR_SCHWELLE_CENT) {
+        /*
+         * 4. WIE wird erstattet? (20.08.2026)
+         *
+         * ⚠️ DER BEFUND: die erste Fassung buchte JEDE Rueckgabe als
+         * Barauszahlung. Bei einem Kunden, der mit Karte gezahlt hat und
+         * sein Geld auf die Karte zurueckbekommt, verlaesst KEIN Bargeld
+         * die Lade — die Kasse zog es trotzdem vom erwarteten Bestand ab.
+         * Der Kassensturz ging damit um genau diesen Betrag daneben, und
+         * das Kassenbuch behauptete eine Bewegung, die es nie gab.
+         *
+         * Die Vorgabe ist der Weg zurueck, den das Geld gekommen ist: die
+         * Zahlart des URSPRUNGSBELEGS. Der Tresen darf sie ueberstimmen
+         * (eine Kulanz-Barauszahlung gibt es), aber dann ausdruecklich.
+         */
+        const zahlungenOriginal = await tx.execute<{ method: string }>(drizzleSql`
+          SELECT payment_method AS method FROM transaction_payments
+           WHERE transaction_id = ${original.id}::uuid`);
+        const originalWarBar = zahlungenOriginal.every((z) => z.method === 'CASH');
+        const erstattungsart: 'BAR' | 'KARTE' =
+          gewuenschteErstattung ?? (originalWarBar ? 'BAR' : 'KARTE');
+
+        // Eine Kartenerstattung ohne eine einzige Kartenzahlung im Original
+        // waere eine erfundene Bewegung.
+        if (erstattungsart === 'KARTE' && originalWarBar) {
+          throw new RueckgabeUnzulaessigError(
+            'Dieser Beleg wurde bar bezahlt. Eine Erstattung auf die Karte gibt es dazu ' +
+              'nicht; bitte bar auszahlen.',
+          );
+        }
+
+        // 4b. GwG: Barauszahlung ab 2.000 EUR nur mit ausweisverifiziertem Kunden.
+        // ⚠️ NUR bei BAR: § 10 Abs. 6a Nr. 1 GwG spricht von BARzahlungen.
+        // Eine Gutschrift auf die Karte ist keine, und den Kunden dafuer nach
+        // dem Ausweis zu fragen waere eine erfundene Pflicht.
+        if (erstattungsart === 'BAR' && totalCentAbs >= GWG_BAR_SCHWELLE_CENT) {
           if (!customerId) {
             throw new RueckgabeUnzulaessigError(
               'Barauszahlungen ab 2.000 EUR verlangen einen ausweisverifizierten Kunden ' +
@@ -391,13 +456,14 @@ const transactionsRueckgabeRoute: FastifyPluginAsync = async (app) => {
           }
         }
 
-        // 5. Bar nur mit offener Schicht — das Geld muss im Kassensturz stehen.
+        // 5. BAR nur mit offener Schicht — das Geld muss im Kassensturz stehen.
+        //    Eine Kartenerstattung beruehrt die Lade nicht und braucht sie nicht.
         const geraet = deviceId ?? original.deviceId;
         const schichtZeilen = await tx.execute<{ id: string }>(drizzleSql`
           SELECT id::text AS id FROM shifts
            WHERE device_id = ${geraet}::uuid AND status = 'OPEN' LIMIT 1`);
         const schicht = schichtZeilen[0]?.id ?? null;
-        if (schicht === null) {
+        if (schicht === null && erstattungsart === 'BAR') {
           throw new RueckgabeKonfliktError(
             'Für eine Barauszahlung muss eine Schicht geöffnet sein. Ohne Schicht erscheint ' +
               'dieses Geld in keinem Kassensturz. Bitte zuerst eine Schicht öffnen.',
@@ -449,12 +515,26 @@ const transactionsRueckgabeRoute: FastifyPluginAsync = async (app) => {
           })),
         );
 
-        // Auszahlung bar (V1). Karte-Gutschrift folgt, wenn das Terminal den
-        // Auszahlungsweg kann — bis dahin ist bar die ehrliche Wahrheit der
-        // Lade, und der Kassensturz sieht sie über die Schicht.
+        /*
+         * Die Erstattung, gebucht wie sie WIRKLICH fliesst.
+         *
+         * Bar: das Geld verlaesst die Lade, der Kassensturz sieht es ueber
+         * die Schicht. Karte: die Lade bleibt unberuehrt, und die
+         * Gutschrift laeuft ueber das Terminal (Stripe kennt den Weg
+         * bereits: POST /api/stripe/terminal/payments/:id/refund).
+         *
+         * ⚠️ Die Zahlart der ZEILE ist die des Originals, nicht pauschal
+         * ZVT_CARD: ein SumUp-Beleg wird nicht zu einem girocard-Beleg,
+         * nur weil er zurueckgeht. Gibt es mehrere, gilt die erste
+         * unbare — mehr Genauigkeit waere hier eine Erfindung, und die
+         * Aufteilung einer Teilrueckgabe auf mehrere Zahlarten ist eine
+         * eigene Frage (steuerberater-fragen, offen).
+         */
+        const unbareArt =
+          zahlungenOriginal.find((z) => z.method !== 'CASH')?.method ?? 'ZVT_CARD';
         await tx.insert(transactionPayments).values({
           transactionId: rueckgabe.id,
-          paymentMethod: 'CASH',
+          paymentMethod: (erstattungsart === 'BAR' ? 'CASH' : unbareArt) as 'CASH',
           amountEur: negiere(total.toString()),
         });
 
@@ -515,7 +595,14 @@ const transactionsRueckgabeRoute: FastifyPluginAsync = async (app) => {
           ustAufteilung: [...proBehandlung.entries()]
             .map(([taxTreatmentCode, bruttoCents]) => ({ taxTreatmentCode, bruttoCents }))
             .sort((a, b) => a.taxTreatmentCode.localeCompare(b.taxTreatmentCode)),
-          zahlartTse: 'CASH' as const,
+          /*
+           * ⚠️ Die Zahlart, die in die SIGNATUR geht. Sie stand fest auf
+           * 'CASH' — bei einer Kartenerstattung haette die TSE damit eine
+           * Barbewegung bezeugt, die es nie gab (DSFinV-K trennt Bar und
+           * Unbar, und die Signatur ist das Beweisstueck).
+           */
+          zahlartTse: (erstattungsart === 'BAR' ? 'CASH' : 'NON_CASH') as 'CASH' | 'NON_CASH',
+          erstattungsart,
         };
       });
 
@@ -527,6 +614,7 @@ const transactionsRueckgabeRoute: FastifyPluginAsync = async (app) => {
         nachtragBezugstag: result.nachtragBezugstag,
         ustAufteilung: result.ustAufteilung,
         zahlartTse: result.zahlartTse,
+        erstattungsart: result.erstattungsart,
       });
     },
   );

@@ -9,8 +9,10 @@
 //! TSE anlegen, in Betrieb nehmen, Kasse anmelden, Verkauf signieren —
 //! alles gelingt. Nur die Einrichtungsroute des Motors antwortete
 //!
-//!     geprueft: false
-//!     „Fuer diese Kasse sind keine fiskaly-Zugangsdaten hinterlegt."
+//! ```text
+//! geprueft: false
+//! „Fuer diese Kasse sind keine fiskaly-Zugangsdaten hinterlegt."
+//! ```
 //!
 //! und trug die Kennung UNGEPRUEFT ein. Der Grund: die Schluessel wohnen im
 //! Schluesselbund (`commands/tse.rs`), und der Rumpf reichte dem Motor nur
@@ -20,9 +22,10 @@
 //!
 //! Nach der Bruecke, am selben Motor gemessen:
 //!
-//!     geprueft: true
-//!     „Die TSE ist erreichbar, scharf und dieser Kassenklient ist dort
-//!      registriert."
+//! ```text
+//! geprueft: true
+//! „Die TSE ist erreichbar, scharf und dieser Kassenklient ist dort registriert."
+//! ```
 //!
 //! ── WAS DIESER WAECHTER HAELT ──────────────────────────────────────────
 //!

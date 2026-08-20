@@ -61,6 +61,12 @@ export function RueckgabeDialog({ transactionId, receiptLocator, onClose, onDone
   const [ladefehler, setLadefehler] = useState<string | null>(null);
   const [gewaehlt, setGewaehlt] = useState<Set<string>>(new Set());
   const [grund, setGrund] = useState('');
+  /**
+   * Wie erstattet wird. `null` heisst „wie das Original bezahlt wurde" —
+   * der Server entscheidet das dann selbst, und das ist der Normalfall.
+   * Ein Wert hier ist die ausdrueckliche Abweichung des Tresens.
+   */
+  const [erstattungsart, setErstattungsart] = useState<'BAR' | 'KARTE' | null>(null);
   const [sendet, setSendet] = useState(false);
 
   // EIN AUSWEG (fenster-wache): Escape schliesst, solange nichts sendet —
@@ -95,7 +101,18 @@ export function RueckgabeDialog({ transactionId, receiptLocator, onClose, onDone
         .reduce((s, p) => s + centsVon(p.lineTotalEur), 0),
     [positionen, gewaehlt],
   );
-  const brauchtKunden = summeCents >= GWG_SCHWELLE_CENT;
+  /*
+   * ⚠️ NUR bei BAR (20.08.2026): § 10 Abs. 6a Nr. 1 GwG spricht von
+   * BARzahlungen. Bei einer Gutschrift auf die Karte nach dem Ausweis zu
+   * fragen waere eine erfundene Pflicht — und der Server verlangt sie dort
+   * seit demselben Tag auch nicht mehr.
+   *
+   * `null` heisst „wie das Original bezahlt wurde". Da die Kasse die
+   * Ursprungszahlart hier nicht kennt, bleibt die Warnung in diesem Fall
+   * stehen: lieber einmal zu viel gewarnt als eine Ausweispflicht
+   * verschwiegen, die der Server dann durchsetzt.
+   */
+  const brauchtKunden = summeCents >= GWG_SCHWELLE_CENT && erstattungsart !== 'KARTE';
 
   const waehlbar = (p: Position): boolean => !p.bereitsZurueck && !p.nurUeberAnkauf;
 
@@ -103,7 +120,11 @@ export function RueckgabeDialog({ transactionId, receiptLocator, onClose, onDone
     if (gewaehlt.size === 0 || grund.trim().length < 3 || sendet) return;
     setSendet(true);
     try {
-      const res = await api.request<{ receiptLocator: string; totalEur: string }>(
+      const res = await api.request<{
+        receiptLocator: string;
+        totalEur: string;
+        erstattungsart: 'BAR' | 'KARTE';
+      }>(
         'POST',
         '/api/transactions/rueckgabe',
         {
@@ -111,12 +132,16 @@ export function RueckgabeDialog({ transactionId, receiptLocator, onClose, onDone
           productIds: [...gewaehlt],
           reason: grund.trim(),
           erfasstAm: new Date().toISOString(),
+          ...(erstattungsart ? { erstattungsart } : {}),
         },
       );
       addToast({
         tone: 'success',
         title: 'Rückgabe gebucht',
-        body: `${res.receiptLocator}: ${res.totalEur} EUR bar auszuzahlen. Die Stücke liegen wieder im Bestand.`,
+        body:
+          res.erstattungsart === 'BAR'
+            ? `${res.receiptLocator}: ${res.totalEur} EUR bar auszuzahlen. Die Stücke liegen wieder im Bestand.`
+            : `${res.receiptLocator}: ${res.totalEur} EUR gehen auf die Karte zurück. Die Lade bleibt unberührt, die Stücke liegen wieder im Bestand.`,
       });
       onDone();
     } catch (e: unknown) {
@@ -249,6 +274,80 @@ export function RueckgabeDialog({ transactionId, receiptLocator, onClose, onDone
                 }}
               />
             </label>
+
+            {/* ── WIE ERSTATTET WIRD (20.08.2026) ────────────────────────
+                Die Vorgabe ist der Weg zurueck, den das Geld gekommen ist;
+                der Server kennt ihn aus dem Ursprungsbeleg. Der Tresen darf
+                abweichen, aber dann sichtbar und mit der Folge daneben:
+                bar heisst, die Lade wird leichter und der Kassensturz sieht
+                es; Karte heisst, die Lade bleibt unberuehrt. */}
+            <fieldset
+              style={{
+                border: '1px solid var(--w14-rule)',
+                borderRadius: 8,
+                padding: 'var(--w14-abstand-10) var(--w14-abstand-12)',
+                margin: '0 0 var(--w14-abstand-12)',
+              }}
+            >
+              <legend
+                style={{
+                  fontSize: 'var(--w14-schrift-marke)',
+                  color: 'var(--w14-ink-aged)',
+                  letterSpacing: '0.05em',
+                  textTransform: 'uppercase',
+                  padding: '0 var(--w14-abstand-6)',
+                }}
+              >
+                Erstattung
+              </legend>
+              <div style={{ display: 'flex', gap: 'var(--w14-abstand-8)', flexWrap: 'wrap' }}>
+                {(
+                  [
+                    ['Wie bezahlt wurde', null],
+                    ['Bar aus der Lade', 'BAR'],
+                    ['Zurück auf die Karte', 'KARTE'],
+                  ] as const
+                ).map(([wort, wert]) => {
+                  const aktiv = erstattungsart === wert;
+                  return (
+                    <button
+                      key={wort}
+                      type="button"
+                      onClick={() => setErstattungsart(wert)}
+                      disabled={sendet}
+                      style={{
+                        minHeight: 40,
+                        padding: '0 var(--w14-abstand-12)',
+                        borderRadius: 'var(--w14-radius-button)',
+                        border: `1px solid ${aktiv ? 'var(--w14-ink)' : 'var(--w14-feldlinie)'}`,
+                        background: aktiv ? 'var(--w14-parchment-3)' : 'transparent',
+                        color: 'var(--w14-ink)',
+                        font: 'inherit',
+                        fontSize: 'var(--w14-schrift-feld)',
+                        cursor: sendet ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      {wort}
+                    </button>
+                  );
+                })}
+              </div>
+              <p
+                style={{
+                  margin: 'var(--w14-abstand-8) 0 0',
+                  fontSize: 'var(--w14-schrift-zeile)',
+                  color: 'var(--w14-ink-aged)',
+                  lineHeight: 1.5,
+                  textWrap: 'pretty',
+                }}
+              >
+                {erstattungsart === 'BAR'
+                  ? 'Das Geld verlässt die Lade; der Kassensturz sieht den Abgang.'
+                  : erstattungsart === 'KARTE'
+                    ? 'Die Lade bleibt unberührt; die Gutschrift läuft über das Terminal.'
+                    : 'Zurück auf demselben Weg, auf dem gezahlt wurde. Das ist der Normalfall.'}
+              </p>
+            </fieldset>
 
             {brauchtKunden && (
               <p
