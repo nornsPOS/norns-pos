@@ -422,7 +422,51 @@ export function PinLogin(): JSX.Element {
           >
             Diese Kasse ist neu. Wählen Sie einen Code aus genau sechs
             Ziffern. Er wird nicht vorgegeben, und niemand ausser Ihnen kennt
-            ihn. Notieren Sie ihn an einem sicheren Ort.
+            ihn.
+          </p>
+        )}
+
+        {/*
+          ── 20.08.2026: DER SATZ, DER BISHER FEHLTE ────────────────────────
+
+          Hier stand nur „Notieren Sie ihn an einem sicheren Ort." Das ist ein
+          guter Rat, aber er sagt nicht, was auf dem Spiel steht.
+
+          GEMESSEN: den Kassencode eines Menschen löscht
+          `POST /api/admin/staff/:id/kassencode-loeschen`, und dieses Tor
+          verlangt `requireOwner`. Für einen Mitarbeiter ist das genau
+          richtig — der Inhaber löscht, der Mitarbeiter setzt neu, und
+          niemand kennt je den Code eines anderen (§ 146a AO,
+          Bedienerzuordnung).
+
+          Für den INHABER SELBST gibt es dieses Tor nicht: er müsste sich
+          anmelden, um sich zurückzusetzen. Vergisst er seinen Code, kommt
+          niemand mehr in die Kasse — auch kein zweiter Mitarbeiter mit
+          Verwalterrechten. Der Weg zurück führt dann über die Datenbank,
+          also über einen Techniker.
+
+          Ein eigener Notfallschlüssel wäre die Lösung. Er ist aber ein
+          ZWEITES Geheimnis, das die Kasse öffnet; wo er landet (Zettel an
+          der Kasse), schwächt er die Bedienerzuordnung. Das ist eine
+          Entscheidung des Hauses, keine des Quelltextes — sie liegt Basel
+          vor. Bis dahin sagt die Kasse WENIGSTENS die Wahrheit, statt den
+          Menschen in ein Risiko laufen zu lassen, das er nicht kennt.
+        */}
+        {einrichtung && (
+          <p
+            style={{
+              margin: 'var(--w14-abstand-10) 0 0',
+              maxWidth: '44ch',
+              textAlign: 'center',
+              lineHeight: 1.6,
+              fontSize: 'var(--w14-schrift-zeile)',
+              color: 'var(--w14-wax-red)',
+              textWrap: 'pretty',
+            }}
+          >
+            Notieren Sie ihn an einem sicheren Ort. Diesen Code kann Ihnen
+            niemand zurücksetzen, auch wir nicht: ohne ihn kommt niemand mehr
+            in diese Kasse.
           </p>
         )}
 
