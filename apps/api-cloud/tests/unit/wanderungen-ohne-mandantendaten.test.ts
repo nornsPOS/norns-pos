@@ -380,9 +380,42 @@ function setztNurLeeres(text: string): boolean {
 /** Nach `DEFAULT` steht ein echter Wert (Zeichenkette oder Zahl), kein `now()`. */
 const DEFAULT_MIT_WERT = /^\s*DEFAULT\s+(?:'[^']*'|-?\d)/i;
 
+/**
+ * Welche SCHREIBVERBEN eine Anweisung ausführt.
+ *
+ * ── ⛔ DAS LOCH, DAS DIE NACHPRÜFUNG GEFUNDEN HAT (20.08.2026) ─────────────
+ *
+ * Hier stand: das erste Wort der Anweisung IST das Verb. Das stimmt für
+ * `UPDATE …`, `INSERT …`, `CREATE …` — und es stimmt NICHT für einen
+ * datenverändernden WITH-Satz:
+ *
+ *     WITH a AS (UPDATE … RETURNING key) UPDATE … ;
+ *
+ * Dessen erstes Wort ist `WITH`. Das traf KEINEN der Zweige unten, und die
+ * ganze Anweisung wurde nie angesehen. Gemessen: eine echte Kanzleinummer
+ * (4711234) in genau so einem Satz lief GRÜN durch — dieser Wächter hätte
+ * sie durchgelassen.
+ *
+ * Aufgefallen ist es, weil Wanderung 0150 am selben Tag zu genau so einem
+ * Satz umgebaut wurde. Das Loch war aber allgemein: JEDE künftige Wanderung
+ * hätte Mandantendaten daran vorbeischmuggeln können, indem sie ihr UPDATE
+ * in einen WITH-Satz wickelt.
+ *
+ * Ein WITH-Satz gilt deshalb als ALLE Schreibverben, die in ihm vorkommen.
+ */
+function verbenVon(text: string): string[] {
+  const erstes = (/^[a-zA-Z]+/.exec(text)?.[0] ?? '').toUpperCase();
+  if (erstes !== 'WITH') return [erstes];
+  const gefunden = new Set<string>();
+  for (const m of text.matchAll(/\b(INSERT|UPDATE|DELETE|COPY)\b/gi)) {
+    gefunden.add(m[1]!.toUpperCase());
+  }
+  return gefunden.size > 0 ? [...gefunden] : ['WITH'];
+}
+
 export function pruefeAnweisung(datei: string, anweisung: string): Fund[] {
   const text = anweisung.trim();
-  const verb = (/^[a-zA-Z]+/.exec(text)?.[0] ?? '').toUpperCase();
+  const verben = verbenVon(text);
   const funde: Fund[] = [];
 
   const ausschnitt = (stelle: number): string =>
@@ -398,12 +431,12 @@ export function pruefeAnweisung(datei: string, anweisung: string): Fund[] {
     const wortmuster = muster(m).source;
 
     // ── INSERT und COPY schreiben immer ──────────────────────────────────
-    if (verb === 'INSERT' || verb === 'COPY') {
-      if (verb === 'INSERT' && nurLeereStelle(text, wortmuster)) continue;
+    if (verben.includes('INSERT') || verben.includes('COPY')) {
+      if (verben.includes('INSERT') && nurLeereStelle(text, wortmuster)) continue;
       funde.push({
         datei,
         merkmal: m.name,
-        grund: `${verb} schreibt einen mandantenspezifischen Wert`,
+        grund: `${verben.join('/')} schreibt einen mandantenspezifischen Wert`,
         ausschnitt: ausschnitt(stelle),
         anweisung: text,
       });
@@ -413,7 +446,7 @@ export function pruefeAnweisung(datei: string, anweisung: string): Fund[] {
     // ── UPDATE nur, wenn es genau so einen Schlüssel oder eine solche
     //    Spalte SETZT. Ein UPDATE, das den Schlüssel nur aus einer Liste
     //    ENTFERNT (Wanderung 0117), trifft das nicht.
-    if (verb === 'UPDATE') {
+    if (verben.includes('UPDATE')) {
       const setztSchluessel = new RegExp(`\\bkey\\s*=\\s*'[^']*${wortmuster}[^']*'`, 'i').test(
         text,
       );
@@ -433,7 +466,7 @@ export function pruefeAnweisung(datei: string, anweisung: string): Fund[] {
     }
 
     // ── DDL: eine DEFAULT-Klausel an einer solchen Spalte ────────────────
-    if (verb === 'CREATE' || verb === 'ALTER') {
+    if (verben.includes('CREATE') || verben.includes('ALTER')) {
       const alleDefaults = /\bDEFAULT\b/gi;
       let d: RegExpExecArray | null;
       while ((d = alleDefaults.exec(text)) !== null) {
