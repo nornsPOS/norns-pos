@@ -152,14 +152,17 @@ describe('⛔ Was der Belegriegel FÄNGT', () => {
     // gegen das Entgelt wäre hier immer falsch — auf Romans Produktion
     // gemessen bei 63 von 92 Zeilen.
     expect(
-      pruefeSteuerJeBeleg([
-        z({
-          appliedTaxTreatmentCode: 'MARGIN_25A',
-          appliedVatRate: null,
-          lineSubtotalEur: '500.00',
-          lineVatEur: '15.97',
-        }, TAG),
-      ]),
+      pruefeSteuerJeBeleg(
+        [
+          z({
+            appliedTaxTreatmentCode: 'MARGIN_25A',
+            appliedVatRate: null,
+            lineSubtotalEur: '500.00',
+            lineVatEur: '15.97',
+          }),
+        ],
+        TAG,
+      ),
     ).toBeNull();
   });
 

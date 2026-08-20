@@ -108,9 +108,7 @@ describe('⛔ Die Bauordnung wird abgeleitet', () => {
      * dass seine Ordnung stimmt. `audit` importiert `db` — also muss `db`
      * davor stehen. Genau das hatte pnpm falsch.
      */
-    const { reihenfolge } = (await import('../../../../scripts/baue-pakete.mjs')) as {
-      reihenfolge: (alle: Map<string, { abhaengig: string[] }>, apps: string[]) => string[];
-    };
+    const { reihenfolge } = await import('../../../../scripts/baue-pakete.mjs');
     const werk = new Map<string, { abhaengig: string[] }>();
     for (const bereich of ['packages', 'apps']) {
       const ordner = join(HIER, '../../../..', bereich);

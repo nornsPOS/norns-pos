@@ -52,6 +52,20 @@ import { fileURLToPath } from 'node:url';
 
 const WURZEL = join(dirname(fileURLToPath(import.meta.url)), '..');
 
+/**
+ * Wie das Werkzeug auf DIESEM Betriebssystem heisst.
+ *
+ * ⚠️ Unter Windows ist `pnpm` eine `.cmd`-Datei, und `execFileSync` sucht ohne
+ * Hülle nur nach der EXAKTEN Datei. Der Windows-Auftrag brach deshalb mit
+ * „spawnSync pnpm ENOENT", während Linux und macOS durchliefen — der
+ * klassische Fall, den man auf dem eigenen Rechner nie sieht.
+ *
+ * Der naheliegende Griff wäre `shell: true` gewesen. Node warnt davor zu
+ * Recht: mit einer Hülle werden die Argumente nur aneinandergehängt, nicht
+ * maskiert. Den richtigen NAMEN zu wählen ist einfacher und sicherer.
+ */
+const PNPM = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
+
 /** Jedes Werkstück des Werks: Name → { ort, abhaengig, hatBau }. */
 function werkstuecke() {
   const alle = new Map();
@@ -138,7 +152,7 @@ function main() {
   for (const name of folge) {
     const { ort } = alle.get(name);
     console.log(`\n── ${name} (${ort}) ──`);
-    execFileSync('pnpm', ['--fail-if-no-match', '--filter', name, 'build'], {
+    execFileSync(PNPM, ['--fail-if-no-match', '--filter', name, 'build'], {
       cwd: WURZEL,
       stdio: 'inherit',
     });

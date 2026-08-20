@@ -57,7 +57,7 @@ describe('✅ die ehrliche Zeile geht durch', () => {
         echterEinkaufCent: 480_000n,
         behaupteteMargeCent: 0n,
         behaupteteSteuerCent: 0n,
-      }, TAG),
+      }),
     ], TAG);
     expect(b).toEqual([]);
   });
@@ -77,7 +77,7 @@ describe('⛔ DER ANGRIFF: einen Einkaufspreis erfinden', () => {
     // Der Kern des Befunds. 269,00 statt 250,00 behauptet → Steuer 0,16
     // statt 3,19.
     const b = pruefeMargen([
-      echt({ behaupteterEinkaufCent: 26_900n, behaupteteMargeCent: 100n, behaupteteSteuerCent: 16n }, TAG),
+      echt({ behaupteterEinkaufCent: 26_900n, behaupteteMargeCent: 100n, behaupteteSteuerCent: 16n }),
     ], TAG);
     expect(b).toHaveLength(1);
     expect(b[0]?.field).toBe('items[0].acquisitionCostEurSnapshot');
@@ -134,7 +134,7 @@ describe('die Meldung taugt fuer einen Menschen am Tresen', () => {
 describe('mehrere Zeilen', () => {
   it('jede falsche Zeile wird einzeln benannt', () => {
     const b = pruefeMargen([
-      echt({ index: 0 }, TAG),
+      echt({ index: 0 }),
       echt({ index: 1, behaupteteMargeCent: 1n }),
       echt({ index: 2, behaupteteSteuerCent: 9_999n }),
     ], TAG);
@@ -162,9 +162,9 @@ describe('finalize rechnet WIRKLICH nach', () => {
     // Ohne diese Abfrage waere der Riegel ein Vergleich der Klientenzahl mit
     // sich selbst — gruen und wertlos.
     const q = await lies();
-    const i = q.indexOf('pruefeMargen(', TAG);
+    const i = q.indexOf('pruefeMargen(');
     const block = q.slice(i, q.indexOf('  );', i) + 4);
-    const davor = q.slice(Math.max(0, q.indexOf('pruefeMargen(', TAG) - 1200), q.indexOf('pruefeMargen(', TAG));
+    const davor = q.slice(Math.max(0, q.indexOf('pruefeMargen(') - 1200), q.indexOf('pruefeMargen('));
     expect(davor).toContain('acquisition_cost_eur');
     expect(davor).toContain('FROM products');
 
@@ -194,6 +194,6 @@ describe('finalize rechnet WIRKLICH nach', () => {
      * echten Beginn des fiskalen Blocks.
      */
     const q = await lies();
-    expect(q.indexOf('pruefeMargen(', TAG)).toBeLessThan(q.indexOf('.transaction(async (tx) => {'));
+    expect(q.indexOf('pruefeMargen(')).toBeLessThan(q.indexOf('.transaction(async (tx) => {'));
   });
 });

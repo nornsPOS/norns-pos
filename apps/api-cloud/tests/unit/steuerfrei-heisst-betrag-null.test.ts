@@ -41,6 +41,12 @@ function zeile(teil: Partial<Steuerzeile>): Steuerzeile {
   } as Steuerzeile;
 }
 
+/**
+ * Der Tag, von dem diese Proben sprechen. Seit dem 20.08.2026 nimmt die
+ * Pruefung den Satz vom TAG des Belegs.
+ */
+const TAG = '2026-08-20';
+
 describe('MIXED gehört nicht auf eine Zeile', () => {
   it('lehnt die Zeile ab, statt sie ungeprüft durchzulassen', () => {
     const b = pruefeSteuerbetrag(
@@ -50,7 +56,7 @@ describe('MIXED gehört nicht auf eine Zeile', () => {
         lineSubtotalEur: '1000.00',
         lineVatEur: '0.00',
       }),
-      0,
+      0, TAG,
     );
     expect(b).not.toBeNull();
     expect(b?.field).toBe('items[0].appliedTaxTreatmentCode');
@@ -68,7 +74,7 @@ describe('§ 25c Anlagegold — steuerfrei heisst Betrag null', () => {
           lineSubtotalEur: '2410.00',
           lineVatEur: '0.00',
         }),
-        0,
+        0, TAG,
       ),
     ).toBeNull();
   });
@@ -81,7 +87,7 @@ describe('§ 25c Anlagegold — steuerfrei heisst Betrag null', () => {
         lineSubtotalEur: '2410.00',
         lineVatEur: '384.79',
       }),
-      3,
+      3, TAG,
     );
     expect(b).not.toBeNull();
     expect(b?.field).toBe('items[3].lineVatEur');
@@ -103,7 +109,7 @@ describe('§ 25a bleibt, wie es war', () => {
           lineSubtotalEur: '184.03',
           lineVatEur: '15.97',
         }),
-        0,
+        0, TAG,
       ),
     ).toBeNull();
   });
