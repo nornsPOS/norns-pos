@@ -18,6 +18,7 @@
  * mutations go through the same endpoints + the step-up interceptor.
  */
 
+import { skuVorschlag } from '../../lib/sku-vorschlag.js';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type CSSProperties, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -311,28 +312,15 @@ const TAX_OPTIONS: TaxTreatmentCode[] = [
   'REVERSE_CHARGE_13B',
 ];
 
-const TYPE_PREFIX: Record<ItemType, string> = {
-  gold_jewelry: 'GS',
-  gold_coin: 'GM',
-  gold_bar: 'GB',
-  silver_jewelry: 'SS',
-  silver_coin: 'SM',
-  silver_bar: 'SB',
-  platinum_jewelry: 'PS',
-  platinum_coin: 'PM',
-  platinum_bar: 'PB',
-  antique: 'AQ',
-  watch: 'UH',
-  other: 'XX',
-};
-
-function generateSku(t: ItemType): string {
-  const p = TYPE_PREFIX[t] ?? 'XX';
-  const d = new Date();
-  const ymd = `${String(d.getFullYear()).slice(2)}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
-  const rnd = Math.random().toString(36).slice(2, 6).toUpperCase();
-  return `${p}-${ymd}-${rnd}`;
-}
+/*
+ * 20.08.2026: hier standen die Tabelle `TYPE_PREFIX` und `generateSku` als
+ * private Funktionen. Der ANKAUF verlangt dieselbe Nummer als Pflichtfeld und
+ * sah sie nicht — wer am Tresen einen Ring kaufte, dachte sich eine aus.
+ *
+ * Beide Regeln wohnen jetzt in `lib/sku-vorschlag.ts`. Zwei Tabellen hätten
+ * irgendwann zwei Nummernkreise ergeben, und die Etiketten im Regal
+ * widersprächen sich.
+ */
 
 interface CreatedResponse {
   id: string;
@@ -356,7 +344,7 @@ function CreateBody({
   const printer = useLabelPrinter();
 
   const [name, setName] = useState('');
-  const [sku, setSku] = useState(() => generateSku('gold_jewelry'));
+  const [sku, setSku] = useState(() => skuVorschlag('gold_jewelry'));
   const [itemType, setItemType] = useState<ItemType>('gold_jewelry');
   const [condition, setCondition] = useState<Condition>('USED_GOOD');
   const [tax, setTax] = useState<TaxTreatmentCode>('MARGIN_25A');
@@ -656,7 +644,7 @@ function CreateBody({
             variant="ghost"
             size="md"
             type="button"
-            onClick={() => setSku(generateSku(itemType))}
+            onClick={() => setSku(skuVorschlag(itemType))}
           >
             ⟳ Neu
           </Button>

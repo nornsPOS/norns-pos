@@ -11,6 +11,7 @@
  * enforces this server-side; the UI lock prevents wasted data entry.
  */
 
+import { skuVorschlag } from '../../lib/sku-vorschlag.js';
 import { diagnoseAlsZeile } from '../../lib/drucker-diagnose.js';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Fragment, useEffect, useMemo, useState } from 'react';
@@ -345,7 +346,20 @@ function AddItemForm({
   // (no extra click). The metal + Steuerklasse selections are intentionally NOT
   // cleared by reset() below, so they stick (pre-filled) for the next item.
   const [expanded, setExpanded] = useState<boolean>(true);
-  const [sku, setSku] = useState<string>('');
+  /*
+   * ── DIE ARTIKELNUMMER STEHT SCHON DA (20.08.2026) ──────────────────────
+   *
+   * Sie ist ein PFLICHTFELD. Bis heute war es leer — wer am Tresen einen
+   * Ring kaufte, dachte sich eine Nummer aus, während der Verkäufer wartete.
+   * Das Haus kann es längst; die Regel lag nur als private Funktion im
+   * Lager (`lib/sku-vorschlag.ts` trägt sie jetzt für beide).
+   *
+   * ⚠️ Ein Vorschlag, kein Zwang: wer eine eigene Nummernordnung führt,
+   * überschreibt das Feld.
+   */
+  const [sku, setSku] = useState<string>(() => skuVorschlag('gold_coin'));
+  /** Hat der Mensch die Nummer selbst angefasst? Dann bleibt sie stehen. */
+  const [skuVonHand, setSkuVonHand] = useState<boolean>(false);
   const [name, setName] = useState<string>('');
   const [descriptionDe, setDescriptionDe] = useState<string>('');
   const [itemType, setItemType] = useState<AnkaufItemType>('gold_coin');
@@ -405,6 +419,15 @@ function AddItemForm({
     setMetal(metalFromItemType(itemType) ?? '');
   }, [itemType]);
 
+  /*
+   * Das Kürzel der Nummer folgt der Warenart — aber NUR, solange der Mensch
+   * die Nummer nicht selbst angefasst hat. Eine Kasse, die eine getippte
+   * Nummer beim Umschalten überschreibt, macht Arbeit kaputt.
+   */
+  useEffect(() => {
+    if (!skuVonHand) setSku(skuVorschlag(itemType));
+  }, [itemType, skuVonHand]);
+
   const selectedRate = useMemo(
     () => (metal === '' ? undefined : ratesQ.data?.rates.find((r) => r.metal === metal)),
     [metal, ratesQ.data],
@@ -443,7 +466,8 @@ function AddItemForm({
   }, [vorschlagEur, negotiatedPriceEur]);
 
   const reset = (): void => {
-    setSku('');
+    setSku(skuVorschlag(itemType));
+    setSkuVonHand(false);
     setName('');
     setDescriptionDe('');
     setKaratCode('');
@@ -520,7 +544,16 @@ function AddItemForm({
     <ParchmentCard padding="md">
       <Zwischentitel label="Neues Stück" />
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
-        <FormField label="SKU" value={sku} onChange={setSku} required mono />
+        <FormField
+          label="SKU"
+          value={sku}
+          onChange={(v) => {
+            setSkuVonHand(true);
+            setSku(v);
+          }}
+          required
+          mono
+        />
         <SelectField<AnkaufItemType>
           label="Typ"
           value={itemType}
