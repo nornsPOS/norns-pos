@@ -34,53 +34,13 @@ import {
 import { Reveal } from '../../lib/motion.js';
 import { useSessionStore } from '../../state/session-store.js';
 
-/**
- * Die Ordnung der Fläche.
- *
- * Nach TÄTIGKEIT gruppiert, nicht alphabetisch: wer den Edge-Schutz sucht,
- * sucht ihn unter „Aufsicht", nicht unter S. Ein Pfad, der in keine Gruppe
- * passt, landet unter „Weiteres" — sichtbar bleibt er in jedem Fall.
- */
-export const GRUPPEN: ReadonlyArray<{ titel: string; satz: string; pfade: readonly string[] }> = [
-  {
-    titel: 'Aufsicht und Schutz',
-    satz: 'Was der Inhaber im Blick behält.',
-    // ⚠️ 01.08.2026: `/schaufenster` stand hier weiter, nachdem die Fläche
-    // ausgezogen war (sie zeigte den Webshop, den diese Kasse nicht hat).
-    // Die Kachel führte ins Leere. Der Wächter unten hat es gefangen.
-    pfade: ['/leitstand', '/risiko', '/zielkarte', '/tagebuch'],
-  },
-  {
-    titel: 'Geld und Steuer',
-    satz: 'Zahlen, Belege und was das Finanzamt sehen will.',
-    pfade: ['/finanzen', '/steuer-export', '/dokumente', '/belegtexte'],
-  },
-  {
-    titel: 'Ware und Kanäle',
-    satz: 'Was hereinkommt, was hinausgeht, und über welchen Weg.',
-    // ⚠️ 01.08.2026: `/ebay` ist ausgezogen. Der Kanal braucht `EBAY_API_TOKEN`
-    // aus der Umgebung, und der Rumpf reicht eine geschlossene Liste von vier
-    // Geheimnissen durch. Schlimmer noch: ohne Zugang meldete der Kanal
-    // Erfolg, ohne zu senden.
-    // 19.08.2026: /fotos ausgebaut (Webshop-Erbe) — siehe surface-registry.
-    pfade: ['/inventur', '/bewertung', '/kurse'],
-  },
-  {
-    titel: 'Kundschaft',
-    satz: 'Anfragen, Nachrichten und was noch offen ist.',
-    // Ebenso `/kalender`: die Google-Kalender-Fläche ist ausgezogen, `/termine`
-    // ist der eigene Terminweg dieser Kasse und bleibt.
-    // Ebenso `/anfragen` (der Gmail-Abholer wohnt im Arbeiter, der nicht
-    // mitreist) und `/whatsapp` (der Eingang kommt per Webhook von Meta, den
-    // eine Kasse ohne Tunnel nie bekommt).
-    pfade: ['/compliance-inbox', '/termine', '/aufgaben'],
-  },
-  {
-    titel: 'Haus und Personal',
-    satz: 'Einstellungen und wer am Tresen steht.',
-    pfade: ['/einstellungen', '/team'],
-  },
-];
+// 20.08.2026: `GRUPPEN` wohnt jetzt in `gruppen.ts` — eine Liste ist keine
+// Fläche. Hier steht nur noch die Wiederausfuhr, damit die bestehenden Leser
+// nicht auf einen Schlag umziehen müssen.
+import { GRUPPEN } from './gruppen.js';
+
+export { GRUPPEN };
+
 
 export function Uebersicht(): JSX.Element {
   // ── Die Kartenwand ist Geschichte (27.07.2026, Basels Ordnung) ─────────

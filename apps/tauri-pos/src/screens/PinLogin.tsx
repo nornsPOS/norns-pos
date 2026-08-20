@@ -45,7 +45,7 @@ function laengeStimmt(pin: string): boolean {
   return /^\d{6}$/.test(pin);
 }
 
-export function PinLogin({ onUseGoogle }: { onUseGoogle?: () => void }): JSX.Element {
+export function PinLogin(): JSX.Element {
   const api = useApiClient();
   const setFromLogin = useSessionStore((s) => s.setFromLogin);
 
@@ -470,11 +470,16 @@ export function PinLogin({ onUseGoogle }: { onUseGoogle?: () => void }): JSX.Ele
 
         {/* Der Ausgang, wenn der Code weg ist. Er benennt den WIRKLICH
             gebauten Weg (Team, kassencode-loeschen): der Inhaber loescht,
-            der Mensch waehlt am Tresen selbst neu. Kommt der Inhaber selbst
-            nicht mehr hinein, traegt ihn die Google-Anmeldung, die frischt
-            den Step-up (admin-auth-google.ts). Derselbe Weg fuehrt auch
-            einen VOR dem 18.08.2026 gesetzten laengeren Code heraus, der
-            in die sechs Felder nicht mehr passt. */}
+            der Mensch waehlt am Tresen selbst neu. Derselbe Weg fuehrt auch
+            einen VOR dem 18.08.2026 gesetzten laengeren Code heraus, der in
+            die sechs Felder nicht mehr passt.
+
+            ⚠️ 20.08.2026: hier stand ein zweiter Satz — „Der Inhaber selbst
+            meldet sich dafuer mit Google an." Auf Basels Schirm gelesen. Er
+            war FALSCH: diese Kasse hat keine Google-Anmeldung, der Knopf
+            dazu wurde nie durchgereicht, und der Weg dahinter verlangt Netz
+            und einen fremden Arbeitsbereich. Ein Satz, der einem Menschen am
+            Tresen eine Tuer verspricht, hinter der niemand steht. */}
         {!einrichtung && !(zeigeWahl && gewaehltePerson !== null && !gewaehltePerson.hatCode) && (
           <p
             style={{
@@ -488,7 +493,7 @@ export function PinLogin({ onUseGoogle }: { onUseGoogle?: () => void }): JSX.Ele
             }}
           >
             Code vergessen? Der Inhaber löscht ihn unter Team, danach wählen Sie
-            hier einen neuen. Der Inhaber selbst meldet sich dafür mit Google an.
+            hier einen neuen.
           </p>
         )}
 
@@ -537,24 +542,18 @@ export function PinLogin({ onUseGoogle }: { onUseGoogle?: () => void }): JSX.Ele
               eines Schmuck- und Edelmetallhändlers. */}
           Kasse
         </p>
-        {onUseGoogle && (
-          <button
-            type="button"
-            onClick={onUseGoogle}
-            style={{
-              marginTop: 12,
-              background: 'none',
-              border: 'none',
-              color: 'var(--w14-ink-faded)',
-              fontFamily: 'var(--w14-font-display)',
-              fontStyle: 'italic',
-              cursor: 'pointer',
-              fontSize: 'var(--w14-schrift-text)',
-            }}
-          >
-            Mit Google anmelden
-          </button>
-        )}
+        {/*
+          ── 20.08.2026: DIE FREMDE TÜR IST AUSGEBAUT ────────────────────────
+          Hier stand ein Knopf „Mit Google anmelden" hinter `onUseGoogle`.
+          GEMESSEN: keine einzige Stelle reichte diese Angabe je durch —
+          `App.tsx` ruft `<PinLogin />` ohne sie. Der Knopf war also nie zu
+          sehen; geblieben war nur der Satz darüber, der dem Kassierer
+          trotzdem von Google erzählte.
+          Und er hätte auch nicht funktionieren dürfen: der Weg dahinter
+          (`admin-auth-google.ts`) verlangt Netz, einen Google-Arbeitsbereich
+          und eine auf `warehouse14.de` beschränkte Zustimmung — das Erbe
+          eines fremden Hauses. Diese Kasse läuft ohne Netz.
+        */}
       </ParchmentCard>
     </div>
   );

@@ -50,6 +50,7 @@ import { useKursstreifenSichtbar } from '../../state/kursstreifen-store.js';
 import { Spotlight } from './Spotlight.js';
 import { StepUpModal } from './StepUpModal.js';
 import { SubBreadcrumb } from './SubBreadcrumb.js';
+import { rueckwegFuer } from './rueckweg.js';
 import { erstelleZifferSchleuse, isAnyDialogOpen, isTextEntryElement } from './digit-nav.js';
 import {
   PRIMARY_SURFACES,
@@ -104,6 +105,27 @@ export function AppShell(): JSX.Element {
     const s = findSurfaceByPath(location.pathname);
     if (s) pushRecent(s.path);
   }, [location.pathname, pushRecent]);
+
+  /*
+   * ── DIE FLÄCHE DAVOR — für den Weg zurück (20.08.2026) ─────────────────
+   *
+   * Ein eigener Halt, NICHT der Spotlight-Speicher „Zuletzt": der sortiert
+   * die zuletzt besuchten Flächen um und wirft Doppelte weg, damit seine
+   * Liste kurz bleibt. Für die Frage „wo kam ich gerade her" ist das die
+   * falsche Auskunft — sie stimmt meistens und manchmal nicht, und ein
+   * Rückweg, der manchmal woandershin führt, ist schlimmer als keiner.
+   *
+   * `useRef`, nicht `useState`: der Wert wird nur beim Wechsel gelesen, und
+   * ein zweiter Durchlauf je Flächenwechsel wäre umsonst.
+   */
+  const vorherigerPfad = useRef<string | null>(null);
+  const pfadJetzt = location.pathname;
+  const rueckweg = rueckwegFuer(pfadJetzt, vorherigerPfad.current);
+  useEffect(() => {
+    return () => {
+      vorherigerPfad.current = pfadJetzt;
+    };
+  }, [pfadJetzt]);
 
   // <main> owns the scroll — reset it to the top on each route change so a new
   // surface never opens already scrolled down (the body used to do this for free).
@@ -209,7 +231,13 @@ export function AppShell(): JSX.Element {
         }}
       />
 
-      {secondarySurface && <SubBreadcrumb label={secondarySurface.label} />}
+      {secondarySurface && (
+        <SubBreadcrumb
+          label={secondarySurface.label}
+          zurueck={rueckweg}
+          onZurueck={(pfad) => navigate(pfad)}
+        />
+      )}
 
       {/* Der Metallkurs-Streifen, unter dem Kopf und ueber der Flaeche.
           ⚠️ Seit 05.08.2026 nicht mehr „immer sichtbar": Basel wollte ihn

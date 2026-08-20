@@ -53,10 +53,21 @@ const TUEREN_INS_LEERE = ['Google', 'Cloud', 'iCloud', 'Dropbox', 'OneDrive'];
  * in DIESER Kasse wirklich irgendwohin führt.
  */
 const MIT_GRUND: Record<string, string> = {
-  // Die Anmeldefläche trägt den Google-Weg als OPTION im Bauplan; `App.tsx`
-  // reicht ihn in dieser Kasse bewusst nicht durch. Der Text erscheint dem
-  // Händler also nie. Der Wächter unten prüft genau diese Enthaltung mit.
-  'screens/PinLogin.tsx': 'Google-Zweig existiert, wird von App.tsx aber nicht durchgereicht',
+  /*
+   * ⚠️ 20.08.2026: HIER STAND DIE ANMELDEFLÄCHE — und das war der Fehler.
+   *
+   * Die Begründung lautete: der Google-Zweig sei nur eine Option im Bauplan,
+   * `App.tsx` reiche sie nicht durch, der Text erscheine dem Händler also
+   * nie. Der erste Teil stimmte. Der letzte war falsch.
+   *
+   * Auf Basels Schirm gelesen, unter der Zifferntastatur, für JEDEN
+   * Kassierer sichtbar: „Der Inhaber selbst meldet sich dafür mit Google
+   * an." Der KNOPF hing am Zweig, der SATZ hing an nichts.
+   *
+   * Eine Ausnahme für eine ganze DATEI deckt eben auch das zu, was gar nicht
+   * gemeint war. Der Zweig ist jetzt ausgebaut und der Satz gestrichen; die
+   * Fläche steht wieder unter dem Wächter wie jede andere.
+   */
 
   // Das Kalender-Abo gehört der Kasse SELBST: `POST /api/appointments/feed-token`
   // gibt eine Adresse auf den EIGENEN, mitgelieferten Server. Der Satz „In

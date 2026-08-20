@@ -430,8 +430,8 @@ export function SteuerExport(): JSX.Element {
         }}
       >
         Die Ausfuhr läuft mit den üblichen Vorgaben. Bitte lassen Sie sie einmal von
-        Ihrem Steuerberater ansehen, damit die Konten zu seiner Buchführung passen —
-        ändern lässt sich alles unter Einstellungen, Steuer und Buchhaltung.
+        Ihrem Steuerberater ansehen, damit die Konten zu seiner Buchführung passen.
+        Ändern lässt sich alles unter Einstellungen, Steuer und Buchhaltung.
       </p>
 
       <Zwischentitel />
