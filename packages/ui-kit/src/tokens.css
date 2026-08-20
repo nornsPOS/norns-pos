@@ -33,9 +33,28 @@
      cream #f2ece1, cream-2 #ece4d6), aber für den Tresen um eine Spur
      ruhiger gesetzt: die Website wird aus 50 cm gelesen, die Kasse aus
      einem Meter im Stehen unter Ladenlicht. */
-  --w14-parchment: #f2ece1;   /* Grundfläche — Elfenbein wie norns.de cream */
+  /* ── 20.08.2026, BASELS BEFUND: „das helle Thema ist blass, ohne Leben" ──
+     GEMESSEN am laufenden Bild, und der Befund stimmte auf die Kommastelle:
+     die Karte hob sich mit 1,09 zu 1 vom Grund ab. Das ist keine zarte
+     Schichtung, das ist KEINE: eine Karte, die man nicht vom Boden
+     unterscheidet, hat keine Tiefe, und die ganze Flaeche wirkt tot.
+
+     ⚠️ DIE FALSCHE FAEHRTE, DIE ICH ZUERST NAHM: das dunkle Thema mit
+     denselben Zahlen zu vergleichen. Dort steht die Karte bei 1,12 — kaum
+     mehr! Die Tiefe kommt dort NICHT aus dem Verhaeltnis, sondern aus den
+     Schatten und daraus, dass das Auge im Dunkeln kleinere Helligkeits-
+     unterschiede leichter trennt. Ein helles Thema braucht fuer denselben
+     Eindruck ein GROESSERES Verhaeltnis, nicht dasselbe.
+
+     Deshalb geht der GRUND tiefer ins Alter, nicht die Karte heller (weisser
+     als dieses Papier waere gegen die Hausregel). Nachgemessen:
+       Karte gegen Grund      1,09  ->  1,23
+       erhaben gegen Karte    1,17  ->  1,36
+     und die Schrift wird dabei BESSER statt schlechter: die blasse Tinte
+     haelt jetzt mindestens 5,14 statt 5,07. */
+  --w14-parchment: #e8dfcd;   /* Grundfläche — gealtertes Elfenbein */
   --w14-parchment-2: #faf6ee; /* Karten, Felder — das hellere Papier */
-  --w14-parchment-3: #ece4d6; /* erhaben, Schwebe — die dritte Stufe */
+  --w14-parchment-3: #ded4c0; /* erhaben, stille Fuellung — die dritte Stufe */
   /* Compatibility aliases so every surface slot has a stable name. */
   --w14-parchment-1: var(--w14-parchment-2);
   --w14-card: var(--w14-parchment-2);
@@ -43,34 +62,34 @@
 
   /* ─── Ink — text + strokes. Warm near-black, never pure ────────────── */
   --w14-ink: #1c1c1c;       /* primary text + dark buttons */
-  --w14-ink-aged: #4c4a45;  /* secondary text */
+  --w14-ink-aged: #474540;  /* secondary text — 20.08.2026 eine Spur tiefer, siehe Flaechen */
   /* TIEFER GESETZT (27.07.2026): vorher #6e6b64. Auf dem Grundpergament stand
      das bei haarscharf 4,50:1 und fiel auf der erhabenen Fläche parchment-3
      auf 4,10:1 — unter WCAG AA für Fliesstext, bei 603 Verwendungen. Der neue
      Wert bleibt dieselbe warme Grau-Familie (blasser als ink-aged, damit die
      Rangordnung ink > aged > faded lesbar bleibt) und erreicht 5,56 / 6,08 /
      5,07 auf den drei Flächen. Der kontrast-waechter rechnet das nach. */
-  --w14-ink-faded: #605d56; /* faint / meta text */
+  --w14-ink-faded: #57544c; /* faint / meta text — 20.08.2026 tiefer: haelt 5,14 auf der tiefsten Flaeche */
   /* 19.08.2026, Basels Befund „manche Ecken sind blass, ohne Leben": die
      Zierlinie lag bei 1,05:1 und war damit nicht zart, sondern WEG — jede
      Karte, jeder Kopf, jeder Fuss, der sie trug, endete im Nichts. Sie bleibt
      ein Hauch (deutlich unter der Tabellenlinie, der Wächter prüft das
      Verhältnis), aber ein Hauch, den ein Auge findet: ~1,2:1. */
-  --w14-rule: #ded7c8;      /* soft hairline — DECORATION and whisper-structure */
+  --w14-rule: #d8d0be;      /* soft hairline — DECORATION and whisper-structure */
   /* NEU (27.07.2026): die Zierlinie oben liegt bei 1,05:1 und trug an 272
      Stellen die GESAMTE Struktur jeder Tabelle — aus einem Meter Abstand ist
      eine solche Tabelle ein Brei. Für Linien, die Struktur TRAGEN (Kopfzeile
      einer Tabelle, Zeilentrenner im Geldweg), gilt ab jetzt diese kräftigere
      Marke: mindestens 1,5:1 auf jeder Pergamentfläche, in beiden Themen. Die
      Zierlinie bleibt zart und bleibt erlaubt — nur nie als einzige Struktur. */
-  --w14-tabellenlinie: #b8b3a2; /* tragende Linie — 1,78 / 1,94 / 1,62 : 1 */
+  --w14-tabellenlinie: #aea895; /* tragende Linie — 20.08.2026 mit dem Grund vertieft: haelt 1,62 statt 1,43 */
   /* NEU (29.07.2026, Basels Ort-Befund): 23 Dateien zeichneten EINGABEFELDER
      nur mit der Zierlinie oben — im Hellthema 1,05:1, das Feld verschmilzt
      mit dem Papier und der Inhaber tippt blind („ich taste und setze"). Ein
      Feld ist BEDIENUNG, keine Zierde: WCAG 1.4.11 verlangt für tragende
      UI-Kennzeichen mindestens 3:1. Gemessen auf den echten Flächen:
      3,74:1 auf der Karte (#faf6ee), 3,42:1 auf dem Grund (#f2ece1). */
-  --w14-feldlinie: #857e70; /* Unterstrich von Eingabefeldern — nie die Zierlinie */
+  --w14-feldlinie: #7c7466; /* Unterstrich von Eingabefeldern — 20.08.2026 vertieft: haelt 3,14 (WCAG 1.4.11) */
 
   /* ─── Accent = ink itself. The historical gold tokens now resolve to ─
      deep neutral umber so every legacy `*-gold` utility renders as quiet
@@ -83,24 +102,24 @@
   /* ─── GILT — the house gilding. THREAD / EDGE / SEAL only ────────────
      Inspired by the gilded edges of rare stamps and antique trading cards.
      NEVER a fill, NEVER a background, NEVER body text. */
-  --w14-gilt: #a3823b;       /* aged gilt thread on cream */
+  --w14-gilt: #917333;       /* aged gilt thread — 20.08.2026 mit dem Grund vertieft: haelt 3,04 als Faden/grosse Schrift */
   /* TIEFER GESETZT (27.07.2026): vorher #876a2c mit 4,31:1 auf Pergament —
      gilt-deep steht vereinzelt als Text und muss dann 4,5:1 halten. Jetzt
      5,03 / 5,51 / 4,59 : 1, derselbe gealterte Goldton, nur gepresster. */
-  --w14-gilt-deep: #7a6028;  /* pressed / hover gilt */
+  --w14-gilt-deep: #725926;  /* pressed / hover gilt — haelt 4,50 als Text auf allen drei Flaechen */
 
   /* ─── Functional — meaning only ───────────────────────────────────── */
-  --w14-verdigris: #3f6b54;  /* patina green — positive / price-up / alive */
+  --w14-verdigris: #3a624d;  /* patina green — positive; 20.08.2026 vertieft, haelt 4,71 */
   /* TIEFER GESETZT (27.07.2026): vorher #c0492f mit 4,20:1 auf Pergament —
      als Fehlertext in kleiner Schrift fiel die wichtigste Warnfarbe des
      Hauses durch WCAG AA. Der neue Ton bleibt warmes Siegelwachs, nur eine
      Spur tiefer gebrannt: 5,22 / 5,71 / 4,76 : 1 auf den drei Flächen. */
-  --w14-wax-red: #ab3c25;    /* warm sealing-wax red — negative / error / price-down */
+  --w14-wax-red: #a03823;    /* warm sealing-wax red — negative; 20.08.2026 vertieft, haelt 4,63 */
   --w14-wax-red-soft: #d98a72;
   --w14-forest: #46583f;     /* deep olive — nature (rare) */
   /* TIEFER GESETZT (27.07.2026): vorher #a4633c mit 4,01:1 auf Pergament.
      Terra steht selten, aber als Text — jetzt 5,16 / 5,64 / 4,70 : 1. */
-  --w14-terra: #8f5330;      /* terracotta — sparing warmth (rare) */
+  --w14-terra: #854c2c;      /* terracotta — sparing warmth; 20.08.2026 vertieft, haelt 4,66 */
 
   /* Semantic danger / status aliases — same warm family, never a cool
      off-palette red. */
@@ -131,23 +150,23 @@
 
   /* ─── RGB channel triplets — REQUIRED for Tailwind slash-opacity ──── */
   /* Im Gleichschritt mit den Elfenbein-Flaechen oben (27.07.2026). */
-  --w14-parchment-rgb: 242 236 225;
+  --w14-parchment-rgb: 232 223 205;
   --w14-parchment-2-rgb: 250 246 238;
-  --w14-parchment-3-rgb: 236 228 214;
+  --w14-parchment-3-rgb: 222 212 192;
   --w14-ink-rgb: 28 28 28;
-  --w14-ink-aged-rgb: 76 74 69;
-  --w14-ink-faded-rgb: 96 93 86;
-  --w14-rule-rgb: 222 215 200;
-  --w14-tabellenlinie-rgb: 184 179 162;
+  --w14-ink-aged-rgb: 71 69 64;
+  --w14-ink-faded-rgb: 87 84 76;
+  --w14-rule-rgb: 216 208 190;
+  --w14-tabellenlinie-rgb: 174 168 149;
   --w14-gold-rgb: 46 43 38;
   --w14-gold-soft-rgb: 89 85 77;
   --w14-gold-deep-rgb: 23 21 15;
-  --w14-gilt-rgb: 163 130 59;
-  --w14-gilt-deep-rgb: 122 96 40;
-  --w14-verdigris-rgb: 63 107 84;
-  --w14-wax-red-rgb: 171 60 37;
+  --w14-gilt-rgb: 145 115 51;
+  --w14-gilt-deep-rgb: 114 89 38;
+  --w14-verdigris-rgb: 58 98 77;
+  --w14-wax-red-rgb: 160 56 35;
   --w14-forest-rgb: 70 88 63;
-  --w14-terra-rgb: 143 83 48;
+  --w14-terra-rgb: 133 76 44;
 
   /* ─── DIE STIMME: Fraunces zeigt an, Manrope spricht und rechnet ────
      Von norns.de INSPIRIERT, nicht kopiert (27.07.2026).
