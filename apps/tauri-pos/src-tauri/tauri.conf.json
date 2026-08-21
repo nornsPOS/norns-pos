@@ -58,6 +58,7 @@
     },
     "windows": {
       "wix": null,
+      "webviewInstallMode": { "type": "embedBootstrapper" },
       "nsis": {
         "installerIcon": "icons/icon.ico",
         "installMode": "currentUser",
