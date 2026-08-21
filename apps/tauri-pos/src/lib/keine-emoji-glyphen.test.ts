@@ -53,7 +53,32 @@ function ohneKommentare(quelle: string): string {
   return quelle.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|\s)\/\/.*$/gm, '$1');
 }
 
+const GELESENE_DATEIEN = dateien(KASSE, ['.ts', '.tsx']);
+
 describe('Keine Emoji-Glyphen in der Oberfläche', () => {
+  /*
+   * ── ⛔ „NULL IST NICHT GRÜN" (21.08.2026) ────────────────────────────────
+   *
+   * Dieser Wächter geht ein VERZEICHNIS durch und meldet Erfolg, wenn er
+   * nichts findet. Sein Sucher schluckt den Lesefehler (`catch { return [] }`)
+   * — verschiebt jemand den Ordner, ändert die Wurzelrechnung oder zieht diese
+   * Probe eine Ebene um, sucht er in einem Ordner, den es nicht gibt, findet
+   * nichts und ist GRÜN.
+   *
+   * ⚠️ EMPIRISCH BEWIESEN, nicht vermutet: mit erfundenen Verzeichnisnamen
+   * lief die ganze Datei weiter durch, alle Sätze grün. Der Wächter bewachte
+   * nichts und meldete Erfolg.
+   *
+   * Der Satz hier ist die Gegenprobe: er misst, dass überhaupt gelesen wurde.
+   */
+  it('⛔ der Sucher greift nicht ins Leere', () => {
+    expect(
+      GELESENE_DATEIEN.length,
+      'Der Wächter hat KEINE Datei gefunden. Dann ist jeder Satz darunter ' +
+        'trivial erfüllt und dieser Wächter bewacht nichts. Die Pfade prüfen.',
+    ).toBeGreaterThan(5);
+  });
+
   it('kein verbanntes Zeichen ausserhalb von Kommentaren', () => {
     const funde: string[] = [];
     for (const datei of dateien(KASSE, ['.ts', '.tsx'])) {

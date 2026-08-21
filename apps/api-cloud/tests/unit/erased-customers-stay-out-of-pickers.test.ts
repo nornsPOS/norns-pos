@@ -82,7 +82,32 @@ function dateienUnter(verzeichnis: string): string[] {
   return gefunden;
 }
 
+const GELESENE_DATEIEN = WURZELN.flatMap((w) => dateienUnter(w));
+
 describe('gelöschte Konten bleiben aus jeder Kundenauswahl heraus', () => {
+  /*
+   * ── ⛔ „NULL IST NICHT GRÜN" (21.08.2026) ────────────────────────────────
+   *
+   * Dieser Wächter geht ein VERZEICHNIS durch und meldet Erfolg, wenn er
+   * nichts findet. Sein Sucher schluckt den Lesefehler (`catch { return [] }`)
+   * — verschiebt jemand den Ordner, ändert die Wurzelrechnung oder zieht diese
+   * Probe eine Ebene um, sucht er in einem Ordner, den es nicht gibt, findet
+   * nichts und ist GRÜN.
+   *
+   * ⚠️ EMPIRISCH BEWIESEN, nicht vermutet: mit erfundenen Verzeichnisnamen
+   * lief die ganze Datei weiter durch, alle Sätze grün. Der Wächter bewachte
+   * nichts und meldete Erfolg.
+   *
+   * Der Satz hier ist die Gegenprobe: er misst, dass überhaupt gelesen wurde.
+   */
+  it('⛔ der Sucher greift nicht ins Leere', () => {
+    expect(
+      GELESENE_DATEIEN.length,
+      'Der Wächter hat KEINE Datei gefunden. Dann ist jeder Satz darunter ' +
+        'trivial erfüllt und dieser Wächter bewacht nichts. Die Pfade prüfen.',
+    ).toBeGreaterThan(5);
+  });
+
   it('setzt includeErased NUR in den beiden Kundenlisten', () => {
     const verstoesse: string[] = [];
 

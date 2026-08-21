@@ -82,7 +82,32 @@ function dateienUnter(verzeichnis: string): string[] {
   return gefunden;
 }
 
+const GELESENE_DATEIEN = FLAECHEN.flatMap((f) => dateienUnter(f));
+
 describe('die Nachbestätigung verlangt den Kassencode über den Server', () => {
+  /*
+   * ── ⛔ „NULL IST NICHT GRÜN" (21.08.2026) ────────────────────────────────
+   *
+   * Dieser Wächter geht ein VERZEICHNIS durch und meldet Erfolg, wenn er
+   * nichts findet. Sein Sucher schluckt den Lesefehler (`catch { return [] }`)
+   * — verschiebt jemand den Ordner, ändert die Wurzelrechnung oder zieht diese
+   * Probe eine Ebene um, sucht er in einem Ordner, den es nicht gibt, findet
+   * nichts und ist GRÜN.
+   *
+   * ⚠️ EMPIRISCH BEWIESEN, nicht vermutet: mit erfundenen Verzeichnisnamen
+   * lief die ganze Datei weiter durch, alle Sätze grün. Der Wächter bewachte
+   * nichts und meldete Erfolg.
+   *
+   * Der Satz hier ist die Gegenprobe: er misst, dass überhaupt gelesen wurde.
+   */
+  it('⛔ der Sucher greift nicht ins Leere', () => {
+    expect(
+      GELESENE_DATEIEN.length,
+      'Der Wächter hat KEINE Datei gefunden. Dann ist jeder Satz darunter ' +
+        'trivial erfüllt und dieser Wächter bewacht nichts. Die Pfade prüfen.',
+    ).toBeGreaterThan(5);
+  });
+
   it('die Tür ruft den Server-Weg und nichts Lokales', () => {
     const inhalt = ohneKommentare(readFileSync(join(WURZEL, DIE_TUER), 'utf8'));
     expect(inhalt, `${DIE_TUER} muss den Kassencode vom SERVER prüfen lassen`).toMatch(NUR_AUFRUF);
