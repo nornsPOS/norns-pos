@@ -35,6 +35,16 @@
  * `UNGUELTIG` — aber der Satz, den der Mensch liest, ist ein anderer.
  */
 
+/*
+ * ⚠️ Die EINZIGE Einfuhr dieses sonst reinen Moduls, und sie ist Absicht.
+ *
+ * `alsTag` ist der eine Ort, an dem ein Zeitpunkt zum deutschen Geschäftstag
+ * wird — dieselbe Rechnung, nach der auch der Steuersatz gewählt wird. Diese
+ * Rechnung hier ein sechstes Mal abzuschreiben wäre kürzer und falsch: zwei
+ * Rechnungen sind zwei Wahrheiten, und sie laufen auseinander.
+ */
+import { alsTag } from '@norns/domain';
+
 /** Dieselben vier Werte wie der Aufzählungstyp `vat_check_result` (Wanderung 0116). */
 export type VatPruefergebnis = 'GUELTIG' | 'UNGUELTIG' | 'NICHT_ERREICHBAR' | 'FORMFEHLER';
 
@@ -216,6 +226,19 @@ export function darfReverseCharge(input: {
  * UStG schützt den guten Glauben nur bei belegter Sorgfalt.
  */
 export function belegvermerkFuerVatPruefung(vatId: string, geprueftAm: Date): string {
-  const tag = geprueftAm.toISOString().slice(0, 10).split('-').reverse().join('.');
-  return `USt-IdNr. ${vatId} · EU-Abfrage vom ${tag} · gültig`;
+  /*
+   * ⛔ HIER STAND `geprueftAm.toISOString().slice(0, 10)` (bis 21.08.2026).
+   *
+   * `toISOString` rechnet in UTC. In deutscher Sommerzeit (UTC+2) bekam damit
+   * JEDE Abfrage zwischen 00:00 und 02:00 Ortszeit den VORTAG aufgedruckt, im
+   * Winter (UTC+1) jede zwischen 00:00 und 01:00.
+   *
+   * Und dieser Tag steht AUF DEM BELEG — genau das sagt der Absatz darüber:
+   * bei einer Prüfung Jahre später ist der Beleg das, was auf dem Tisch liegt.
+   * Die Datenbank haelt den Zeitpunkt als `timestamptz`, also richtig; der
+   * Beleg haette dem eigenen Datenbestand widersprochen. Dieselbe Klasse wie
+   * der Rechtshinweis, der 19 Prozent nannte, waehrend die Rechnung 16 rechnete.
+   */
+  const [jahr, monat, tagZahl] = alsTag(geprueftAm).split('-');
+  return `USt-IdNr. ${vatId} · EU-Abfrage vom ${tagZahl}.${monat}.${jahr} · gültig`;
 }

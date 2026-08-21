@@ -46,6 +46,7 @@
  */
 
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { alsTag } from '@norns/domain';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '@norns/api-client';
@@ -164,7 +165,19 @@ export function EinrichtungsAssistent({ onVerlassen }: EinrichtungsAssistentProp
      * und speichert mit „Weiter" selbst. Ein GEFUELLTES Feld wird nie
      * angefasst — der Bestand schlaegt jeden Vorschlag.
      */
-    const heute = new Date().toISOString().slice(0, 10);
+    /*
+     * ⛔ HIER STAND `new Date().toISOString().slice(0, 10)` (bis 21.08.2026).
+     *
+     * Das rechnet nach UTC. Ein Händler, der seine Kasse um halb eins nachts
+     * auspackt — deutsche Sommerzeit, also UTC+2 —, bekam den VORTAG
+     * vorgeschlagen.
+     *
+     * Und dieser Wert ist nicht irgendeiner: `betrieb.inbetriebnahme_am` ist
+     * das Datum, das nach § 146a Abs. 4 AO ans Finanzamt gemeldet wird. Es
+     * wird EINMAL gesetzt und nie wieder angefasst. Ein Tag daneben ist eine
+     * falsche Angabe gegenüber der Finanzverwaltung, die niemand je bemerkt.
+     */
+    const heute = alsTag(new Date());
     for (const [schluessel, wert] of Object.entries(vorschlaegeFuerLeereFelder(heute))) {
       if ((naechster[schluessel] ?? '').trim() === '') naechster[schluessel] = wert;
     }

@@ -83,8 +83,22 @@ describe('⛔ Die Zeile trägt genau sieben Felder — und keins mehr', () => {
 });
 
 describe('⛔ Das Protokoll wächst nicht unbegrenzt', () => {
-  it('⛔ eine Datei je Tag', () => {
-    expect(dateiname(new Date('2026-08-09T23:59:00.000Z'))).toBe('vorfaelle-2026-08-09.jsonl');
+  it('⛔ eine Datei je Tag — und zwar je BERLINER Tag', () => {
+    /*
+     * ⛔ 21.08.2026: diese Probe hielt bis heute den Defekt fest, statt ihn zu
+     * verhindern. Sie erwartete `vorfaelle-2026-08-09` für den Zeitpunkt
+     * `2026-08-09T23:59Z` — der in Berlin (Sommerzeit, UTC+2) aber schon
+     * 01:59 am ZEHNTEN ist. Sie war grün, weil sie dieselbe UTC-Rechnung
+     * abschrieb, die sie hätte prüfen sollen.
+     *
+     * Wer am Morgen nachsieht, was in der Nacht schiefging, öffnet die Datei
+     * mit dem Datum von gestern — und findet nichts.
+     */
+    expect(dateiname(new Date('2026-08-09T23:59:00.000Z'))).toBe('vorfaelle-2026-08-10.jsonl');
+    // Mitten am Tag ist die Frage gar nicht erst da.
+    expect(dateiname(new Date('2026-08-09T12:00:00.000Z'))).toBe('vorfaelle-2026-08-09.jsonl');
+    // Und im Winter (UTC+1) verschiebt sich die Grenze um eine Stunde.
+    expect(dateiname(new Date('2026-01-14T23:30:00.000Z'))).toBe('vorfaelle-2026-01-15.jsonl');
   });
 
   it('⛔ zu alte Dateien werden erkannt, junge nicht', () => {

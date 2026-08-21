@@ -11,6 +11,7 @@
  * concern — this is a display percent + a sign, not money arithmetic.
  */
 import { zahlVomServer } from './decimal.js';
+import { alsTag } from '@norns/domain';
 
 export type TickTone = 'up' | 'down' | 'flat';
 
@@ -103,8 +104,15 @@ export function deckeMittelAb(
     if (iso === null || iso === undefined) continue;
     const t = new Date(iso).getTime();
     if (!Number.isFinite(t) || t < grenze || t > jetzt.getTime()) continue;
-    // Nach Kalendertag bündeln: zwei Abrufe am selben Tag sind EIN Tag.
-    tageImFenster.add(new Date(t).toISOString().slice(0, 10));
+    /*
+     * Nach Kalendertag bündeln: zwei Abrufe am selben Tag sind EIN Tag.
+     *
+     * ⚠️ Nach dem BERLINER Kalendertag (bis 21.08.2026 stand hier
+     * `toISOString`, also UTC). Zwei Abrufe um 00:30 und um 23:30 Ortszeit
+     * fielen damit auf zwei verschiedene Tage, und das Mittel behauptete
+     * einen Tag mehr, als es gesehen hatte.
+     */
+    tageImFenster.add(alsTag(new Date(t)));
   }
   const tage = tageImFenster.size;
 

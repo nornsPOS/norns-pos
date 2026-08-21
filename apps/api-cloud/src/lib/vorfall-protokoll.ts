@@ -47,6 +47,7 @@
  */
 
 import { appendFile, mkdir, readdir, unlink } from 'node:fs/promises';
+import { alsTag } from '@norns/domain';
 import { join } from 'node:path';
 
 /** Wie viele Tage zurück das Protokoll reicht. */
@@ -70,9 +71,17 @@ export interface Vorfall {
   muster: string;
 }
 
-/** Der Dateiname eines Tages. */
+/**
+ * Der Dateiname eines Tages.
+ *
+ * ⚠️ Der BERLINER Tag (bis 21.08.2026 stand hier `toISOString`, also UTC).
+ * Ein Vorfall um halb eins nachts landete damit in der Datei von GESTERN —
+ * und wer am Morgen nachsieht, was in der Nacht schiefging, öffnet die
+ * falsche. Klein, aber es ist dieselbe Rechnung wie überall sonst im Haus,
+ * und zwei Rechnungen sind zwei Wahrheiten.
+ */
 export function dateiname(zeit: Date): string {
-  return `vorfaelle-${zeit.toISOString().slice(0, 10)}.jsonl`;
+  return `vorfaelle-${alsTag(zeit)}.jsonl`;
 }
 
 /**
