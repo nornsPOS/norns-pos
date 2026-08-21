@@ -1081,6 +1081,37 @@ function MarginModal({ rates, onClose }: { rates: MetalRate[]; onClose: () => vo
       // AppraisalItemForm) and this Kursraum all share the ['metal-prices', …]
       // key prefix → a single invalidation reaches all of them.
       await qc.invalidateQueries({ queryKey: ['metal-prices'] });
+
+      /*
+       * ⛔ 22.08.2026 — UND DIE VERKAUFSSEITE, DIE HIER FEHLTE.
+       *
+       * Bis heute stand oben NUR die eine Zeile. Sie erreicht alles unter
+       * ['metal-prices', …] — also den Ticker, den Ankauf-Vorschlag und
+       * diesen Kursraum. Der VERKAUFSaufschlag ist am 21.08. hierher
+       * gezogen, seine Leser aber liegen unter ganz anderen Schlüsseln,
+       * und die blieben unberührt (gemessen, nicht vermutet):
+       *
+       *   ['kurspreise', …]        hooks/useKurspreise.ts:52   → der KORB
+       *   ['products','list', …]   Lager.tsx:151, CatalogGrid.tsx:139
+       *   ['products','detail',id] lager/abfrage-schluessel.ts:16
+       *
+       * Wirkung am Tresen: Basel stellt den Aufschlag von 12 auf 20 %, der
+       * Kasten meldet „sofort überall … Lagerpreise", und der Korb rechnet
+       * bis zu 30 Sekunden weiter mit 12 % (staleTime 30_000). Die
+       * Lagerliste und der Katalog tragen `kurspreisEur` vom SERVER, mit dem
+       * alten Aufschlag gerechnet — und sie holen bei einem Margenwechsel
+       * gar nicht nach, denn niemand stösst ihren Schlüssel an.
+       *
+       * ⚠️ NICHT ['products'] als Ganzes: darunter liegen auch
+       * ['products', <id>, 'photos']. Ein Margenwechsel würde dann jedes
+       * Bild neu ziehen — auf der schwachen Ladenmaschine über die
+       * Ladentheke spürbar. Angestossen wird genau, was einen Preis trägt.
+       */
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['kurspreise'] }),
+        qc.invalidateQueries({ queryKey: ['products', 'list'] }),
+        qc.invalidateQueries({ queryKey: ['products', 'detail'] }),
+      ]);
       onClose();
     },
     onError: (err: unknown) => {

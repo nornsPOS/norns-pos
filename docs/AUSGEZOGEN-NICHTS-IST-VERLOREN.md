@@ -250,6 +250,40 @@ selben Einbau in `src/lib/dsfinvk-export.ts`.
 
 ---
 
+## Die Aufschlagsfläche, die niemand mehr erreichte (22.08.2026)
+
+| Datei | Zeilen | Rückholbefehl |
+|---|---|---|
+| `screens/secondary/VerkaufsaufschlagSection.tsx` | 336 | `b058628` |
+
+Also `git show b058628:apps/tauri-pos/src/<pfad>`.
+
+**Warum sie ging.** Am 21.08. zog der Verkaufsaufschlag auf Basels Anweisung
+in den Kursraum, Seite an Seite mit der Ankaufmarge: eine Fläche, eine Frage.
+Die alte Kachel blieb aber im Baum stehen. Gemessen am 22.08.: die Datei wird
+NIRGENDS gerendert — kein `<VerkaufsaufschlagSection` im ganzen Haus. 336
+Zeilen, die kein Händler je zu sehen bekommt.
+
+**Und das Schlimmere: ein Wächter hing daran.** Sechs Sätze in
+`screens/lager/tagespreis-anzeige.test.ts` lasen ihren Text und hielten das
+Versprechen dieser Fläche in Schach. Sie waren grün — über einer Fläche ohne
+Ausgang. Das ist Regel 3 unten in ihrer heimtückischen Fassung: der Wächter
+zeigt nicht auf eine GELÖSCHTE Datei, sondern auf eine UNERREICHBARE. Die
+Datei existiert, `readFileSync` gelingt, jeder Satz stimmt — und geschützt ist
+nichts.
+
+**Ein Satz darin war inzwischen unwahr.** Er lautete „Gebucht wird weiterhin
+der gespeicherte Preis." Seit der Korb über `geltenderPreis`
+(`lib/korbpreis.ts:63`) den Kurspreis übernimmt, bucht die Kasse genau das
+nicht mehr. Der Wächter VERLANGTE diesen Satz. Er hätte einen Rückbau zur
+Wahrheit rot gemeldet.
+
+**Bedingung für die Rückkehr: keine.** Der Aufschlag wird im Margen-Fenster
+von `screens/secondary/Kurse.tsx` gestellt; sein Wächter steht seit heute
+ebendort.
+
+---
+
 ## Was ABSICHTLICH stehengeblieben ist
 
 Nicht alles, was den alten Namen trägt, darf weg. Die Begründung im Einzelnen

@@ -227,7 +227,9 @@ describe('fasseTagespreiseZusammen zählt nur, was da ist', () => {
       );
 
       const alleinig = fasseTagespreiseZusammen([zeile({ kurspreisEur: '900.00' })], { gesamt: 1 });
-      expect(alleinig.satz).toBe('Das einzige Stück der Auswahl liegt unter dem gespeicherten Preis.');
+      expect(alleinig.satz).toBe(
+        'Das einzige Stück der Auswahl liegt unter dem gespeicherten Preis.',
+      );
       expect(alleinig.umfangSatz).toBeNull();
     });
 
@@ -240,7 +242,11 @@ describe('fasseTagespreiseZusammen zählt nur, was da ist', () => {
 
     it('beugt das Zeitwort nach der Zahl, in beide Richtungen', () => {
       const einsHoch = fasseTagespreiseZusammen(
-        [zeile({ kurspreisEur: '1100.00' }), zeile({ kurspreisEur: '900.00' }), zeile({ kurspreisEur: '800.00' })],
+        [
+          zeile({ kurspreisEur: '1100.00' }),
+          zeile({ kurspreisEur: '900.00' }),
+          zeile({ kurspreisEur: '800.00' }),
+        ],
         { gesamt: 3 },
       );
       expect(einsHoch.satz).toBe(
@@ -306,63 +312,94 @@ function einzeilig(...teile: string[]): string {
 }
 
 /**
- * Der Wächter über das Versprechen auf der Aufschlagsfläche.
+ * ════════════════════════════════════════════════════════════════════════════
+ *  ⛔ DER WÄCHTER ÜBER DIE AUFSCHLAGSFLÄCHE — AM RICHTIGEN ORT
+ * ════════════════════════════════════════════════════════════════════════════
  *
- * Dort stand im AUSGELIEFERTEN Programm wörtlich: „Steigt der Goldkurs,
- * steigen alle Goldstücke mit, ohne dass Sie ein einziges anfassen." Die
- * Karte bucht aber bis heute den gespeicherten Preis.
+ * ── ⚰️ 22.08.2026: ER STAND SECHS SÄTZE LANG ÜBER EINER TOTEN FLÄCHE ──────
  *
- * ⚠️ DER ERSTE FIX SETZTE EINE NEUE ZUSAGE AN DIESE STELLE: „zeigt die Kasse
- * bei jedem Goldstück sofort den neuen Tagespreis". Nachgemessen war beides
- * falsch — ohne Gewicht oder Feingehalt rechnet
- * `packages/domain/src/pricing/metallpreis.ts` GAR NICHTS, und keine der zwei
- * Flächen holt von selbst nach. Dieser Wächter hält deshalb nicht nur die
- * alte Zusage fest, sondern auch die zwei Wörter, mit denen sie zurückkam.
+ * Bis heute las dieser Block `secondary/VerkaufsaufschlagSection.tsx`. Am
+ * 21.08. zog der Verkaufsaufschlag auf Basels Anweisung in den Kursraum; die
+ * alte Kachel blieb im Baum stehen und wurde von da an NIRGENDS mehr
+ * gerendert (gemessen: kein `<VerkaufsaufschlagSection` im ganzen Haus).
  *
- * ⚠️ WAS DIESER WÄCHTER NICHT KANN: er liest Text, nicht Bedeutung. Wer die
- * Zusage neu formuliert, kommt an ihm vorbei. Er hält die gemessenen Sätze
- * fest und verlangt, dass die einschränkenden Aussagen danebenstehen — mehr
- * behauptet er nicht.
+ * Sechs grüne Sätze über einer Fläche ohne Ausgang. Das ist nicht die
+ * bekannte Falle „Wächter zeigt auf gelöschte Datei" — die Datei war da,
+ * `readFileSync` gelang, jeder Satz stimmte. Nur schützte er nichts.
+ *
+ * ⚠️ UND EINER SEINER SÄTZE WAR INZWISCHEN UNWAHR. Er verlangte wörtlich
+ * „Gebucht wird weiterhin der gespeicherte Preis." Seit der Korb über
+ * `geltenderPreis` (`lib/korbpreis.ts:63`) den Kurspreis übernimmt, bucht die
+ * Kasse genau das nicht mehr. Ein Wächter, der eine überholte Zusage
+ * ERZWINGT, meldet den Rückbau zur Wahrheit als Fehler.
+ *
+ * ── WAS ER JETZT MISST ────────────────────────────────────────────────────
+ *
+ * Denselben Vertrag, am lebenden Ort: die Fläche darf keine Menge und keine
+ * Geschwindigkeit versprechen, die der Motor nicht hält. Zwei Zusagen stehen
+ * dort, beide werden geprüft — die Bedingung („nur Stücke mit Gewicht und
+ * Feingehalt, feste Preise nicht") und das „sofort überall".
+ *
+ * ⚠️ „sofort" ist hier ERLAUBT, aber nur gegen Beweis. Die Fläche darf es
+ * sagen, WEIL das Speichern jede Abfragefamilie anstösst, die einen
+ * kursgebundenen Preis trägt. Fällt eine dieser Zeilen weg, fällt der Satz
+ * hier — dann ist „sofort" wieder eine Zusage ohne Deckung.
  */
-describe('die Aufschlagsfläche verspricht nichts, was die Karte nicht hält', () => {
-  const text = flaechenText('..', 'secondary', 'VerkaufsaufschlagSection.tsx');
+describe('das Margen-Fenster verspricht nichts, was der Motor nicht hält', () => {
+  const KURSRAUM = ['..', 'secondary', 'Kurse.tsx'] as const;
+  const text = flaechenText(...KURSRAUM);
+  const roh = einzeilig(...KURSRAUM);
 
-  it('sagt nicht mehr, alle Goldstücke stiegen von selbst mit', () => {
-    expect(text).not.toContain('steigen alle Goldstücke mit');
+  it('nennt die Bedingung, unter der überhaupt gerechnet wird', () => {
+    // `kurspreisFuerStueck` (packages/domain/src/pricing/metallpreis.ts) gibt
+    // NICHTS zurück, wenn Metall, Gewicht, Feingehalt oder Tageskurs fehlen.
+    // Ein Goldring ohne eingetragenes Gewicht ist im Bestand die Regel.
+    expect(text).toContain('Gewicht und Feingehalt gepflegt');
   });
 
-  it('verspricht nichts mehr „bei jedem Goldstück"', () => {
+  it('sagt, dass fest gepflegte Stücke dem Kurs NICHT folgen', () => {
+    expect(text).toContain('Stücke mit festem Preis rührt er nicht an.');
+  });
+
+  it('verspricht nicht, dass alle Stücke von selbst mitziehen', () => {
+    // Die zwei Sätze, die auf der alten Fläche zweimal zu gross waren.
+    expect(text).not.toContain('steigen alle Goldstücke mit');
     expect(text).not.toContain('bei jedem Goldstück');
     expect(text).not.toContain('Alle Stücke dieses Metalls ziehen mit');
   });
 
-  it('nennt die Bedingung, unter der überhaupt gerechnet wird', () => {
-    expect(text).toContain('Metall, Gewicht und Feingehalt');
-    expect(text).toContain('festem Preis folgt dem Kurs bewusst nicht');
+  /*
+   * ── DIE DECKUNG FÜR „SOFORT" ────────────────────────────────────────────
+   *
+   * Gemessen am 22.08.: das Speichern stiess NUR ['metal-prices'] an. Darunter
+   * liegen Ticker, Ankauf-Vorschlag und Kursraum — die Ankaufseite. Die
+   * VERKAUFSseite liegt woanders, und sie blieb stehen:
+   *
+   *   ['kurspreise', …]         hooks/useKurspreise.ts:52    → der Korb
+   *   ['products','list', …]    Lager.tsx:151, CatalogGrid.tsx:139
+   *   ['products','detail',id]  lager/abfrage-schluessel.ts:16
+   *
+   * Der Kasten meldete „sofort überall … Lagerpreise", und der Korb rechnete
+   * bis zu 30 Sekunden mit dem alten Aufschlag weiter (staleTime 30_000).
+   */
+  const FAMILIEN = [
+    { key: "['kurspreise']", wer: 'der Korb im Verkauf' },
+    { key: "['products', 'list']", wer: 'Lagerliste und Katalog' },
+    { key: "['products', 'detail']", wer: 'das Produktblatt' },
+  ] as const;
+
+  it.each(FAMILIEN)('das Speichern frischt $wer auf', ({ key, wer }) => {
+    expect(
+      roh,
+      `Nach dem Speichern wird ${key} nicht angestossen. Dann trägt ${wer} weiter den alten Aufschlag, und das „sofort überall" auf der Fläche ist eine Zusage ohne Deckung.`,
+    ).toContain(`invalidateQueries({ queryKey: ${key} })`);
   });
 
-  it('sagt nirgends mehr „sofort"', () => {
-    // Die Lagerliste hält 30 s, der Katalog 10 s, und keine holt bei
-    // Fensterwechsel nach. „sofort" wäre auf beiden Flächen unwahr.
-    expect(text).not.toContain('sofort');
-  });
-
-  it('sagt statt einer Zusage, wann gelesen wurde', () => {
-    expect(text).toContain('lesen den Stand beim Öffnen');
-  });
-
-  it('sagt ausdrücklich, dass der gespeicherte Preis gebucht wird', () => {
-    expect(text).toContain('Gebucht wird weiterhin der gespeicherte Preis.');
-  });
-
-  it('schickt den Händler auf den Weg, der wirklich zum Preisfeld führt', () => {
-    // Gemessen: das Feld „Verkaufspreis (€)" liegt im Produktblatt unter
-    // „Details" (ProductSheet.tsx:1118) und ist der Ladenleitung vorbehalten
-    // (ProductSheet.tsx:1029). Der Abschnitt „Preis & Veröffentlichen" zeigt
-    // den Preis nur an — dorthin zu schicken wäre eine Sackgasse.
-    expect(text).toContain('unter „Details"');
-    expect(text).toContain('Ladenleitung');
-    expect(text).not.toContain('über „anpassen"');
+  it('und die Bildabfrage wird dabei NICHT mitgerissen', () => {
+    // ['products', <id>, 'photos'] hängt unter demselben Vorsatz. Ein
+    // Margenwechsel darf nicht jedes Foto neu ziehen; auf der schwachen
+    // Ladenmaschine ist das über die Theke spürbar.
+    expect(roh).not.toContain("invalidateQueries({ queryKey: ['products'] })");
   });
 });
 
