@@ -1020,6 +1020,8 @@ async function main() {
 
   const { loadEnv } = await import('../src/config/env.ts');
   const { buildApp } = await import('../src/app.ts');
+  // Aus derselben Quelle wie der Motor; siehe Abschnitt 6 weiter unten.
+  const { starteKettenpruefung } = await import('../src/lib/kettenpruefung.ts');
   const app = await buildApp({ env: loadEnv() });
   await app.listen({ port: PORT, host: '127.0.0.1' });
   melde(`Server bereit (${takt()})`);
@@ -1043,6 +1045,25 @@ async function main() {
   };
   void kursLauf();
   setInterval(kursLauf, 5 * 60 * 1000);
+
+  // ── 6. Die Prüfsummenkette prüft sich selbst ───────────────────────────
+  //
+  // ⛔ BEFUND vom 21.08.2026: `starteKettenpruefung` steht in `server.ts`,
+  // und dieser Beiläufer bootet `buildApp` DIREKT (Zeile 1022, „server.ts
+  // bleibt unberührt"). Auf einer ausgelieferten Kasse lief die Selbstprüfung
+  // der Fiskalkette damit NIE. Geprüft wurde sie nur beim Ziehen des
+  // Prüferpakets — und das kann Monate auseinanderliegen. Ein Bruch fiele
+  // dann bei der Kassennachschau auf, nicht am Tag danach.
+  //
+  // Am 08.08. wurde die ANZEIGE dieser Lücke ehrlich gemacht („nie geprüft"
+  // ist nicht grün). Jetzt wird auch die Lücke selbst geschlossen.
+  //
+  // ⚠️ GEMESSEN, bevor es hier steht: `verify_ledger_chain()` läuft über
+  // 20 000 Zeilen in 84 ms, also 0,0042 ms je Zeile. Ein Jahrzehnt einer
+  // belebten Kasse (500 000 Zeilen) kostet 2,1 Sekunden — einmal beim
+  // Anlauf, danach einmal täglich, und NACH der Bereitmeldung. Die Kasse
+  // wartet keine Millisekunde darauf.
+  starteKettenpruefung(app);
 
   const zu = async () => {
     try { await app.close(); } catch { /* schon zu */ }
