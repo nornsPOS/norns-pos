@@ -170,7 +170,30 @@ export function EinrichtungCard(): JSX.Element | null {
   // Kassenmeldung ans Finanzamt gehört NICHT dazu — sie läuft ausserhalb der
   // Kasse. Sie hier mitzuzählen hiesse dem Händler sagen, ein Punkt halte
   // seinen Betrieb auf, den er im Betrieb gar nicht bemerkt.
-  const blockierend = offen.filter((s) => s.sperre !== 'KOSMETIK' && s.sperre !== 'MELDUNG');
+  /*
+   * ── ⛔ DIE KOPFZEILE WARF ALLES ZUSAMMEN (21.08.2026) ───────────────────
+   *
+   * `blockierend` war „alles ausser KOSMETIK und MELDUNG" — also VERKAUF,
+   * EXPORT und TERMINE in EINER Zahl. Unter der Überschrift „Diese Kasse kann
+   * noch nicht verkaufen" las der Händler dann:
+   *
+   *     „7 Aufgaben halten den Betrieb auf."
+   *
+   * Und das stimmte nicht. Das Haus hat es am 20.08. selbst nachgemessen und
+   * in den Plan geschrieben: „von zwölf Punkten halten nur ZWEI den Verkauf
+   * auf". Die ZEILEN sagen es auch richtig („Kein Verkauf möglich" gegen
+   * „Kein Steuerexport möglich"), und die Farben ebenso — nur die Kopfzeile
+   * behauptete etwas anderes als alles darunter.
+   *
+   * ⚠️ Der Unterschied ist nicht kosmetisch. Wer glaubt, sieben Dinge
+   * hinderten ihn am Verkaufen, räumt am ersten Tag sieben Dinge weg, bevor
+   * er den ersten Kunden bedient — statt zwei. Der Steuerexport eilt nicht
+   * am Tresen; er eilt zum Monatsende.
+   */
+  const haltenDenVerkaufAuf = offen.filter((s) => s.sperre === 'VERKAUF');
+  const haltenSonstAuf = offen.filter(
+    (s) => s.sperre !== 'KOSMETIK' && s.sperre !== 'MELDUNG' && s.sperre !== 'VERKAUF',
+  );
   const anteil = data.gesamt === 0 ? 0 : Math.round((data.erledigtZahl / data.gesamt) * 100);
 
   return (
@@ -259,9 +282,21 @@ export function EinrichtungCard(): JSX.Element | null {
             color: 'var(--w14-ink-faded)',
           }}
         >
-          {blockierend.length === 1
-            ? 'Eine Aufgabe hält den Betrieb auf. Sie steht hier, damit sie nicht erst beim Bezahlen auffällt. Ein Klick führt hin.'
-            : `${blockierend.length} Aufgaben halten den Betrieb auf. Sie stehen hier, damit sie nicht erst beim Bezahlen auffallen. Ein Klick führt hin.`}
+          {haltenDenVerkaufAuf.length === 1
+            ? 'Eine Aufgabe hält den Verkauf auf. Sie steht hier, damit sie nicht erst beim Bezahlen auffällt. Ein Klick führt hin.'
+            : `${haltenDenVerkaufAuf.length} Aufgaben halten den Verkauf auf. Sie stehen hier, damit sie nicht erst beim Bezahlen auffallen. Ein Klick führt hin.`}
+          {haltenSonstAuf.length > 0 && (
+            /* Leiser danebengesetzt: der Steuerexport eilt zum Monatsende,
+               nicht am Tresen. Eine eigene Zahl, damit die erste stimmt. */
+            <>
+              {' '}
+              <span style={{ color: 'var(--w14-ink-faded)' }}>
+                {haltenSonstAuf.length === 1
+                  ? 'Eine weitere wartet auf die Steuerausfuhr.'
+                  : `${haltenSonstAuf.length} weitere warten auf die Steuerausfuhr.`}
+              </span>
+            </>
+          )}
         </p>
       ) : (
         <p
