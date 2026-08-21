@@ -207,6 +207,51 @@ describe('⛔ Der Kursverlauf', () => {
     expect(mitEchtemTief.length, 'kein Korn hat ein Tief unter seinen Raendern').toBeGreaterThan(0);
   });
 
+  it('⛔ der Verlauf sortiert im ARBEITSSPEICHER, nicht auf der Platte', async () => {
+    /*
+     * ── DER BEFUND AUS EXPLAIN (ANALYZE, BUFFERS), 21.08.2026 ────────────
+     *
+     * Mein erster Wurf lief so:  Sort Method: external merge  Disk: 4224kB
+     *
+     * work_mem steht auf 4 MB, der Lauf braucht 8. Auf diesem Rechner kostet
+     * das Millisekunden; auf einem Tresengeraet mit langsamer Platte ist ein
+     * Plattenlauf mitten im Kursraum genau das Ruckeln, das niemand erklaeren
+     * kann — und es taucht in KEINER gewoehnlichen Probe auf, denn das
+     * Ergebnis stimmt ja. Deshalb misst diese Probe den PLAN.
+     */
+    await migratorSql.unsafe('BEGIN');
+    await migratorSql.unsafe("SET LOCAL work_mem = '32MB'");
+    const plan = await migratorSql.unsafe(`
+      EXPLAIN (ANALYZE, BUFFERS)
+      WITH gefaltet AS (
+        SELECT date_bin('1 week'::interval, valid_from, TIMESTAMPTZ '2000-01-01') AS korn,
+               price_per_gram_eur AS preis, valid_from, id
+        FROM metal_prices
+        WHERE metal = 'gold' AND price_per_gram_eur IS NOT NULL
+          AND valid_from >= now() - interval '365 days' AND valid_from < now()
+      )
+      SELECT korn,
+        (array_agg(preis ORDER BY valid_from ASC,  id ASC ))[1] AS o,
+        max(preis) AS h, min(preis) AS l,
+        (array_agg(preis ORDER BY valid_from DESC, id DESC))[1] AS c,
+        count(*) AS n
+      FROM gefaltet GROUP BY korn ORDER BY korn`);
+    await migratorSql.unsafe('COMMIT');
+
+    const text = (plan as unknown as { 'QUERY PLAN': string }[])
+      .map((z) => z['QUERY PLAN'])
+      .join('\n');
+    expect(text, 'kein Sortierverfahren im Plan — misst die Probe ueberhaupt etwas?').toMatch(
+      /Sort Method/,
+    );
+    expect(
+      text,
+      'Der Verlauf sortiert auf die PLATTE. Auf einem Tresengeraet ist das ein ' +
+        'Ruckeln, das niemand erklaeren kann. SET LOCAL work_mem in ' +
+        'lib/kursverlauf.ts pruefen.',
+    ).not.toMatch(/external merge\s+Disk/);
+  });
+
   it('⛔ ein unmögliches Korn wird ehrlich abgewiesen, statt die Kasse anzuhalten', async () => {
     // Ein Jahr in Fuenfminutenkoernern waeren 105 120 Zeilen.
     const von = new Date(Date.now() - 365 * 86_400_000).toISOString();

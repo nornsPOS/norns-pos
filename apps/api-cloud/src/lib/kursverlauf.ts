@@ -122,43 +122,65 @@ export async function leseKerzen(
   const von = new Date(vonMs).toISOString();
   const bis = new Date(bisMs).toISOString();
 
-  const zeilen = await db.execute<{
-    t: string;
-    o: string;
-    h: string;
-    l: string;
-    c: string;
-    n: string;
-  }>(drizzleSql`
-    WITH gefaltet AS (
-      SELECT
-        date_bin(${intervall}::interval, valid_from, TIMESTAMPTZ '2000-01-01') AS korn,
-        price_per_gram_eur AS preis,
-        valid_from,
-        first_value(price_per_gram_eur) OVER w AS eroeffnung,
-        last_value(price_per_gram_eur)  OVER w AS schluss
-      FROM metal_prices
-      WHERE metal = ${metall}
-        AND price_per_gram_eur IS NOT NULL
-        AND valid_from >= ${von}::timestamptz
-        AND valid_from <  ${bis}::timestamptz
-      WINDOW w AS (
-        PARTITION BY date_bin(${intervall}::interval, valid_from, TIMESTAMPTZ '2000-01-01')
-        ORDER BY valid_from, id
-        ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+  /*
+   * ── ⛔ ZWEI BEFUNDE AUS `EXPLAIN (ANALYZE, BUFFERS)` AN 105 114 ECHTEN
+   *    ZEILEN (21.08.2026), beide an MEINEM eigenen ersten Wurf ────────────
+   *
+   * 1. DIE SORTIERUNG LIEF AUF DIE PLATTE:
+   *
+   *        Sort Method: external merge  Disk: 4224kB
+   *
+   *    `work_mem` steht auf 4 MB, der Lauf braucht 8. Auf diesem Rechner
+   *    kostet das wenig; auf einem Tresengerät mit langsamer Platte ist ein
+   *    Plattenlauf mitten im Kursraum genau das Ruckeln, das niemand erklären
+   *    kann. `SET LOCAL` gilt nur für DIESEN Vorgang und fällt danach von
+   *    selbst zurück — kein Dauerzustand für die ganze Verbindung.
+   *
+   * 2. DIE FENSTERFUNKTION WAR DER UMWEG. Der erste Wurf rechnete
+   *    `first_value`/`last_value` über ein Fenster und faltete danach. Mit
+   *    GEORDNETEN Sammelfunktionen fällt ein ganzer Schritt weg:
+   *
+   *        Fensterfunktion   53,3 ms, Plattenlauf 4224 kB
+   *        geordnet + RAM    39,4 ms, quicksort   8000 kB
+   *
+   * ⚠️ `(array_agg(... ORDER BY ...))[1]` ist NICHT dasselbe wie `min()`: es
+   * nimmt den ZEITLICH ersten Wert, nicht den kleinsten. Genau darum geht es
+   * bei Eröffnung und Schluss.
+   */
+  const zeilen = await db.transaction(async (tx) => {
+    await tx.execute(drizzleSql`SET LOCAL work_mem = '32MB'`);
+    return tx.execute<{
+      t: string;
+      o: string;
+      h: string;
+      l: string;
+      c: string;
+      n: string;
+    }>(drizzleSql`
+      WITH gefaltet AS (
+        SELECT
+          date_bin(${intervall}::interval, valid_from, TIMESTAMPTZ '2000-01-01') AS korn,
+          price_per_gram_eur AS preis,
+          valid_from,
+          id
+        FROM metal_prices
+        WHERE metal = ${metall}
+          AND price_per_gram_eur IS NOT NULL
+          AND valid_from >= ${von}::timestamptz
+          AND valid_from <  ${bis}::timestamptz
       )
-    )
-    SELECT
-      korn::text                AS t,
-      min(eroeffnung)::text     AS o,
-      max(preis)::text          AS h,
-      min(preis)::text          AS l,
-      min(schluss)::text        AS c,
-      count(*)::text            AS n
-    FROM gefaltet
-    GROUP BY korn
-    ORDER BY korn ASC
-  `);
+      SELECT
+        korn::text                                                    AS t,
+        (array_agg(preis ORDER BY valid_from ASC,  id ASC ))[1]::text AS o,
+        max(preis)::text                                              AS h,
+        min(preis)::text                                              AS l,
+        (array_agg(preis ORDER BY valid_from DESC, id DESC))[1]::text AS c,
+        count(*)::text                                                AS n
+      FROM gefaltet
+      GROUP BY korn
+      ORDER BY korn ASC
+    `);
+  });
 
   const roh = Array.isArray(zeilen) ? zeilen : ((zeilen as { rows?: unknown[] }).rows ?? []);
   return (roh as { t: string; o: string; h: string; l: string; c: string; n: string }[]).map((z) => ({
