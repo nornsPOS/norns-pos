@@ -46,25 +46,39 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const WURZEL = join(dirname(fileURLToPath(import.meta.url)), '..');
 
+const WINDOWS = process.platform === 'win32';
+
 /**
- * Wie das Werkzeug auf DIESEM Betriebssystem heisst.
+ * Wie das Werkzeug gerufen wird — und warum es unter Windows anders sein MUSS.
  *
- * ⚠️ Unter Windows ist `pnpm` eine `.cmd`-Datei, und `execFileSync` sucht ohne
- * Hülle nur nach der EXAKTEN Datei. Der Windows-Auftrag brach deshalb mit
- * „spawnSync pnpm ENOENT", während Linux und macOS durchliefen — der
- * klassische Fall, den man auf dem eigenen Rechner nie sieht.
+ * ── DREIMAL DIESELBE STELLE, DREIMAL EIN ANDERER FEHLER ───────────────────
  *
- * Der naheliegende Griff wäre `shell: true` gewesen. Node warnt davor zu
- * Recht: mit einer Hülle werden die Argumente nur aneinandergehängt, nicht
- * maskiert. Den richtigen NAMEN zu wählen ist einfacher und sicherer.
+ *   20.08.2026  `spawnSync pnpm ENOENT`. Unter Windows ist `pnpm` eine
+ *               `.cmd`-Datei; ohne Hülle sucht `execFileSync` nur nach der
+ *               EXAKTEN Datei. Behoben durch den richtigen NAMEN, `pnpm.cmd`.
+ *               Der Kommentar dazu lehnte `shell: true` ausdrücklich ab.
+ *
+ *   21.08.2026  `spawnSync pnpm.cmd EINVAL`. Der richtige Name genügt seit
+ *               Node 18.20/20.12 NICHT mehr: nach CVE-2024-27980 weigert sich
+ *               Node, eine `.bat`/`.cmd` OHNE Hülle zu starten. Die damalige
+ *               Ablehnung war also keine Wahl — für eine `.cmd` gibt es
+ *               keinen anderen Weg.
+ *
+ * ── DIE SORGE VON DAMALS BLEIBT RICHTIG, SIE BEKOMMT NUR EINEN RIEGEL ─────
+ *
+ * Mit einer Hülle werden die Argumente aneinandergehängt statt maskiert. Das
+ * ist gefährlich, wenn ein Argument von aussen kommt. Hier kommt KEINES von
+ * aussen: die Namen stehen in den `package.json` dieses Werks. Damit das eine
+ * geprüfte Zusage bleibt und keine Annahme, muss jeder Name die Form eines
+ * hauseigenen Pakets haben — sonst bricht der Lauf ab, statt ihn zu rufen.
  */
-const PNPM = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
+export const HAUSNAME = /^@norns\/[a-z0-9][a-z0-9-]*$/;
 
 /** Jedes Werkstück des Werks: Name → { ort, abhaengig, hatBau }. */
 function werkstuecke() {
@@ -152,9 +166,19 @@ function main() {
   for (const name of folge) {
     const { ort } = alle.get(name);
     console.log(`\n── ${name} (${ort}) ──`);
-    execFileSync(PNPM, ['--fail-if-no-match', '--filter', name, 'build'], {
+    if (!HAUSNAME.test(name)) {
+      throw new Error(
+        `Kein hauseigener Paketname: ${JSON.stringify(name)}. ` +
+          'Unter Windows läuft der Aufruf durch eine Hülle; ein Name, der nicht ' +
+          'dieser Form entspricht, wird deshalb NICHT gerufen.',
+      );
+    }
+    // ⚠️ `shell` NUR unter Windows, und nur, weil eine `.cmd` sich anders
+    // nicht starten lässt. Linux und macOS bleiben ohne Hülle.
+    execFileSync(WINDOWS ? 'pnpm.cmd' : 'pnpm', ['--fail-if-no-match', '--filter', name, 'build'], {
       cwd: WURZEL,
       stdio: 'inherit',
+      shell: WINDOWS,
     });
   }
   console.log(`\nAlle ${folge.length} Pakete gebaut.`);

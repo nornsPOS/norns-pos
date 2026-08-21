@@ -32,10 +32,12 @@
  */
 
 import { readFileSync, readdirSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
+
+import { HAUSNAME } from '../../../../scripts/baue-pakete.mjs';
 
 const HIER = dirname(fileURLToPath(import.meta.url));
 const LAEUFE = join(HIER, '../../../../.github/workflows');
@@ -157,5 +159,60 @@ describe('⛔ Die Bauordnung wird abgeleitet', () => {
       readFileSync(join(HIER, '../../../tauri-pos/package.json'), 'utf8'),
     ) as { dependencies?: Record<string, string> };
     expect(kasse.dependencies?.['@norns/domain']).toBeDefined();
+  });
+});
+
+describe('⛔ Der Aufruf unter Windows', () => {
+  /*
+   * ── DREIMAL DIESELBE STELLE, DREIMAL EIN ANDERER FEHLER ─────────────────
+   *
+   *   23.07.2026  Die Handliste stand in der falschen Reihenfolge.
+   *   20.08.2026  `spawnSync pnpm ENOENT` — unter Windows ist `pnpm` eine
+   *               `.cmd`, und `execFileSync` fand sie nicht.
+   *   21.08.2026  `spawnSync pnpm.cmd EINVAL` — der richtige NAME genuegt
+   *               seit Node 18.20/20.12 nicht mehr: nach CVE-2024-27980
+   *               weigert sich Node, eine `.cmd` OHNE Huelle zu starten.
+   *               Der Auslieferungsbau von 0.7.2 ist daran gescheitert,
+   *               NACHDEM macOS schon gruen war.
+   *
+   * Windows laeuft NUR im Auftrag. Kein Mensch hier sieht diesen Weg je,
+   * bevor eine Auslieferung daran zerbricht. Deshalb liest diese Probe den
+   * Quelltext: sie kann nicht spawnen, aber sie kann festhalten, dass die
+   * drei Zusagen dastehen.
+   */
+  /*
+   * ⚠️ OHNE KOMMENTARE. Der Kopf der Datei ERZAEHLT die Geschichte von
+   * `shell: true` -- warum es 20.08. abgelehnt und 21.08. unvermeidlich
+   * wurde. Wer roh sucht, schlaegt auf der Erzaehlung an statt auf dem Code.
+   * Dieselbe Falle wie beim Filter-Waechter am 20.08. und beim
+   * Fenster-Waechter heute; sie kommt so oft, dass sie zur Regel gehoert.
+   */
+  const QUELLE = readFileSync(resolve(HIER, '../../../../scripts/baue-pakete.mjs'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .split('\n')
+    .filter((z) => !z.trim().startsWith('//'))
+    .join('\n');
+
+  it('⛔ startet die `.cmd` MIT Huelle — sonst wirft Node EINVAL', () => {
+    expect(
+      QUELLE,
+      'Ohne `shell` weigert sich Node seit CVE-2024-27980, eine .cmd zu starten.',
+    ).toMatch(/shell:\s*WINDOWS/);
+  });
+
+  it('⚠️ und NUR unter Windows — Linux und macOS bleiben ohne Huelle', () => {
+    expect(QUELLE).toMatch(/const WINDOWS = process\.platform === 'win32'/);
+    expect(QUELLE, 'shell darf nirgends fest auf true stehen').not.toMatch(/shell:\s*true/);
+  });
+
+  it('⛔ und kein Name geht durch die Huelle, der kein Hauspaket ist', () => {
+    // Mit einer Huelle werden Argumente aneinandergehaengt statt maskiert.
+    // Hier kommt keines von aussen -- der Riegel macht daraus eine GEPRUEFTE
+    // Zusage statt einer Annahme.
+    expect(QUELLE).toMatch(/HAUSNAME\.test\(name\)/);
+    expect(HAUSNAME.test('@norns/api-client')).toBe(true);
+    expect(HAUSNAME.test('@norns/x; rm -rf /')).toBe(false);
+    expect(HAUSNAME.test('pnpm && evil')).toBe(false);
+    expect(HAUSNAME.test('../../etc/passwd')).toBe(false);
   });
 });

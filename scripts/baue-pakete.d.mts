@@ -27,3 +27,13 @@ export function reihenfolge(
   alle: Map<string, Werkstueck>,
   anwendungen: readonly string[],
 ): string[];
+
+/**
+ * Die Form eines hauseigenen Paketnamens.
+ *
+ * ⚠️ Sie ist ein RIEGEL, keine Schönheit: unter Windows läuft der Bauaufruf
+ * durch eine Hülle (eine `.cmd` lässt sich seit CVE-2024-27980 anders nicht
+ * starten), und dort werden Argumente aneinandergehängt statt maskiert. Jeder
+ * Name muss diese Form haben, sonst bricht der Lauf ab, statt ihn zu rufen.
+ */
+export const HAUSNAME: RegExp;
