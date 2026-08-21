@@ -971,6 +971,14 @@ body {
   content: "";
   position: absolute;
   inset: 0;
+  /* ⛔ 21.08.2026, von Basel am Tagbild GESEHEN und als Abzug geschickt: das
+     Rauschen lag als ECKIGES Quadrat ueber jeder RUNDEN Karte und malte an
+     allen vier Ecken ueber den Grund hinaus — die „Zacke" an der Kartenecke.
+     Im Nachtbild unsichtbar (dunkles Rauschen auf dunklem Grund), im
+     Tagbild eine dunkle Stufe an jeder Ecke jeder Karte. Gemessen an der
+     Anmeldekarte: Karte 18px rund, Rauschen 0px. `inherit` folgt JEDER
+     Rundung, auch kuenftigen — die eine Zeile heilt alle Ecken im Haus. */
+  border-radius: inherit;
   pointer-events: none;
   opacity: 0.12;
   background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
