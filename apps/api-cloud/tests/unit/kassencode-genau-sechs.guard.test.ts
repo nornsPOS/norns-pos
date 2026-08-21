@@ -91,9 +91,25 @@ describe('⛔ Der Kassencode hat genau sechs Ziffern', () => {
       'utf8',
     );
     expect(TEAM).toContain('kassencode-loeschen');
-    // Der Inhaber selbst kommt über Google hinein: die Google-Anmeldung
-    // frischt den Step-up, sonst wäre SEIN vergessener Code eine Sackgasse.
-    const GOOGLE = readFileSync(resolve(HIER, '../../src/routes/admin-auth-google.ts'), 'utf8');
-    expect(GOOGLE).toContain('lastPinStepUpAt: new Date()');
+    /*
+     * ⛔ HIER STAND: „Der Inhaber selbst kommt über Google hinein."
+     *
+     * Das war am 21.08.2026 doppelt falsch. Erstens hat diese Kasse KEINE
+     * Google-Anmeldung — der Knopf fiel am 20.08., weil der Weg dahinter Netz
+     * und einen fremden Arbeitsbereich verlangt. Zweitens ist die Tür selbst
+     * heute ausgezogen (773 Zeilen ohne einen einzigen Rufer, siehe
+     * docs/AUSGEZOGEN-NICHTS-IST-VERLOREN.md).
+     *
+     * Der Satz war also ein Wächter, der eine Sackgasse für einen Ausgang
+     * hielt. Der WIRKLICHE Weg des Inhabers ist der Notfallschlüssel: er
+     * meldet nicht an, er erlaubt nur einen neuen Kassencode.
+     */
+    const NOTFALL = readFileSync(
+      resolve(HIER, '../../src/routes/auth-notfallschluessel.ts'),
+      'utf8',
+    );
+    expect(NOTFALL).toContain("'/api/auth/notfallschluessel/einloesen'");
+    // Und er steht AUF der Anmeldefläche, nicht nur im Motor.
+    expect(ANMELDUNG).toContain('Notfallschlüssel');
   });
 });

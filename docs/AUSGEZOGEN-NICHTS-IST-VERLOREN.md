@@ -71,6 +71,50 @@ Jede Zeile ist geprüft: der Befehl daneben holt die Datei wirklich zurück.
 
 Also `git show <vorgänger>:apps/tauri-pos/src/<pfad>`.
 
+#### Nachtrag 21.08.2026 — jetzt auch die MOTORSEITE derselben Tür
+
+Am 05.08. zog die Fläche aus, der Weg dahinter blieb stehen. Am 21.08.
+gemessen, nicht vermutet:
+
+* **Kein Rufer im ganzen Werk.** Jede Fundstelle war die Datei selbst, ihre
+  eigenen Proben, eine Beschreibung in `config/env.ts` oder die gebündelte
+  Kopie derselben Quelle.
+* **Auf jeder Kasse abgeschaltet.** `configured()` verlangt
+  `GOOGLE_STAFF_CLIENT_ID`, `_SECRET` und `ADMIN_PUBLIC_URL`; der Beiläufer
+  (`norns-sidecar.mjs`) setzt die ersten beiden nie. `/start` und `/callback`
+  antworteten also überall 503, `/confirm` und `/claim` liefen auf leeren
+  Speichern.
+* **Und sie widersprach dem Dekret vom 14.08.** („Norns POS ist NUR die
+  schlanke Kasse.") Diese Kasse läuft ohne Netz; ein OAuth-Zustimmungs­
+  bildschirm eines fremden Arbeitsbereichs hat darin nichts zu suchen.
+
+| Datei | Zeilen | Vorgänger |
+|---|---|---|
+| `routes/admin-auth-google.ts` | 773 | `8c5bb32` |
+| `lib/uebergabe-browserbindung.ts` | 127 | `8c5bb32` |
+| `tests/unit/uebergabe-tuer.test.ts` | 216 | `8c5bb32` |
+| `tests/unit/geraete-uebergabe.test.ts` | 126 | `8c5bb32` |
+
+Also `git show 8c5bb32:apps/api-cloud/src/<pfad>` (die Proben unter
+`apps/api-cloud/tests/`).
+
+**Mit ausgezogen:** die Anmeldung in `app.ts`, der öffentliche Vorsatz
+`/api/admin/auth/google/` in `lib/public-routes.ts`, und drei
+Umgebungsangaben (`GOOGLE_STAFF_CLIENT_ID`, `GOOGLE_STAFF_CLIENT_SECRET`,
+`STAFF_GOOGLE_HD`). **`ADMIN_PUBLIC_URL` BLEIBT** — sie trägt auch die
+Rückwege der Stripe-Einrichtung.
+
+**Bedingung für die Rückkehr:** eine Händleridentität über `norns.de`, also
+ein Zustimmungsbildschirm dieses Hauses statt des fremden. Der Bau darin ist
+gut und der Angriff, den er abwehrt (der untergeschobene Übergabe-Link,
+26.07.2026), ist echt — nur die Tür gehört nicht hierher.
+
+**Ein Wächter zog mit um, statt still zu werden:**
+`kassencode-genau-sechs.guard.test.ts` behauptete, der Inhaber komme über
+Google in seine Kasse. Das war doppelt falsch — die Fläche fiel am 20.08.,
+und der wirkliche Weg ist seit dem 21.08. der **Notfallschlüssel**. Der
+Wächter prüft jetzt den.
+
 **Warum sie ging:** in der heutigen Fassung führte sie ins Leere. `App.tsx`
 reichte `onUseGoogle` bewusst nicht durch, die Gerätesperre versprach trotzdem
 dreimal „Google", und ihr Knopf rief in Wahrheit `onSignOut`.

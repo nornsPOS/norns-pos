@@ -23,12 +23,10 @@ export const PUBLIC_PREFIXES = [
   // im Spiel). Die Bahn '/api/storefront/' stand hier bis zum 14.08.2026 und
   // fiel mit der Trennung von warehouse14.
   '/api/webhooks/',
-  // Phase 1 — staff/owner Sign-in-with-Google. Only the OAuth start + callback
-  // live under this prefix; both must run unauthenticated and WITHOUT the mTLS
-  // device gate (the browser round-trip carries no session and no device cert).
-  // The callback's own users-table lookup is the authorisation gate. No other
-  // /api/admin/* route sits under this prefix, so nothing else is exposed.
-  '/api/admin/auth/google/',
+  // ⚰️ 21.08.2026: hier stand '/api/admin/auth/google/'. Die Tuer dahinter ist
+  // ausgezogen (773 Zeilen, kein Rufer). Ein oeffentlicher Vorsatz ohne Weg
+  // dahinter ist keine Luecke, aber er ist eine Einladung an den naechsten,
+  // dort etwas anzuhaengen, das der Sitzungs-Vorlauf dann ueberspringt.
   // ⚠️ NUR die beiden Rueckwege der Stripe-Einrichtung. Stripe schickt den
   // Haendler dorthin, und der bringt weder Sitzung noch Geraetezertifikat mit.
   //

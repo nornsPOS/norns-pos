@@ -42,7 +42,6 @@ import rateLimitPlugin from './plugins/rate-limit.js';
 import requestContextPlugin from './plugins/request-context.js';
 import securityHeadersPlugin from './plugins/security-headers.js';
 import swaggerPlugin from './plugins/swagger.js';
-import adminGoogleAuthRoutes from './routes/admin-auth-google.js';
 import adminStaffRoutes from './routes/admin-staff.js';
 import arbeitszeitenRoutes from './routes/arbeitszeiten.js';
 import einrichtungRoutes from './routes/einrichtung.js';
@@ -257,7 +256,13 @@ export async function buildApp(opts: BuildAppOpts): Promise<FastifyInstance> {
   // Phase 1 — staff/owner Sign-in-with-Google (the enterprise-grade replacement
   // for the PIN front door). Resolves the verified Google email against `users`
   // and 403s anything not provisioned; mints the same session shape as pin-login.
-  await app.register(adminGoogleAuthRoutes, { env: opts.env });
+  /*
+   * ⚰️ 21.08.2026: hier stand `adminGoogleAuthRoutes`. 773 Zeilen OAuth ohne
+   * einen einzigen Rufer im ganzen Werk — gemessen, nicht vermutet. Die Kasse
+   * laeuft ohne Netz, `configured()` war auf jeder Kasse falsch (der
+   * Beilaeufer setzt GOOGLE_STAFF_* nie), und die Fläche dazu fiel schon am
+   * 20.08. Rueckholbefehl in docs/AUSGEZOGEN-NICHTS-IST-VERLOREN.md.
+   */
   // Track E — API keys (programmatic access for agents / LLMs / integrations).
   // Management routes are human-admin only (a key cannot manage keys); resolution
   // of a presented key happens in the auth preHandler.
