@@ -75,7 +75,6 @@
 
 import { deflateRawSync } from 'node:zlib';
 
-import { stringify } from 'csv-stringify/sync';
 import { type ApiErrorCode, DomainError } from '../plugins/error-handler.js';
 
 // ── DSFinV-K USt-Schlüssel (fixed taxonomy ids) ────────────────────────────
@@ -101,14 +100,6 @@ export const UST_SCHLUESSEL: Record<string, string> = {
 };
 
 /** Fallback USt-Schlüssel for an unknown code: 7 (Sonstige / nicht zuordenbar). */
-const UST_SCHLUESSEL_FALLBACK = '7';
-
-function ustKey(code: string): string {
-  return UST_SCHLUESSEL[code] ?? UST_SCHLUESSEL_FALLBACK;
-}
-
-// ── Input shapes — already-fetched REAL rows (the route maps DB → this) ─────
-
 export interface DsfinvkLineInput {
   lineNumber: number;
   productName: string;
@@ -290,94 +281,6 @@ export interface DsfinvkFile {
 
 /** "1234.5" → "1234.50"; null/empty → "0.00" only where the spec mandates a
  *  numeric (callers pass real strings — this is the last-resort default). */
-function dec(amount: string | null | undefined): string {
-  if (amount == null || amount.trim().length === 0) return '0.00';
-  const t = amount.trim();
-  // Already a plain decimal; force exactly 2 fractional digits without float.
-  const neg = t.startsWith('-');
-  const body = neg ? t.slice(1) : t;
-  const [intPart, fracPart = ''] = body.split('.');
-  const frac2 = `${fracPart}00`.slice(0, 2);
-  return `${neg ? '-' : ''}${intPart || '0'}.${frac2}`;
-}
-
-/** "119.00" / "-7.5" → integer cents (no float; mirrors dec()'s parsing). */
-function eurToCents(amount: string | null | undefined): number {
-  if (amount == null || amount.trim().length === 0) return 0;
-  const t = amount.trim();
-  const neg = t.startsWith('-');
-  const body = neg ? t.slice(1) : t;
-  const [intPart, fracPart = ''] = body.split('.');
-  const cents = Number(intPart || '0') * 100 + Number(`${fracPart}00`.slice(0, 2));
-  return neg ? -cents : cents;
-}
-
-/** integer cents → "119.00" (mirrors dec()'s 2-dp dot format). */
-function centsToDec(cents: number): string {
-  const neg = cents < 0;
-  const abs = Math.abs(cents);
-  return `${neg ? '-' : ''}${Math.floor(abs / 100)}.${String(abs % 100).padStart(2, '0')}`;
-}
-
-/** Pass a quantity through as a dot-decimal string (no float). */
-function qty(q: string | null | undefined): string {
-  if (q == null || q.trim().length === 0) return '0.000';
-  return q.trim();
-}
-
-/** ISO timestamp → DSFinV-K ISO 8601 (kept as-is; empty → ''). */
-function ts(iso: string | null | undefined): string {
-  if (iso == null || iso.trim().length === 0) return '';
-  return new Date(iso).toISOString();
-}
-
-/** BON_TYP per DSFinV-K: storno receipts are marked; sales/buys are "Beleg". */
-function bonTyp(r: DsfinvkReceiptInput): string {
-  return r.isStorno ? 'Beleg-Storno' : 'Beleg';
-}
-
-/** GV_TYP (Geschäftsvorfall): VERKAUF=Umsatz, ANKAUF=Wareneinkauf/Auszahlung. */
-function gvTyp(direction: 'VERKAUF' | 'ANKAUF'): string {
-  return direction === 'ANKAUF' ? 'Einkauf' : 'Umsatz';
-}
-
-/** csv-stringify a header + rows with the project's CSV conventions. */
-function csv(header: string[], rows: string[][]): string {
-  return stringify([header, ...rows], { delimiter: ';', record_delimiter: '\r\n' });
-}
-
-// ── The single cash-register / Z-number anchor for this closing ────────────
-//
-// DSFinV-K keys every row to a Kasse (Z_KASSE_ID) and a closing (Z_NR). We use
-// the cash-register id and the business day as a stable Z-number surrogate
-// (one closing per Berlin business day). The real Fiskaly Z-number is not
-// surfaced in our data → documented surrogate, NOT a fabricated counter.
-/**
- * ═══════════════════════════════════════════════════════════════════════════
- *  Z_NR WAR EIN DATUM
- * ═══════════════════════════════════════════════════════════════════════════
- *
- * Hier stand wörtlich:
- *
- *     function zNr(businessDay: string): string {
- *       return businessDay; // surrogate; one closing per business day.
- *     }
- *
- * Der Kommentar nennt es ehrlich einen Platzhalter. Nur ist Z_NR in der
- * DSFinV-K kein freies Feld: es ist die fortlaufende Nummer des
- * Kassenabschlusses je Kasse, und jede andere Datei des Pakets zeigt darauf.
- *
- * Der Zweck der Nummer ist gerade die LÜCKE: fehlt zwischen 41 und 43 die 42,
- * fehlt ein Abschluss, und das muss auffallen. Bei Datumsschlüsseln fällt
- * nichts auf — ein nie abgeschlossener Tag hinterlässt einfach keine Zeile.
- * Von den zehn Verkaufstagen ohne festgeschriebenen Abschluss (gemessen am
- * 27.07.2026) hätte ein Prüfer so keinen einzigen gesehen.
- *
- * Seit Wanderung 0124 vergibt `closings-finalize.ts` eine echte Folge.
- *
- * ⚠️ Fehlt sie, wird KEIN Ersatz erfunden. Ein Paket mit einem ausgedachten
- * Schlüssel ist schlimmer als gar keines: es sieht vollständig aus.
- */
 export class ZNummerFehltError extends DomainError {
   public readonly httpStatus = 409;
   public readonly code: ApiErrorCode = 'CONFLICT';
@@ -393,396 +296,39 @@ export class ZNummerFehltError extends DomainError {
   }
 }
 
-function zNr(input: DsfinvkBundleInput): string {
-  const n = input.closing.zNr;
-  if (n === null || n === undefined || String(n).trim() === '') {
-    throw new ZNummerFehltError(input.businessDay);
-  }
-  return String(n);
-}
-
-// ── File builders ──────────────────────────────────────────────────────────
-
-function buildCashPointClosing(input: DsfinvkBundleInput): string {
-  const z = zNr(input);
-  const header = [
-    'Z_KASSE_ID',
-    'Z_NR',
-    'Z_BUCHUNGSTAG',
-    'Z_ERSTELLUNG',
-    'KASSE_SERIENNR',
-    'KASSE_BRAND',
-    'KASSE_MODELL',
-    'GESAMT_BRUTTO_VERKAUF',
-    'GESAMT_BRUTTO_ANKAUF',
-    'GESAMT_NETTO_VERKAUF',
-    'GESAMT_NETTO_ANKAUF',
-    'BARGELD_GEZAEHLT',
-  ];
-  const row = [
-    input.cashRegister.id,
-    z,
-    input.businessDay,
-    ts(input.closing.finalizedAt),
-    input.cashRegister.serialNumber,
-    input.cashRegister.brand,
-    input.cashRegister.model,
-    dec(input.closing.grossVerkaufEur),
-    dec(input.closing.grossAnkaufEur),
-    dec(input.closing.netVerkaufEur),
-    dec(input.closing.netAnkaufEur),
-    // cashCountedEur may be null (day still counting) → empty, never a fake 0.
-    input.closing.cashCountedEur == null ? '' : dec(input.closing.cashCountedEur),
-  ];
-  return csv(header, [row]);
-}
-
-function buildBonKopf(input: DsfinvkBundleInput): string {
-  const z = zNr(input);
-  const header = [
-    'Z_KASSE_ID',
-    'Z_NR',
-    'BON_ID',
-    'BON_NR',
-    'BON_TYP',
-    'BON_TERMINAL_ID',
-    'BON_START',
-    'BON_ENDE',
-    'BON_GESAMT_BRUTTO',
-    'BON_GESAMT_NETTO',
-    'BON_GESAMT_UST',
-    'BEDIENER_ID',
-    'KUNDE_ID',
-  ];
-  const rows = input.receipts.map((r) => [
-    input.cashRegister.id,
-    z,
-    r.receiptLocator,
-    r.receiptLocator,
-    bonTyp(r),
-    input.cashRegister.id,
-    ts(r.finalizedAt),
-    ts(r.finalizedAt),
-    dec(r.totalEur),
-    dec(r.subtotalEur),
-    dec(r.vatEur),
-    r.cashierUserId,
-    r.customerId ?? '',
-  ]);
-  return csv(header, rows);
-}
-
-function buildBonPos(input: DsfinvkBundleInput): string {
-  const z = zNr(input);
-  const header = [
-    'Z_KASSE_ID',
-    'Z_NR',
-    'BON_ID',
-    'POS_ZEILE',
-    'GV_TYP',
-    'ARTIKELTEXT',
-    'MENGE',
-    'UST_SCHLUESSEL',
-  ];
-  const rows: string[][] = [];
-  for (const r of input.receipts) {
-    for (const line of r.lines) {
-      rows.push([
-        input.cashRegister.id,
-        z,
-        r.receiptLocator,
-        String(line.lineNumber),
-        gvTyp(r.direction),
-        line.productName,
-        qty(line.quantity),
-        ustKey(line.appliedTaxTreatmentCode),
-      ]);
-    }
-  }
-  return csv(header, rows);
-}
-
-/**
- * bon_pos_preise.csv — per-position PRICE/quantity breakdown (DFKA taxonomy).
+/*
+ * ⚰️ 21.08.2026: HIER STAND DER ABGELÖSTE DSFinV-K-BAUER (rund 390 Zeilen)
+ *    UND SEINE NEUN HELFER (rund 60 weitere).
  *
- * Distinct from bon_pos_ust.csv: this file carries the position's PRICE detail —
- * quantity (ANZAHL), unit gross (EINZEL_BRUTTO), and the position gross/net/tax
- * (BRUTTO/NETTO/POS_UST). It does NOT carry the USt-Schlüssel (that lives in
- * bon_pos_ust). In our model every line is a unique inventory item → ANZAHL is
- * always 1.000 and EINZEL_BRUTTO == BRUTTO (no per-unit divide, no float).
+ * `buildDsfinvkBundle` schrieb ACHT Dateien, und FÜNF ihrer Namen waren frei
+ * erfunden: `bon_kopf.csv`, `bon_pos.csv`, `bon_pos_preise.csv`,
+ * `bon_pos_ust.csv`, `bon_ust.csv`. Die amtliche Beschreibung (DSFinV-K 2.4,
+ * `fiskal/dsfinvk-2.4/index.xml`) kennt keinen davon; sie verlangt ZWANZIG
+ * Dateien mit anderen Namen.
  *
- * NOTE for the Prüftool validation: the exact DFKA column NAMES for the price
- * file vary across taxonomy minor versions (BRUTTO vs POS_BRUTTO, EINZEL_BRUTTO
- * vs STK_BR, etc.). The SHAPE here is correct (price + quantity, no USt key);
- * the precise header tokens must be reconciled against the official DSFinV-K
- * Prüftool before a real Betriebsprüfung — flagged, not faked.
+ * ── WARUM ES TROTZDEM KEIN RECHTLICHER SCHADEN WAR ────────────────────────
+ *
+ * GEMESSEN: BEIDE echten Ausfuhrwege — der Tagesexport
+ * (`/api/closings/:id/export/dsfinvk`) und das Prüferpaket
+ * (`/api/pruefer/paket`) — laufen längst über `lib/dsfinvk-tag.ts` und
+ * erzeugen alle zwanzig amtlichen Dateien. Der alte Bauer hatte KEINEN Rufer
+ * mehr ausser seiner eigenen Probe.
+ *
+ * ── UND WARUM ER TROTZDEM WEG MUSSTE ──────────────────────────────────────
+ *
+ * Seine Probe war GRÜN und bestätigte die erfundenen Namen Zeile für Zeile.
+ * Ein Wächter, der das Falsche verteidigt, ist schlimmer als keiner: der
+ * Nächste, der hier etwas anschliesst oder abschreibt, bekommt ein Paket, das
+ * ein Prüfer zurückweist — und eine grüne Batterie dazu.
+ *
+ * Was in dieser Datei BLEIBT, weil es wirklich gebraucht wird:
+ *   • `zipDsfinvkBundle` + `DsfinvkFile`  — das Packen (vier Rufer)
+ *   • `UST_SCHLUESSEL`                    — die Steuerschlüssel (16 Rufer)
+ *   • `ZNummerFehltError`                 — der Riegel ohne Z-Nummer (5)
+ *   • die Eingabetypen, die `dsfinvk-tag.ts` weiterverwendet
+ *
+ * Rückholbefehl im Grabstein: docs/AUSGEZOGEN-NICHTS-IST-VERLOREN.md
  */
-function buildBonPosPreise(input: DsfinvkBundleInput): string {
-  const z = zNr(input);
-  const header = [
-    'Z_KASSE_ID',
-    'Z_NR',
-    'BON_ID',
-    'POS_ZEILE',
-    'ANZAHL',
-    'EINZEL_BRUTTO',
-    'BRUTTO',
-    'NETTO',
-    'POS_UST',
-  ];
-  const rows: string[][] = [];
-  for (const r of input.receipts) {
-    for (const line of r.lines) {
-      // ANZAHL = quantity (always 1.000 — unique-item model). EINZEL_BRUTTO is
-      // the per-unit gross; with quantity 1 it equals the position gross, so we
-      // reuse the line gross verbatim (no division, no float).
-      rows.push([
-        input.cashRegister.id,
-        z,
-        r.receiptLocator,
-        String(line.lineNumber),
-        qty(line.quantity),
-        dec(line.lineTotalEur),
-        dec(line.lineTotalEur),
-        dec(line.lineSubtotalEur),
-        dec(line.lineVatEur),
-      ]);
-    }
-  }
-  return csv(header, rows);
-}
-
-function buildBonPosUst(input: DsfinvkBundleInput): string {
-  const z = zNr(input);
-  const header = [
-    'Z_KASSE_ID',
-    'Z_NR',
-    'BON_ID',
-    'POS_ZEILE',
-    'UST_SCHLUESSEL',
-    'POS_BRUTTO',
-    'POS_NETTO',
-    'POS_UST',
-  ];
-  const rows: string[][] = [];
-  for (const r of input.receipts) {
-    for (const line of r.lines) {
-      rows.push([
-        input.cashRegister.id,
-        z,
-        r.receiptLocator,
-        String(line.lineNumber),
-        ustKey(line.appliedTaxTreatmentCode),
-        dec(line.lineTotalEur),
-        dec(line.lineSubtotalEur),
-        dec(line.lineVatEur),
-      ]);
-    }
-  }
-  return csv(header, rows);
-}
-
-function buildBonUst(input: DsfinvkBundleInput): string {
-  const z = zNr(input);
-  const header = [
-    'Z_KASSE_ID',
-    'Z_NR',
-    'BON_ID',
-    'UST_SCHLUESSEL',
-    'BON_BRUTTO',
-    'BON_NETTO',
-    'BON_UST',
-  ];
-  // One Bonkopf-USt row per (receipt, USt-Schlüssel). The key comes from each
-  // LINE's applied tax treatment — NOT the single receipt-level code — so a
-  // mixed-treatment Bon (e.g. a 19 % line plus a §25c-exempt gold line) is split
-  // by rate and reconciles with bon_pos_ust, instead of collapsing all turnover
-  // onto one rate (which would report exempt/margin turnover as standard-rated).
-  // Sums are in integer cents (no float). Mirrors buildBonPosUst's key basis.
-  const rows: string[][] = [];
-  for (const r of input.receipts) {
-    const byKey = new Map<string, { brutto: number; netto: number; ust: number }>();
-    const order: string[] = [];
-    for (const line of r.lines) {
-      const key = ustKey(line.appliedTaxTreatmentCode);
-      let acc = byKey.get(key);
-      if (!acc) {
-        acc = { brutto: 0, netto: 0, ust: 0 };
-        byKey.set(key, acc);
-        order.push(key);
-      }
-      acc.brutto += eurToCents(line.lineTotalEur);
-      acc.netto += eurToCents(line.lineSubtotalEur);
-      acc.ust += eurToCents(line.lineVatEur);
-    }
-    for (const key of order) {
-      const acc = byKey.get(key);
-      if (!acc) continue;
-      rows.push([
-        input.cashRegister.id,
-        z,
-        r.receiptLocator,
-        key,
-        centsToDec(acc.brutto),
-        centsToDec(acc.netto),
-        centsToDec(acc.ust),
-      ]);
-    }
-  }
-  return csv(header, rows);
-}
-
-/**
- * datapayment.csv — die Zahlartenaufstellung je Beleg.
- *
- * ── DER BETRAG TRÄGT DIE RICHTUNG (behoben 2026-07-26) ─────────────────────
- * Diese Datei ist genau die, aus der ein Prüfer je Zahlart summiert; die
- * DSFinV-K stellt damit die Kassensturzfähigkeit her (Z_SE_ZAHLUNGEN,
- * Z_SE_BARZAHLUNGEN im Kassenabschluss werden daraus gebildet). Eine Summe
- * über BETRAG ist nur dann die Bewegung der Schublade, wenn eine AUSzahlung
- * NEGATIV steht. Die Richtung darf NICHT allein in `bon_pos.GV_TYP` liegen,
- * also in einer ANDEREN Datei, die beim Summieren dieser Spalte niemand liest.
- *
- * Ein ANKAUF ist eine Auszahlung: der Händler gibt Geld heraus. Bis zum
- * 26.07.2026 stand er hier mit PLUS und ZAHLART_TYP 'Bar'. GEMESSEN am
- * Kreuzprobetag (13 Belege): Bar über alle Belege ergab 76929 Cent, während
- * der Kassenbericht 269,29 EUR ausweist und die Schublade netto 230,71 EUR
- * VERLIERT. Von Hand nachgerechnet:
- *     Verkauf bar   3333 + 1999 + 4000 + 10700 + 10230 − 3333 (Storno) = 26929
- *     Ankauf bar                                                       −50000
- *     Kassenbewegung des Tages                                         −23071
- * Mit Anfangsbestand 100000 ergibt das 76929 Cent Kassenbestand — dieselbe
- * Zahl, die DATEV als Sollsaldo auf Konto 1000 führt (−23071).
- *
- * Umgesetzt als Vorzeichenumkehr der Ankaufzahlung, in ganzen Cent, ohne
- * Fliesskomma. Das trägt auch den Storno eines ANKAUFs richtig: der kommt mit
- * negativem `amountEur` herein, die Umkehr macht ihn positiv — Geld, das in die
- * Schublade ZURÜCK kommt. Ein Verkaufsstorno bleibt unverändert negativ.
- */
-function buildDataPayment(input: DsfinvkBundleInput): string {
-  const z = zNr(input);
-  const header = ['Z_KASSE_ID', 'Z_NR', 'BON_ID', 'ZAHLART_TYP', 'ZAHLART_NAME', 'BETRAG'];
-  const rows: string[][] = [];
-  for (const r of input.receipts) {
-    for (const p of r.payments) {
-      rows.push([
-        input.cashRegister.id,
-        z,
-        r.receiptLocator,
-        paymentTyp(p.paymentMethod),
-        p.paymentMethod,
-        zahlungsBetrag(r.direction, p.amountEur),
-      ]);
-    }
-  }
-  return csv(header, rows);
-}
-
-/**
- * BETRAG einer Zahlung MIT Richtung: VERKAUF = Einzahlung (positiv wie
- * geliefert), ANKAUF = Auszahlung (Vorzeichen umgekehrt). Rechnet in ganzen
- * Cent, damit kein Fliesskomma und keine Rundung entsteht.
- */
-function zahlungsBetrag(direction: 'VERKAUF' | 'ANKAUF', amountEur: string): string {
-  if (direction !== 'ANKAUF') return dec(amountEur);
-  return centsToDec(-eurToCents(amountEur));
-}
-
-/** DSFinV-K ZAHLART_TYP: cash vs non-cash bucket. */
-function paymentTyp(method: string): string {
-  return method === 'CASH' ? 'Bar' : 'Unbar';
-}
-
-function buildTse(input: DsfinvkBundleInput): string {
-  const z = zNr(input);
-  const header = [
-    'Z_KASSE_ID',
-    'Z_NR',
-    'BON_ID',
-    'TSE_ID',
-    'TSE_TA_NUMMER',
-    'TSE_TA_SIGZ',
-    'TSE_TA_SIG',
-    'TSE_TA_START',
-    'TSE_TA_ENDE',
-    'TSE_TA_SIGALGO',
-    'TSE_TA_VORGANGSART',
-  ];
-  const rows: string[][] = [];
-  for (const r of input.receipts) {
-    if (!r.tse) continue; // no fabricated TSE rows for un-signed receipts.
-    rows.push([
-      input.cashRegister.id,
-      z,
-      r.receiptLocator,
-      r.tse.fiskalyTssId,
-      r.tse.fiskalyTransactionNumber,
-      r.tse.signatureCounter,
-      r.tse.signatureValue,
-      ts(r.tse.tseStartTime),
-      ts(r.tse.tseEndTime),
-      r.tse.signatureAlgorithm ?? '',
-      r.tse.processType,
-    ]);
-  }
-  return csv(header, rows);
-}
-
-/** Minimal DSFinV-K index.xml that lists the media set (NOT the full GDPdU
- *  descriptor — see the HONESTY block). */
-function buildIndexXml(fileNames: string[]): string {
-  const tables = fileNames
-    .filter((n) => n.endsWith('.csv'))
-    .map((n) => `    <Table><URL>${n}</URL></Table>`)
-    .join('\n');
-  return [
-    '<?xml version="1.0" encoding="UTF-8"?>',
-    '<DataSet>',
-    '  <Media>',
-    '    <Name>DSFinV-K Export (Warehouse14 — core, local)</Name>',
-    tables,
-    '  </Media>',
-    '</DataSet>',
-    '',
-  ].join('\n');
-}
-
-/**
- * Build the full DSFinV-K core bundle for one business day. PURE: no DB, no
- * recompute. The route fetches the real rows and maps them into the input.
- */
-export function buildDsfinvkBundle(input: DsfinvkBundleInput): DsfinvkFile[] {
-  const csvFiles: DsfinvkFile[] = [
-    { name: 'cashpointclosing.csv', content: buildCashPointClosing(input) },
-    { name: 'bon_kopf.csv', content: buildBonKopf(input) },
-    { name: 'bon_pos.csv', content: buildBonPos(input) },
-    { name: 'bon_pos_preise.csv', content: buildBonPosPreise(input) },
-    { name: 'bon_pos_ust.csv', content: buildBonPosUst(input) },
-    { name: 'bon_ust.csv', content: buildBonUst(input) },
-    { name: 'datapayment.csv', content: buildDataPayment(input) },
-    { name: 'tse.csv', content: buildTse(input) },
-  ];
-  const indexXml: DsfinvkFile = {
-    name: 'index.xml',
-    content: buildIndexXml(csvFiles.map((f) => f.name)),
-  };
-  return [...csvFiles, indexXml];
-}
-
-/** Find a file's content by name (test + route helper). Throws if missing. */
-export function fileByName(files: DsfinvkFile[], name: string): string {
-  const f = files.find((x) => x.name === name);
-  if (!f) throw new Error(`DSFinV-K bundle missing file: ${name}`);
-  return Buffer.isBuffer(f.content) ? f.content.toString('utf8') : f.content;
-}
-
-// ── Deterministic ZIP writer (STORE + DEFLATE, no external dependency) ──────
-//
-// A self-contained ZIP writer keeps the fiscal artefact byte-reproducible (no
-// transitive-dep surprise, no timestamp drift). Fixed DOS date/time (1980-01-01)
-// → deterministic output. CRC32 via a static table (no float). DEFLATE via
-// Node's zlib `deflateRawSync` (lossless), with STORE fallback if it would not
-// shrink — both are valid ZIP entries.
 
 const CRC32_TABLE: Uint32Array = (() => {
   const table = new Uint32Array(256);

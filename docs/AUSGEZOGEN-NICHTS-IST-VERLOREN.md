@@ -205,6 +205,51 @@ Ausbau lesenswert, auch wenn er am Google-Kalender hing.
 
 ---
 
+### 5. Der abgelöste DSFinV-K-Bauer — kommt NICHT zurück
+
+Ausgezogen am 21.08.2026. `buildDsfinvkBundle` in `lib/dsfinvk-export.ts`
+schrieb ACHT Dateien, und FÜNF ihrer Namen waren frei erfunden:
+`bon_kopf.csv`, `bon_pos.csv`, `bon_pos_preise.csv`, `bon_pos_ust.csv`,
+`bon_ust.csv`. Die amtliche Beschreibung (DSFinV-K 2.4,
+`fiskal/dsfinvk-2.4/index.xml`) kennt keinen davon; sie verlangt ZWANZIG
+Dateien mit anderen Namen.
+
+**Gemessen vor dem Auszug, und deshalb kein rechtlicher Schaden:** beide
+echten Ausfuhrwege — der Tagesexport und das Prüferpaket — laufen längst
+über `lib/dsfinvk-tag.ts` und erzeugen alle zwanzig amtlichen Dateien. Der
+alte Bauer hatte keinen Rufer mehr ausser seiner eigenen Probe.
+
+**Und genau die war das Gefährliche:** sie war GRÜN und bestätigte die
+erfundenen Namen Zeile für Zeile. Ein Wächter, der das Falsche verteidigt,
+ist schlimmer als keiner — der Nächste, der hier abschreibt, bekommt ein
+Paket, das ein Prüfer zurückweist, und eine grüne Batterie dazu.
+
+| Datei | Zeilen | Vorgänger |
+|---|---|---|
+| `tests/unit/dsfinvk-export.test.ts` | 392 | `7815588` |
+| `tests/unit/z-nr-ist-eine-folge.test.ts` | 208 | `7815588` |
+
+Also `git show 7815588:apps/api-cloud/<pfad>`.
+
+**Der zweite Wächter zog mit, und zwar erst nach dem Nachweis**, dass jede
+seiner vier Zusagen anderswo am WIRKLICHEN Bauer gemessen wird:
+
+| Zusage | wo sie jetzt gemessen wird |
+|---|---|
+| Z_NR ist eine Folge, kein Datum | `szenario-kreuzprobe` (Z_NR = 1, mit Begründung) |
+| dieselbe Nummer in JEDER Datei | `dsfinvk-gegen-die-amtliche-taxonomie` (erste drei Spalten jeder Datei) |
+| die Nummer kommt aus der Datenbank | `fiscal-export` (Z_NR = 41 an echtem Postgres) |
+| ohne Nummer wird nichts gebaut | `z-nummer-fehlt-im-lebenden-weg` (fünf Sätze am LEBENDEN Weg) |
+
+Ein Wächter, der totes Erzeugnis prüft, ist keine zweite Sicherung — er ist
+eine zweite Wahrheit, und die falsche. Der Bauer selbst steht im
+selben Einbau in `src/lib/dsfinvk-export.ts`.
+
+**Bedingung für die Rückkehr: keine.** Wer DSFinV-K braucht, nimmt
+`lib/dsfinvk-tag.ts`.
+
+---
+
 ## Was ABSICHTLICH stehengeblieben ist
 
 Nicht alles, was den alten Namen trägt, darf weg. Die Begründung im Einzelnen
