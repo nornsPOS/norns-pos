@@ -37,6 +37,9 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
+import { assertAppRoleInDatabaseUrl } from '../../src/config/env.js';
+import type { Env } from '../../src/config/env.js';
+
 /** Beide Abschriften des Beiläufers — die Kasse liefert ihre eigene aus. */
 const BEILAEUFER = [
   '../../sidecar/norns-sidecar.mjs',
@@ -73,6 +76,37 @@ describe('⛔ Die Fiskalkette prüft sich auf der ausgelieferten Kasse', () => {
         'wartet darauf, und eine Kasse, die wegen ihrer eigenen Prüfung später ' +
         'öffnet, wäre die schlechtere Störung.',
     ).toBeGreaterThan(bereit);
+  });
+
+  it.each(BEILAEUFER)('⛔ %s prüft AUCH die Datenbankrolle', (pfad) => {
+    /*
+     * ── DER ZWEITE RIEGEL AUS `server.ts` (21.08.2026) ────────────────────
+     *
+     * `assertAppRoleInDatabaseUrl` verlangt, dass der Motor mit der AM
+     * WENIGSTEN privilegierten Rolle an die Datenbank geht — nie als
+     * Migrator, Arbeiter oder Eigentümer. Auch er stand allein in
+     * `server.ts` und lief auf der Kasse nie.
+     *
+     * ⚠️ Heute geht das gut, am laufenden Motor NACHGEMESSEN: die Kasse
+     * verbindet als `warehouse14_app`, ohne Superuser-, Rollen- oder
+     * RLS-Recht. Aber „der Beiläufer baut die Adresse selbst" ist eine
+     * ANNAHME. Die spaltenweisen Schreibrechte auf `users` (Wanderungen
+     * 0004, 0014, 0042, 0151) hängen daran: mit einer privilegierten Rolle
+     * wären sie wirkungslos, ohne dass irgendetwas auffiele.
+     */
+    expect(nurCode(pfad)).toMatch(/assertAppRoleInDatabaseUrl\(/);
+  });
+
+  it('⛔ und der Riegel lässt genau die Anwendungsrolle durch', () => {
+    // Die Adresse, die der Beiläufer WIRKLICH baut (Zeile `const url = …`).
+    const mit = (rolle: string): Env =>
+      ({ DATABASE_URL: `postgresql://${rolle}:geheim@127.0.0.1:5432/norns_pos` }) as Env;
+
+    expect(() => assertAppRoleInDatabaseUrl(mit('warehouse14_app'))).not.toThrow();
+    // Und jede privilegiertere Rolle bricht den Start ab.
+    for (const rolle of ['norns', 'warehouse14_migrator', 'warehouse14_worker', 'postgres']) {
+      expect(() => assertAppRoleInDatabaseUrl(mit(rolle)), rolle).toThrow(/least-privileged/);
+    }
   });
 
   it('⚠️ und beide Abschriften sind sich einig', () => {

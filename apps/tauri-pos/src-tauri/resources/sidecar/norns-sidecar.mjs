@@ -1018,11 +1018,31 @@ async function main() {
       process.env['NORNS_KASSE_VERSION'] || String(tauriKonfiguration.version ?? ''),
   });
 
-  const { loadEnv } = await import('../src/config/env.ts');
+  const { loadEnv, assertAppRoleInDatabaseUrl } = await import('../src/config/env.ts');
   const { buildApp } = await import('../src/app.ts');
   // Aus derselben Quelle wie der Motor; siehe Abschnitt 6 weiter unten.
   const { starteKettenpruefung } = await import('../src/lib/kettenpruefung.ts');
-  const app = await buildApp({ env: loadEnv() });
+  const umgebung = loadEnv();
+  /*
+   * ── DER ROLLEN-RIEGEL, DEN NUR `server.ts` HATTE (21.08.2026) ──────────
+   *
+   * `assertAppRoleInDatabaseUrl` verlangt, dass der Motor mit der AM WENIGSTEN
+   * privilegierten Rolle an die Datenbank geht — nie als Migrator, Arbeiter
+   * oder Eigentümer. Er stand allein in `server.ts`, und dieser Beiläufer
+   * bootet `buildApp` direkt: auf der Kasse lief er nie.
+   *
+   * ⚠️ Heute geht das gut, und das habe ich am laufenden Motor NACHGEMESSEN:
+   * die Kasse verbindet als `warehouse14_app`, ohne Superuser-, Rollen- oder
+   * RLS-Recht. Die Adresse baut dieser Beiläufer schliesslich selbst.
+   *
+   * Genau deshalb steht der Riegel hier: „baut sie selbst" ist eine ANNAHME,
+   * und Annahmen ändern sich still. Die spaltenweisen Schreibrechte auf
+   * `users` (Wanderungen 0004, 0014, 0042, 0151) hängen daran — mit einer
+   * privilegierten Rolle wären sie wirkungslos, ohne dass irgendetwas
+   * auffiele.
+   */
+  assertAppRoleInDatabaseUrl(umgebung);
+  const app = await buildApp({ env: umgebung });
   await app.listen({ port: PORT, host: '127.0.0.1' });
   melde(`Server bereit (${takt()})`);
 
