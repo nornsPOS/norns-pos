@@ -311,3 +311,136 @@ mod tests {
         assert!(parse_mt_sics_tare("garbage").is_err());
     }
 }
+
+// ════════════════════════════════════════════════════════════════════════
+//  Die Waage FINDEN — Basels Auftrag vom 21.08.2026
+// ════════════════════════════════════════════════════════════════════════
+//
+// „المفروض الجهاز يكتشف ويعرض الاجهزة المتصلة" — das Gerät soll erkannt
+// werden, nicht in einem Klappmenü gesucht. Ein Anschlussname wie
+// `/dev/tty.usbserial-1420` sagt einem Händler NICHTS.
+//
+// ── WIE GESUCHT WIRD, UND WARUM GENAU SO ───────────────────────────────────
+//
+// Jeder serielle Anschluss bekommt bei den zwei üblichen Geschwindigkeiten
+// (9600, 19200) EINMAL `SI\r\n` gesendet — die SICS-Sofortabfrage, die auch
+// eine unruhige Waage sofort beantwortet („S D …"). Antwortet etwas in
+// SICS-Form, ist es eine Waage der MT-SICS-Familie: Mettler-Toledo selbst,
+// und dazu die vielen, die das Protokoll nachsprechen (A&D im MT-Format,
+// etliche OEM-Ladenwaagen). Kern spricht ein eigenes Protokoll und wird hier
+// EHRLICH nicht gefunden — der Weg über das Klappmenü bleibt ja stehen.
+//
+// ⚠️ ZWEI BYTES AN FREMDE GERÄTE. Die Suche schreibt `SI` auch an Anschlüsse,
+// hinter denen keine Waage steckt. Das ist Stand der Technik jeder
+// Waagensuche und hier vertretbar: die Kasse spricht seriell NUR mit der
+// Waage (Kartenterminal läuft über TCP, die TSE über die Wolke), und `SI`
+// ist als reine Abfrage gewählt — kein Tarieren, kein Nullstellen, nichts,
+// was an einem falschen Gerät einen Zustand ändert.
+//
+// ⚠️ KURZE FRIST (400 ms je Versuch): die Suche läuft beim Öffnen der
+// Geräteseite; acht tote Anschlüsse dürfen keine acht Sekunden kosten.
+
+/// Wonach die Suche fragt: die SICS-Sofortabfrage.
+const SUCHE_BEFEHL: &[u8] = b"SI\r\n";
+/// Je Anschluss und Geschwindigkeit EIN kurzer Versuch.
+const SUCHE_TIMEOUT: Duration = Duration::from_millis(400);
+/// Die zwei Geschwindigkeiten, die praktisch vorkommen.
+const SUCHE_BAUDS: [u32; 2] = [9600, 19_200];
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GefundeneWaage {
+    pub port: String,
+    pub baud: u32,
+    /// Die rohe Antwortzeile — der Beweis, nicht eine Behauptung.
+    pub antwort: String,
+}
+
+/// Sieht diese Zeile nach einer SICS-Waage aus?
+///
+/// Rein und total, damit die Probe sie ohne Draht messen kann. Absichtlich
+/// WEITER als `parse_mt_sics`: auch `S D` (unruhig), `S +`/`S -` (Über-,
+/// Unterlast) und `S I` beweisen, dass DORT eine Waage antwortet — nur ein
+/// verwertbares GEWICHT sind sie nicht.
+pub fn sieht_nach_sics_aus(zeile: &str) -> bool {
+    let mut teile = zeile.trim().split_whitespace();
+    if teile.next() != Some("S") {
+        return false;
+    }
+    matches!(teile.next(), Some("S" | "D" | "I" | "+" | "-"))
+}
+
+/// Einen Anschluss bei EINER Geschwindigkeit anfragen.
+fn frage_anschluss(port_path: &str, baud: u32) -> Option<String> {
+    let port = serialport::new(port_path, baud)
+        .timeout(SUCHE_TIMEOUT)
+        .open()
+        .ok()?;
+    let mut writer = port.try_clone().ok()?;
+    let mut reader = BufReader::new(port);
+    writer.write_all(SUCHE_BEFEHL).ok()?;
+    writer.flush().ok()?;
+    let mut zeile = String::new();
+    reader.read_line(&mut zeile).ok()?;
+    let zeile = zeile.trim().to_string();
+    if sieht_nach_sics_aus(&zeile) {
+        Some(zeile)
+    } else {
+        None
+    }
+}
+
+/// Alle Anschlüsse absuchen. Blockierend — der Rufer hebt es in
+/// `spawn_blocking`.
+fn suche_blocking() -> Vec<GefundeneWaage> {
+    let ports = serialport::available_ports()
+        .map(|p| p.into_iter().map(|i| i.port_name).collect::<Vec<_>>())
+        .unwrap_or_default();
+    let mut raus = Vec::new();
+    for port in ports {
+        // Bluetooth-Modemanschlüsse des Systems blockieren beim Öffnen gern
+        // sekundenlang — und eine Waage hängt nie daran.
+        if port.contains("Bluetooth") || port.contains("debug-console") {
+            continue;
+        }
+        for baud in SUCHE_BAUDS {
+            if let Some(antwort) = frage_anschluss(&port, baud) {
+                raus.push(GefundeneWaage {
+                    port: port.clone(),
+                    baud,
+                    antwort,
+                });
+                break; // die erste antwortende Geschwindigkeit genügt
+            }
+        }
+    }
+    raus
+}
+
+#[tauri::command]
+pub async fn scale_suchen() -> HwResult<Vec<GefundeneWaage>> {
+    tokio::task::spawn_blocking(suche_blocking)
+        .await
+        .map_err(|e| HardwareError::Device(format!("Die Waagensuche brach ab: {e}")))
+}
+
+#[cfg(test)]
+mod suche_tests {
+    use super::*;
+
+    #[test]
+    fn erkennt_die_sics_familie_auch_unruhig() {
+        assert!(sieht_nach_sics_aus("S S      14.50 g"));
+        assert!(sieht_nach_sics_aus("S D       3.2 g"), "unruhig ist trotzdem eine Waage");
+        assert!(sieht_nach_sics_aus("S +"), "Ueberlast ist trotzdem eine Waage");
+        assert!(sieht_nach_sics_aus("S I"));
+    }
+
+    #[test]
+    fn erkennt_fremdes_geraet_nicht_als_waage() {
+        assert!(!sieht_nach_sics_aus(""));
+        assert!(!sieht_nach_sics_aus("AT+OK"), "ein Modem");
+        assert!(!sieht_nach_sics_aus("ES"), "SICS-Fehlerzeile ohne S-Kopf");
+        assert!(!sieht_nach_sics_aus("Sonstiges Rauschen"));
+    }
+}

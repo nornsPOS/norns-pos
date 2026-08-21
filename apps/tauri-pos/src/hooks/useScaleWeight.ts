@@ -11,6 +11,13 @@ import { describeError } from '@norns/i18n-de';
 
 import { describeHardwareError, isHardwareError } from '../lib/hardware-client.js';
 
+export interface GefundeneWaage {
+  port: string;
+  baud: number;
+  /** Die rohe Antwortzeile, als Beweis. */
+  antwort: string;
+}
+
 export interface ScaleWeight {
   /** Weight in grams as the scale reported it (string preserves precision). */
   grams: string;
@@ -23,6 +30,8 @@ export interface UseScaleWeight {
   tare: (portPath: string, baudRate?: number) => Promise<void>;
   /** Enumerate available serial ports. */
   listPorts: () => Promise<string[]>;
+  /** Alle Anschlüsse absuchen; was in SICS-Form antwortet, ist eine Waage. */
+  suchen: () => Promise<GefundeneWaage[]>;
   weight: ScaleWeight | null;
   loading: boolean;
   error: string | null;
@@ -80,5 +89,16 @@ export function useScaleWeight(): UseScaleWeight {
     return invoke<string[]>('list_scale_ports');
   }, []);
 
-  return { readWeight, tare, listPorts, weight, loading, error };
+  /**
+   * Die Waage FINDEN statt sie im Klappmenü zu suchen (21.08.2026).
+   *
+   * Fragt jeden Anschluss mit der SICS-Sofortabfrage an; was in SICS-Form
+   * antwortet, IST eine Waage der MT-SICS-Familie. Einzelheiten und die
+   * Abwägung (zwei Bytes an fremde Geräte) in `commands/scale.rs`.
+   */
+  const suchen = useCallback(async (): Promise<GefundeneWaage[]> => {
+    return invoke<GefundeneWaage[]>('scale_suchen');
+  }, []);
+
+  return { readWeight, tare, listPorts, suchen, weight, loading, error };
 }

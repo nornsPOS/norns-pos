@@ -406,6 +406,7 @@ pub fn run() {
             commands::scale::read_scale_weight,
             commands::scale::tare_scale,
             commands::scale::list_scale_ports,
+            commands::scale::scale_suchen,
         ])
         .build(tauri::generate_context!())
         .expect("error while running norns-pos")

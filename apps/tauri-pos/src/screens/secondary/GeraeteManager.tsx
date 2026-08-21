@@ -719,7 +719,7 @@ function WaageSectionInhalt(): JSX.Element {
   const baudRate = useHardwareStore((s) => s.config.scale.baudRate);
   const setScale = useHardwareStore((s) => s.setScale);
   const addToast = useToastStore((s) => s.addToast);
-  const { readWeight, tare, listPorts, loading } = useScaleWeight();
+  const { readWeight, tare, listPorts, suchen, loading } = useScaleWeight();
   const [ports, setPorts] = useState<string[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -756,6 +756,47 @@ function WaageSectionInhalt(): JSX.Element {
       });
     }
   }, [addToast, baudRate, portPath, readWeight]);
+
+  /*
+   * ── DIE WAAGE FINDEN (21.08.2026, Basels Auftrag) ───────────────────────
+   *
+   * Ein Anschlussname wie `/dev/tty.usbserial-1420` sagt einem Händler
+   * nichts. Der Knopf fragt jeden Anschluss mit der SICS-Sofortabfrage an;
+   * was antwortet, IST eine Waage, und die Kasse übernimmt Anschluss und
+   * Geschwindigkeit selbst. Abwägung und Grenzen (Kern spricht ein eigenes
+   * Protokoll und wird ehrlich NICHT gefunden) in `commands/scale.rs`.
+   */
+  const [suchtWaage, setSuchtWaage] = useState(false);
+  const waageSuchen = useCallback(async () => {
+    setSuchtWaage(true);
+    try {
+      const funde = await suchen();
+      if (funde.length === 0) {
+        addToast({
+          tone: 'info',
+          title: 'Keine Waage gefunden',
+          body: 'Auf keinem Anschluss hat eine SICS-Waage geantwortet. Kabel prüfen; eine Kern-Waage bitte über das Klappmenü wählen.',
+        });
+        return;
+      }
+      const fund = funde[0];
+      if (fund === undefined) return;
+      setScale({ portPath: fund.port, baudRate: fund.baud });
+      addToast({
+        tone: 'success',
+        title: funde.length === 1 ? 'Waage gefunden und übernommen' : `${funde.length} Waagen gefunden`,
+        body:
+          funde.length === 1
+            ? `${fund.port} mit ${fund.baud} Baud. Antwort: ${fund.antwort}`
+            : `Übernommen: ${fund.port}. Weitere über das Klappmenü wählbar.`,
+      });
+      await refresh();
+    } catch (err) {
+      addToast({ tone: 'alert', title: 'Die Suche brach ab', body: diagnoseAlsZeile(err) });
+    } finally {
+      setSuchtWaage(false);
+    }
+  }, [addToast, refresh, setScale, suchen]);
 
   const doTare = useCallback(async () => {
     if (!portPath) return;
@@ -804,6 +845,14 @@ function WaageSectionInhalt(): JSX.Element {
           disabled={refreshing || !isRunningInTauri()}
         >
           {refreshing ? 'Lädt…' : 'Aktualisieren'}
+        </Button>
+        <Button
+          variant="zweit"
+          onClick={() => void waageSuchen()}
+          disabled={suchtWaage || !isRunningInTauri()}
+          title="Fragt jeden Anschluss an. Was in SICS-Form antwortet, ist eine Waage; Anschluss und Geschwindigkeit werden übernommen."
+        >
+          {suchtWaage ? 'Sucht…' : 'Waage suchen'}
         </Button>
       </Row>
       <Row>
