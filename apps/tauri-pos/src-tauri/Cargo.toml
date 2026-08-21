@@ -5,7 +5,7 @@
 # daran (geprueft), nur `main.rs`, drei Pruefstaende und ein Waechter.
 name = "norns-pos"
 # 26.07.2026 Pruefer: auf den kanonischen Stand von tauri.conf.json (0.8.0) gehoben — die Drift 0.7.2 war Freigabe-Hindernis
-version = "0.7.1"
+version = "0.7.2"
 description = "Norns POS, die Kasse am Tresen (Tauri-2-Huelle)"
 edition = "2021"
 publish = false

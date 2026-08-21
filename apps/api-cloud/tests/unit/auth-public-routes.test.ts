@@ -32,8 +32,30 @@ import {
 
 const ROUTES_DIR = new URL('../../src/routes', import.meta.url).pathname;
 
-/** `app.post(\n  '/api/auth/pin/set',` → the quoted path literal. */
-const ROUTE_PATH_RE = /\b(?:app|fastify)\.(?:get|post|put|patch|delete)\(\s*'([^']+)'/g;
+/**
+ * `app.post(\n  '/api/auth/pin/set',` → the quoted path literal.
+ *
+ * ⛔ 21.08.2026, DER FUENFTE FANG DERSELBEN FAMILIE — und diesmal war es die
+ * SYNTAX, nicht der Name.
+ *
+ * Bis heute stand hier `\.(?:get|post|…)\(` ohne Zwischenraum fuer eine
+ * Typangabe. Fastify wird aber an sehr vielen Stellen typisiert gerufen:
+ *
+ *     app.get<{ Params: { id: string } }>(
+ *       '/api/customers/:id',
+ *
+ * GEMESSEN: der Waechter sah 61 Wege. Es gibt 167. Er war fuer 106 davon
+ * BLIND — 63 Prozent, darunter `/api/closings/:id/export/datev`, ein
+ * Steuerexport.
+ *
+ * Am Morgen desselben Tages hatte ich diesen Waechter geschaerft, weil er
+ * `requireOwner` nicht als Wache erkannte. Die Schaerfung war richtig und
+ * deckte trotzdem nur 37 Prozent der Flaeche ab. Die Lehre steht nicht im
+ * Ausdruck, sondern in der Probe darunter: ein Waechter muss BEWEISEN, dass
+ * er alles sieht, was es gibt.
+ */
+const ROUTE_PATH_RE =
+  /\b(?:app|fastify)\.(?:get|post|put|patch|delete)(?:<[\s\S]*?>)?\s*\(\s*'([^']+)'/g;
 
 interface RouteRef {
   file: string;
@@ -124,6 +146,32 @@ describe('public routes versus requireAuth (catch #76 guard)', () => {
 
   it('finds routes to scan at all (the scan itself must not silently pass)', () => {
     expect(routes.length).toBeGreaterThan(20);
+  });
+
+  it('⛔ sieht JEDEN Weg, den es gibt — nicht nur die untypisierten', () => {
+    /*
+     * Die Probe, die am 21.08.2026 gefehlt hat. Sie zaehlt die Wege ein
+     * ZWEITES Mal, mit einem absichtlich groben Ausdruck (nur `app.get(`
+     * irgendwo in einer Zeile, ohne Ruecksicht auf die Form), und verlangt,
+     * dass der feine Ausdruck oben genauso viele findet.
+     *
+     * Ein Waechter, der 61 von 167 Wegen sieht, ist gefaehrlicher als keiner:
+     * er ist gruen und man glaubt ihm.
+     */
+    let grob = 0;
+    for (const file of readdirSync(ROUTES_DIR).filter((f) => f.endsWith('.ts'))) {
+      const src = readFileSync(join(ROUTES_DIR, file), 'utf8');
+      for (const m of src.matchAll(/\b(?:app|fastify)\.(?:get|post|put|patch|delete)\b/g)) {
+        // Nur echte Anmeldungen zaehlen: irgendwo danach muss ein Pfad stehen.
+        if (/^[\s\S]{0,400}?\(\s*'\//.test(src.slice(m.index))) grob++;
+      }
+    }
+    expect(
+      routes.length,
+      `Der feine Ausdruck findet ${routes.length} Wege, der grobe ${grob}. ` +
+        'Die Luecke sind Wege, die der Waechter NICHT prueft — meist typisiert ' +
+        'gerufen (`app.get<{ Params: … }>(`).',
+    ).toBe(grob);
   });
 
   it('every route under a public prefix whose handler calls requireAuth is listed as an exception', () => {
