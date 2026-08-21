@@ -85,7 +85,7 @@ const dbPlugin: FastifyPluginAsync<DbPluginOpts> = async (app, opts) => {
       // Tagebuch-Meldungen.
       //
       // Dieselbe Wurzel hat den Worker vier von fünf Takten verwerfen lassen
-      // (siehe apps/worker/src/config/env.ts, LOCK_DATABASE_URL). Dort war es
+      // (siehe `config/env.ts` (⚰️ apps/worker ist mit der Trennung ausgezogen), LOCK_DATABASE_URL). Dort war es
       // eine Sitzungssperre, hier ein Sitzungsabonnement; beides überlebt den
       // Verteiler nicht.
       //
