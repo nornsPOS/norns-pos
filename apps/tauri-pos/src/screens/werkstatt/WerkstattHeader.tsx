@@ -12,35 +12,21 @@ import type { CSSProperties } from 'react';
 
 import { Zwischentitel } from '@norns/ui-kit';
 
-import type { SseStatus } from '../../hooks/useLedgerStream.js';
 
 export interface WerkstattHeaderProps {
   operatorName: string;
-  sseStatus: SseStatus;
   todayLabel: string;
 }
 
-const DOT_COLOR: Record<SseStatus, string> = {
-  idle: 'var(--w14-ink-faded)',
-  connecting: 'var(--w14-gold-soft)',
-  open: 'var(--w14-gold)',
-  reconnecting: 'var(--w14-wax-red)',
-  closed: 'var(--w14-ink-faded)',
-};
+/*
+ * ⚰️ 21.08.2026: hier standen DOT_COLOR und DOT_LABEL — ein zweiter
+ * Leuchtpunkt samt Wort „Live" neben der Überschrift. Basels Anweisung:
+ * EIN Systemlicht, oben neben den Einstellungen (HealthDot in der
+ * Kopfleiste). Zwei Lichter, die dasselbe sagen, sind eines zu viel; und
+ * wenn sie sich je widersprächen, wüsste niemand, welches lügt.
+ */
 
-const DOT_LABEL: Record<SseStatus, string> = {
-  idle: 'Inaktiv',
-  connecting: 'Verbindet…',
-  open: 'Live',
-  reconnecting: 'Wiederverbinden…',
-  closed: 'Getrennt',
-};
-
-export function WerkstattHeader({
-  operatorName,
-  sseStatus,
-  todayLabel,
-}: WerkstattHeaderProps): JSX.Element {
+export function WerkstattHeader({ operatorName, todayLabel }: WerkstattHeaderProps): JSX.Element {
   const rowStyle: CSSProperties = {
     display: 'grid',
     gridTemplateColumns: 'auto 1fr auto',
@@ -78,33 +64,6 @@ export function WerkstattHeader({
           >
             {todayLabel} · {operatorName}
           </p>
-        </div>
-        <div
-          aria-label={`SSE-Status: ${DOT_LABEL[sseStatus]}`}
-          title={DOT_LABEL[sseStatus]}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 'var(--w14-abstand-8)',
-            color: 'var(--w14-ink-faded)',
-            fontFamily: 'var(--w14-font-display)',
-            fontVariant: 'all-small-caps',
-            letterSpacing: '0.1em',
-            fontSize: 'var(--w14-schrift-zeile)',
-          }}
-        >
-          <span
-            aria-hidden
-            style={{
-              width: 9,
-              height: 9,
-              borderRadius: '50%',
-              backgroundColor: DOT_COLOR[sseStatus],
-              boxShadow: sseStatus === 'open' ? '0 0 0 2px rgba(168, 133, 62, 0.18)' : 'none',
-              transition: 'background-color var(--w14-dur-medium) var(--w14-ease-curator)',
-            }}
-          />
-          {DOT_LABEL[sseStatus]}
         </div>
       </div>
       <Zwischentitel />

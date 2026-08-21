@@ -194,15 +194,27 @@ export function DruckerErkennen(): JSX.Element {
       const sprache = sprachwahl[d.deviceUri] ?? d.sprache;
       try {
         let queue = d.queue;
-        if (!d.eingerichtet) {
-          if (als === 'A4') {
-            addToast({
-              tone: 'info',
-              title: 'Bürodrucker braucht das System',
-              body: 'Ein A4-Drucker erwartet einen Herstellertreiber. Bitte einmal über die Systemeinstellungen hinzufügen; danach erscheint er hier als eingerichtet.',
-            });
-            return;
-          }
+        /*
+         * ── DER FREMDE NAME (21.08.2026, Basels Frage: „وش دخل وير هاوس؟") ──
+         *
+         * Auf Rechnern, die vor der Trennung eingerichtet wurden, heisst die
+         * Warteschlange im BETRIEBSSYSTEM noch „Warehouse14-Bon". Die Kasse
+         * zeigt Warteschlangen, wie das System sie nennt — also stand der
+         * fremde Name in den Einstellungen. Beim Übernehmen legt sie jetzt
+         * eine frische Warteschlange unter Norns-Namen an (gleiches Gerät)
+         * und bindet sich an die. Die alte bleibt im System stehen: fremde
+         * Druckerlisten räumt ein Kassenprogramm nicht auf.
+         */
+        const fremderName = /^(warehouse ?-?14|w14)[-_]/i.test(queue ?? '');
+        if (als === 'A4' && !d.eingerichtet) {
+          addToast({
+            tone: 'info',
+            title: 'Bürodrucker braucht das System',
+            body: 'Ein A4-Drucker erwartet einen Herstellertreiber. Bitte einmal über die Systemeinstellungen hinzufügen; danach erscheint er hier als eingerichtet.',
+          });
+          return;
+        }
+        if ((!d.eingerichtet || fremderName) && als !== 'A4') {
           // Nur der Etikettenweg kennt Sprachen. Ein Bondrucker bleibt roh.
           queue = await druckerErkennung.warteschlangeAnlegen(
             d.deviceUri,

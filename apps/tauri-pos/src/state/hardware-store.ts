@@ -104,7 +104,7 @@ export interface ThermalConfig {
   mode: 'network' | 'usb';
   ip: string;
   port: number; // typical 9100
-  /** USB mode: the OS print-queue name (e.g. 'Warehouse14-Bon'). */
+  /** USB mode: the OS print-queue name (e.g. 'Norns-Bon'). */
   printerName: string;
   /** Last-known status from `zvtClient.check` / printer probe. */
   lastReachable: boolean | null;

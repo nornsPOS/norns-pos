@@ -63,7 +63,10 @@ export function Werkstatt(): JSX.Element {
   // Tageszahlen in voller Breite, darunter das lebende Tagebuch.
 
   // SSE: open on mount; cleanup on unmount (sign-out flips the parent gate).
-  const { status: sseStatus } = useLedgerStream(true);
+  // 21.08.2026: der Strom laeuft weiter (er fuellt das Tagebuch), aber sein
+  // ZUSTAND wird hier nicht mehr angezeigt — das eine Systemlicht wohnt oben
+  // in der Kopfleiste (HealthDot).
+  useLedgerStream(true);
 
   // Dashboard data: TanStack Query, 15s stale / 60s background refresh /
   // SSE-debounce-invalidation.
@@ -102,7 +105,6 @@ export function Werkstatt(): JSX.Element {
                   ? 'Kasse'
                   : 'Beobachter'
         }
-        sseStatus={sseStatus}
         todayLabel={todayLabel}
       />
 

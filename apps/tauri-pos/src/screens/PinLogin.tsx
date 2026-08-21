@@ -18,7 +18,7 @@ import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 
 import { type AnmeldbarePerson, ApiError, authPin, notfallschluessel } from '@norns/api-client';
-import { Zwischentitel, NornsWortmarke, Hourglass, Icon, ParchmentCard, PinPad, RomanIndex } from '@norns/ui-kit';
+import { Zwischentitel, InfoPunkt, NornsWortmarke, Hourglass, Icon, ParchmentCard, PinPad, RomanIndex } from '@norns/ui-kit';
 
 import { ThemeToggle } from '../app/chrome/ThemeToggle.js';
 import { SchluesselEinloesen } from './anmeldung/SchluesselEinloesen.js';
@@ -421,25 +421,26 @@ export function PinLogin(): JSX.Element {
             Vorher trug diese Fläche ein 92 Punkte hohes Zeichen UND darunter
             den Schriftzug. Jetzt trägt sie EINE Marke, und die darf denselben
             Auftritt haben wie vorher beide zusammen. */}
+        {/* ⛔ 21.08.2026, auf Basels Schirm gesehen: die Wortmarke lief mit
+            `--w14-schrift-wortmarke` (bis 4,4rem, an 13vw haengend) BREITER
+            als die Tastatur darunter — das S ragte aus der Karte. Die Karte
+            ist fest 440px; eine Groesse, die am FENSTER haengt, passt nie
+            verlaesslich in eine feste Karte. Jetzt die Buehnen-Stufe der
+            Leiter (3rem): gross genug fuer den Auftritt, sicher innerhalb. */}
         <NornsWortmarke
           faden="var(--w14-weinrot, #9c2630)"
           tinte="var(--w14-ink)"
           style={{
-            fontSize: 'var(--w14-schrift-wortmarke)',
+            fontSize: 'var(--w14-schrift-buehne)',
             fontWeight: 500,
             margin: '0 0 var(--w14-abstand-4)',
           }}
         />
-        <p
-          style={{
-            fontFamily: 'var(--w14-font-display)',
-            fontStyle: 'italic',
-            margin: 0,
-            color: 'var(--w14-ink-faded)',
-          }}
-        >
-          Was lange ruht, spricht leise.
-        </p>
+        {/* ⚰️ 21.08.2026: hier stand der Sinnspruch „Was lange ruht, spricht
+            leise." Basels Anweisung — die Anmeldung ist eine Tuer, kein
+            Poesiealbum. Er lebt weiter, wo er Atmosphaere traegt (Leerlauf
+            des Tagebuchs, Spotlight, Fehlerflaeche), nicht auf dem Weg zur
+            Arbeit. */}
         {/* Beim ERSTEN Start heisst die Tür anders, weil sie etwas anderes
             tut: der Händler meldet sich nicht an, er nimmt die Kasse in
             Besitz. Dieselbe Tastatur, ein anderer Satz darüber. */}
@@ -536,16 +537,18 @@ export function PinLogin(): JSX.Element {
           <p
             style={{
               margin: 'var(--w14-abstand-12) 0 0',
-              maxWidth: '46ch',
               textAlign: 'center',
               lineHeight: 1.6,
               color: 'var(--w14-ink-aged)',
               textWrap: 'pretty',
             }}
           >
-            Diese Kasse ist neu. Wählen Sie einen Code aus genau sechs
-            Ziffern. Er wird nicht vorgegeben, und niemand ausser Ihnen kennt
-            ihn.
+            Neu hier. Einen Code aus sechs Ziffern wählen.{' '}
+            <InfoPunkt
+              richtung="links"
+              ariaLabel="Warum dieser Code"
+              text="Der Code wird nicht vorgegeben, und niemand ausser Ihnen kennt ihn. Direkt nach dem Setzen zeigt die Kasse einmalig einen Notfallschlüssel zum Aufschreiben, den einzigen Weg zurück, falls Sie den Code vergessen."
+            />
           </p>
         )}
 
@@ -593,10 +596,8 @@ export function PinLogin(): JSX.Element {
               textWrap: 'pretty',
             }}
           >
-            Notieren Sie ihn an einem sicheren Ort. Gleich danach zeigt die
-            Kasse Ihnen einmalig einen Notfallschlüssel — schreiben Sie auch
-            den auf. Er ist der einzige Weg zurück, falls Sie den Code
-            vergessen.
+            Gleich danach zeigt die Kasse einmalig den Notfallschlüssel.
+            Stift bereithalten.
           </p>
         )}
 
@@ -654,22 +655,11 @@ export function PinLogin(): JSX.Element {
             dazu wurde nie durchgereicht, und der Weg dahinter verlangt Netz
             und einen fremden Arbeitsbereich. Ein Satz, der einem Menschen am
             Tresen eine Tuer verspricht, hinter der niemand steht. */}
-        {!einrichtung && !(zeigeWahl && gewaehltePerson !== null && !gewaehltePerson.hatCode) && (
-          <p
-            style={{
-              margin: 'var(--w14-abstand-12) 0 0',
-              maxWidth: '46ch',
-              textAlign: 'center',
-              lineHeight: 1.6,
-              color: 'var(--w14-ink-faded)',
-              fontSize: 'var(--w14-schrift-zeile)',
-              textWrap: 'pretty',
-            }}
-          >
-            Code vergessen? Der Inhaber löscht ihn unter Team, danach wählen Sie
-            hier einen neuen.
-          </p>
-        )}
+        {/* ── 21.08.2026: ZWEI ZEILEN WERDEN EINE ─────────────────────────
+            Hier standen zwei Saetze Erklaerung UND darunter der
+            Notfallschluessel-Knopf. Basels Anweisung: Texte einsammeln,
+            hinter das Fragezeichen. Der WEG (der Knopf unten) bleibt
+            sichtbar; das WARUM wohnt in der Blase. */}
 
         {/* ── DER AUSGANG FÜR DEN INHABER SELBST (21.08.2026) ──────────────
 
@@ -681,29 +671,42 @@ export function PinLogin(): JSX.Element {
             zweiter goldener Kasten: er ist der seltene Weg, nicht der
             tägliche. Wer ihn nicht braucht, soll ihn nicht sehen müssen. */}
         {!einrichtung && (
-          <button
-            type="button"
-            onClick={() => {
-              setEinloesen(true);
-              setPin('');
-              setErrorMsg(null);
-            }}
+          <span
             style={{
-              minHeight: 44,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 'var(--w14-abstand-4)',
               marginTop: 'var(--w14-abstand-6)',
-              padding: '0 var(--w14-abstand-10)',
-              border: 'none',
-              background: 'transparent',
-              color: 'var(--w14-ink-aged)',
-              fontFamily: 'var(--w14-font-body)',
-              fontSize: 'var(--w14-schrift-zeile)',
-              textDecoration: 'underline',
-              textUnderlineOffset: '0.22em',
-              cursor: 'pointer',
             }}
           >
-            Ich habe einen Notfallschlüssel
-          </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEinloesen(true);
+                setPin('');
+                setErrorMsg(null);
+              }}
+              style={{
+                minHeight: 44,
+                padding: '0 var(--w14-abstand-10)',
+                border: 'none',
+                background: 'transparent',
+                color: 'var(--w14-ink-aged)',
+                fontFamily: 'var(--w14-font-body)',
+                fontSize: 'var(--w14-schrift-zeile)',
+                textDecoration: 'underline',
+                textUnderlineOffset: '0.22em',
+                cursor: 'pointer',
+              }}
+            >
+              Code vergessen?
+            </button>
+            <InfoPunkt
+              richtung="links"
+              ariaLabel="Was tun bei vergessenem Code"
+              text="Mitarbeiter: der Inhaber löscht den Code unter Team, danach hier neu wählen. Inhaber: Notfallschlüssel vom Zettel, Rettungsstick einstecken, oder als letzter Weg der Herstellercode."
+            />
+          </span>
         )}
 
         {failedAttempts > 0 && !locked && (

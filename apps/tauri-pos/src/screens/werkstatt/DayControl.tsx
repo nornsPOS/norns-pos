@@ -29,7 +29,7 @@
 
 import { useNavigate } from 'react-router-dom';
 
-import { Button, ParchmentCard } from '@norns/ui-kit';
+import { Button } from '@norns/ui-kit';
 
 import { useCurrentShift } from '../../hooks/useCurrentShift.js';
 
@@ -41,24 +41,14 @@ export function DayControl(): JSX.Element | null {
   // eröffnet" (a shift may well be open; we just can't see it). Say so honestly.
   if (isError && shift === undefined) {
     return (
-      <ParchmentCard
-        tone="parchment"
-        padding="md"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 'var(--space-4)',
-          borderLeft: '3px solid var(--w14-wax-red)',
-        }}
-      >
-        <span style={{ fontFamily: 'var(--w14-font-display)', fontSize: 'var(--w14-schrift-grund)' }}>
-          Schichtstatus nicht abrufbar. Verbindung prüfen.
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--w14-abstand-12)' }}>
+        <span style={{ color: 'var(--w14-wax-red)', fontSize: 'var(--w14-schrift-text)' }}>
+          Schichtstatus nicht abrufbar.
         </span>
         <Button variant="ghost" size="sm" onClick={() => void refetch()} disabled={isFetching}>
           {isFetching ? 'Lädt…' : 'Erneut versuchen'}
         </Button>
-      </ParchmentCard>
+      </div>
     );
   }
 
@@ -70,43 +60,33 @@ export function DayControl(): JSX.Element | null {
     ? new Date(shift.openedAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
     : null;
 
+  /*
+   * ── EIN KNOPF, KEINE KISTE (21.08.2026, Basels Anweisung) ────────────────
+   *
+   * Hier stand eine Karte mit Seitenstreifen, einem grünen Leuchtpunkt, zwei
+   * Textzeilen UND dem Knopf — „صندوق داخل مستطيل"، wörtlich. Der Zustand der
+   * Schicht steht ohnehin dauerhaft in der Fusszeile (WerkstattFooter); diese
+   * Stelle ist die HANDLUNG, nicht die Anzeige. Also genau ein Knopf, und bei
+   * offener Schicht eine leise Zeile mit dem, was der Knopf NICHT tut
+   * (der Tagesabschluss ist ein anderer Vorgang, siehe Kopf dieser Datei).
+   */
   return (
-    <ParchmentCard
-      tone="parchment"
-      padding="md"
+    <div
       style={{
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 'var(--space-4)',
-        borderLeft: `3px solid ${open ? 'var(--w14-verdigris)' : 'var(--w14-gold)'}`,
+        alignItems: 'baseline',
+        gap: 'var(--w14-abstand-12)',
+        flexWrap: 'wrap',
       }}
     >
-      <div
-        style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}
-      >
-        <span
-          aria-hidden="true"
-          style={{
-            display: 'inline-block',
-            width: 10,
-            height: 10,
-            borderRadius: '50%',
-            background: open ? 'var(--w14-verdigris)' : 'var(--w14-gold)',
-          }}
-        />
-        <span style={{ fontFamily: 'var(--w14-font-display)', fontSize: 'var(--w14-schrift-lead)' }}>
-          {open ? 'Schicht läuft' : 'Keine Schicht offen'}
-        </span>
-        <span style={{ color: 'var(--w14-ink-faded)', fontSize: 'var(--w14-schrift-text)' }}>
-          {open
-            ? `seit ${since} Uhr · Der Tagesabschluss folgt danach in der Tageskasse.`
-            : 'Schicht öffnen, um Verkauf und Ankauf zu starten.'}
-        </span>
-      </div>
       <Button variant="primary" size="md" onClick={() => navigate('/kasse')}>
         {open ? 'Schicht abschließen' : 'Schicht öffnen'}
       </Button>
-    </ParchmentCard>
+      {open && (
+        <span style={{ color: 'var(--w14-ink-faded)', fontSize: 'var(--w14-schrift-zeile)' }}>
+          Offen seit {since} Uhr. Der Tagesabschluss folgt in der Tageskasse.
+        </span>
+      )}
+    </div>
   );
 }

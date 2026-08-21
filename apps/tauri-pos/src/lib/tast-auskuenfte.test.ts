@@ -126,9 +126,17 @@ describe('Tast-Auskünfte: kein title= ist der einzige Träger einer Information
     expect(sicht).toContain('addToast');
   });
 
-  it('Werkstatt: der Verbindungspunkt behält sein sichtbares Zustandswort', () => {
-    // Bestand schon: das Label steht als Kind neben dem Punkt. Festgeschrieben.
+  it('Werkstatt: der Kopf trägt KEINEN zweiten Verbindungspunkt mehr', () => {
+    /*
+     * ⚰️ 21.08.2026: dieser Satz schrieb fest, dass der Werkstatt-Punkt sein
+     * Zustandswort sichtbar neben sich trägt. Der Punkt selbst ist auf Basels
+     * Anweisung gefallen (EIN Systemlicht, oben in der Kopfleiste; zwei
+     * Lichter, die dasselbe sagen, sind eines zu viel). Der Sinn dieses
+     * Wächters bleibt: keine Auskunft darf NUR im title= wohnen — und wo
+     * nichts mehr steht, darf auch kein title= zurückbleiben.
+     */
     const sicht = fingerSicht('screens/werkstatt/WerkstattHeader.tsx');
-    expect(sicht).toContain('{DOT_LABEL[sseStatus]}');
+    expect(sicht).not.toContain('DOT_LABEL');
+    expect(sicht).not.toContain('title=');
   });
 });
