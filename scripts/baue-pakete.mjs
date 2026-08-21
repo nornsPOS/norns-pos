@@ -70,6 +70,23 @@ const WINDOWS = process.platform === 'win32';
  *               Ablehnung war also keine Wahl — für eine `.cmd` gibt es
  *               keinen anderen Weg.
  *
+ * ── WARUM NICHT DER BESSERE WEG WIE IM BUENDLER ───────────────────────────
+ *
+ * `scripts/buendle-motor.mjs` stand am 13.08.2026 vor genau derselben Wand
+ * (`spawnSync npx ENOENT`) und hat sie SAUBERER geloest: es ruft die
+ * JS-Schnittstelle von esbuild direkt. Kein Kindprozess, keine Huelle, kein
+ * PATH, kein Unterschied zwischen den Systemen.
+ *
+ * Hier geht das nicht. pnpm hat keine tragfaehige Schnittstelle fuer
+ * `--filter <paket> build`; wer sie nachbaut, baut die Aufloesung des
+ * Arbeitsbereichs nach -- und genau die ist der Grund, warum dieses Stueck
+ * ueberhaupt existiert. Der Aufruf bleibt also ein Kindprozess, und die
+ * Huelle bleibt unvermeidlich.
+ *
+ * ⚠️ Dieser Absatz steht hier, damit der Naechste nicht denkt, die Huelle sei
+ * Bequemlichkeit. Sie ist die zweitbeste Loesung, und die beste ist gemessen
+ * unmoeglich.
+ *
  * ── DIE SORGE VON DAMALS BLEIBT RICHTIG, SIE BEKOMMT NUR EINEN RIEGEL ─────
  *
  * Mit einer Hülle werden die Argumente aneinandergehängt statt maskiert. Das
