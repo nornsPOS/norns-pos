@@ -389,6 +389,27 @@ async function kursZiehen(pgPort, PGPASS) {
   };
   const db = new pg.Client({
     host: '127.0.0.1', port: pgPort, user: 'norns', password: PGPASS, database: DB,
+    /*
+     * ⚠️ 22.08.2026 — DIE EINZIGE WIEDERKEHRENDE VERBINDUNG BRAUCHT EINE FRIST.
+     *
+     * Sieben Stellen in diesem Dienst oeffnen eine Verbindung; nur die
+     * Sicherung trug bisher eine Zeitgrenze, mit dem gemessenen Grund
+     * „haengt `connect()` gegen einen schweigenden Zuhoerer". Derselbe
+     * Zuhoerer sitzt hier — nur wird DIESE Stelle alle fuenf Minuten neu
+     * gerufen.
+     *
+     * Ohne Frist heisst das zweierlei, und das zweite ist das schlimmere:
+     *   • jeder Lauf laesst einen haengenden Client zurueck, denn das
+     *     `finally { db.end() }` unten wird nie erreicht,
+     *   • und die EINE Meldung, die dem Haendler sagt, dass keine Kurse mehr
+     *     kommen („Kurse nicht erreichbar … altert ehrlich"), haengt an einem
+     *     geworfenen Fehler. Wer haengt, wirft nicht. Der Satz kaeme nie.
+     *
+     * Die Frist ist grosszuegig: ein eingebettetes Postgres mitten in der
+     * Wiederherstellung darf antworten duerfen, ohne dass der Kurslauf ihn
+     * vorschnell aufgibt.
+     */
+    connectionTimeoutMillis: 10_000,
   });
   await db.connect();
   try {
@@ -1077,7 +1098,23 @@ async function main() {
   // ── 5. Kurse: sofort und alle fünf Minuten, NACH der Bereitmeldung ─────
   // (der Rumpf wartet nicht auf das Internet). Störung wird EINMAL gemeldet.
   let kursStumm = false;
+  /*
+   * ⚠️ 22.08.2026 — EIN LAUF ZUR ZEIT.
+   *
+   * `setInterval` fragt nicht, ob der vorige Lauf fertig ist. Solange jeder
+   * Lauf endet, ist das gleichgueltig: vier Metalle mit je acht Sekunden
+   * Frist bleiben weit unter fuenf Minuten. Bleibt aber EIN Lauf haengen,
+   * legt der Wecker alle fuenf Minuten den naechsten obendrauf — bis
+   * Postgres „sorry, too many clients already" sagt und die KASSE keine
+   * Verbindung mehr bekommt. Der Kursholer wuerde den Verkauf erwuergen.
+   *
+   * Zusammen mit der Frist oben ist die Zahl der haengenden Laeufe damit
+   * hoechstens eins, und auch der endet nach zehn Sekunden.
+   */
+  let kursLaeuft = false;
   const kursLauf = async () => {
+    if (kursLaeuft) return;
+    kursLaeuft = true;
     try {
       await kursZiehen(PGPORT_NR, PGPASS);
       kursStumm = false;
@@ -1086,6 +1123,8 @@ async function main() {
         melde(`Kurse nicht erreichbar (${fehler.message}); der Bestand bleibt und altert ehrlich`);
         kursStumm = true;
       }
+    } finally {
+      kursLaeuft = false;
     }
   };
   void kursLauf();
