@@ -166,6 +166,32 @@ Die Liste vom 20.08. ist überholt. Nachgemessen, nicht erinnert:
    Bau, kein Zeichen — Basel hat ausdrücklich gesagt, nichts zu
    veröffentlichen.
 
+5. **Sieben Webshop-Tische stehen noch, ohne einen einzigen Rufer.**
+   Gemessen am 21.08.2026 über alle Wanderungen und den ganzen Quelltext:
+
+   | Tisch | Rufer im Code | SQL-Verweise |
+   |---|---|---|
+   | `cart_items` | 0 | nur der eigene Bau |
+   | `shipping_zones` | 0 | ← `shipping_rates` |
+   | `shipping_rates` | 0 | ← `carts.shipping_rate_id` |
+   | `shipments` | 0 | nur der eigene Bau |
+   | `support_tickets` | 0 | ← `support_messages` (auch 0 Rufer) |
+
+   Die Wanderung 0149 hat vier Geschwister (`intake_*`, `mcp_tool_invocations`)
+   ausgezogen, diese fünf blieben stehen. Sie sind in sich geschlossen — die
+   Fremdschlüssel zeigen nur untereinander und auf `carts`.
+
+   ⚠️ **Kein Defekt**, nichts ist kaputt. Aber die Kassenrolle trägt darauf
+   tabellenweites Schreibrecht (`SELECT, INSERT, UPDATE, DELETE`) für Tische,
+   die diese Kasse nie anfasst — Fläche ohne Gegenwert, und dem Dekret vom
+   14.08. zuwider.
+
+   **Ein Auszug ist eine echte Wanderung, keine Aufräumerei:** Reihenfolge der
+   Fremdschlüssel, beide Nachzügler-Abschriften, Grabstein, neu bündeln. Er
+   liegt Basel vor, wie § 25b.
+
+---
+
 ### Warum jeder Durchgang noch etwas findet
 
 Drei Gründe, ehrlich getrennt:
