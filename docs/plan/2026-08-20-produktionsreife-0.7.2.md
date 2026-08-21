@@ -126,16 +126,63 @@ Nach dem Umsatzsteuer-Status blieb genau die Sicherheitseinrichtung übrig.
 Der Kunde trägt also seinen TSE-Code ein, beantwortet EINE Frage, und die
 Kasse verkauft. Alles Weitere hält nur die Steuerausfuhr auf.
 
-### Was offen bleibt
+### Was offen bleibt  (Stand 21.08.2026, nachgemessen)
 
-* **Der vergessene Inhabercode.** Niemand kann ihn zurücksetzen; der Weg
-  zurück führt über die Datenbank. Die Kasse SAGT es jetzt bei der
-  Einrichtung. Ein Notfallschlüssel wäre die ganze Antwort und liegt Basel
-  vor — er ist ein zweites Geheimnis und damit eine Entscheidung des
-  Hauses.
-* **Die SKU beim Ankauf** ist ein Pflichtfeld, und nichts schlägt eine vor.
-  Wer am Tresen einen Ring kauft, erfindet eine Nummer. Kein Fehler, aber
-  tägliche Reibung.
-* **Die neun übrigen Flächen** mit der Dreier-Verzweigung sind durch die
-  Wurzelbehebung geschlossen (keine hat eine bedingte Abfrage, gemessen);
-  ein Wächter hält es so.
+Die Liste vom 20.08. ist überholt. Nachgemessen, nicht erinnert:
+
+* ~~**Der vergessene Inhabercode.**~~ **ERLEDIGT** (Einbau `c94e507`). Der
+  Notfallschlüssel steht: Wanderung 0151, drei Wege im Motor, zwei Flächen,
+  zwölf Proben gegen echtes Postgres, am ausgelieferten Bündel durchgespielt.
+* ~~**Die SKU beim Ankauf.**~~ **ERLEDIGT.** `lib/sku-vorschlag.ts` schlägt
+  eine Nummer vor, die der Warenart folgt — ein Vorschlag, kein Zwang, und
+  eine von Hand angefasste Nummer wird nie überschrieben.
+* ~~**Die neun übrigen Flächen.**~~ Geschlossen, ein Wächter hält es so.
+
+**Was WIRKLICH offen ist:**
+
+1. **Der Sitzungsschlüssel wohnt in `localStorage`.**
+   `apps/tauri-pos/src/lib/session-token.ts` sagt es selbst: „SECURITY
+   (go-live TODO): move this to the Tauri OS keychain". Heute gemildert
+   durch die strenge Vorschrift der Ansicht (kein fremdes Skript läuft).
+
+   ⚠️ Es ist KEINE reine Verbesserung: der Schlüsselbund ist heute nur von
+   Rust aus erreichbar (`tresor.rs` hat gar keinen `#[tauri::command]`).
+   Reichte man ihn an die Ansicht durch, könnte ein eingeschleustes Skript
+   eben diesen Befehl rufen — gewonnen wäre nichts. Der echte Gewinn wäre,
+   dass der Schlüssel NIE in die Ansicht kommt und der Rumpf ihn selbst an
+   jede Anfrage hängt. Das ist ein Umbau, keine Zeile. Entscheidung des
+   Hauses.
+
+2. **`db-suites` im Auftrag läuft mit `continue-on-error: true`.**
+   96 Proben der tiefen Suiten sind damit nur Auskunft, nie ein Riegel.
+   Der Kopf des Auftrags nennt den Grund (die Ausgangsliste fehlt) — es ist
+   also bewusst gestundet, nicht übersehen. Solange das so steht, ist „grün"
+   dort kein Signal.
+
+3. **Punkt 7 des Plans: die weiteren Durchgänge.** Jeder Durchgang findet
+   bisher noch etwas; siehe unten.
+
+4. **0.7.2 selbst.** Fassung steht überall auf `0.7.1`. Kein Sprung, kein
+   Bau, kein Zeichen — Basel hat ausdrücklich gesagt, nichts zu
+   veröffentlichen.
+
+### Warum jeder Durchgang noch etwas findet
+
+Drei Gründe, ehrlich getrennt:
+
+* **Erbe.** Norns POS ist aus warehouse14 herausgeschnitten. Die
+  Geschäftsfelder eines fremden Hauses auf der Anmeldekarte, die
+  Google-Anmeldung ohne Netz, die Mandantenlecks — das ist Rückstand des
+  Schnitts, nicht neu geschriebener Fehler.
+* **Die Regeln wurden strenger.** „Am echten HTTP messen", „jeden Wächter
+  rot beweisen", „auch die Proben typprüfen" sind Regeln aus den letzten
+  Wochen. Was unter schwächeren Regeln grün war, ist nicht dadurch richtig.
+* **Und der eigene Anteil, zweimal an EINEM Tag belegt:** ich fahre die
+  Proben der Datei, die ich angefasst habe — nicht die des Wächters, der
+  sie bewacht. Der Bewegungs-Wächter im Bausatz stand seit `bc9dc9a` rot,
+  weil ich nach dem Auseinanderziehen des Bezahlwegs die Kasse geprüft habe
+  und den Bausatz nicht.
+
+  **Die Abhilfe ist mechanisch, nicht moralisch:** vor jedem „fertig" den
+  HAUSBEFEHL fahren (`npm test` in der Wurzel, `pnpm -r test`), nicht den
+  Befehl des eigenen Pakets.
