@@ -1194,6 +1194,114 @@ describe('GET /api/closings/:id/export/{datev,dsfinvk} — fiscal-export E2E', (
       }
     });
 
+    /*
+     * ═══════════════════════════════════════════════════════════════════════
+     *  ⛔ JEDE ZELLE JEDER DATEI HÄLT DIE AMTLICHE BESCHREIBUNG (21.08.2026)
+     * ═══════════════════════════════════════════════════════════════════════
+     *
+     * Basels Auftrag: „الملفات العشرين تكون مثالية... اي خطا كارثة". Die
+     * Proben oben messen einzelne Behauptungen (Schlüssel, Summen, Signatur).
+     * DIESE misst mechanisch ALLES: für jede der zwanzig Dateien, für jede
+     * Zeile, für jede Zelle —
+     *
+     *   • die Spaltenzahl der Zeile ist EXAKT die der Beschreibung (ein
+     *     verirrtes Semikolon in einem Artikeltext zerrisse beim Prüfer
+     *     jede Spalte dahinter),
+     *   • jede Numeric-Zelle trägt das KOMMA und GENAU die Accuracy der
+     *     Beschreibung (2, 3 oder 5 Nachkommastellen) — mit derselben
+     *     index.xml liest IDEA die Zahlen ein; eine Punkt-Zelle würde dort
+     *     zur hundertfachen Summe,
+     *   • kein Tausenderzeichen (der Punkt WÄRE eines),
+     *   • jede Text-Zelle hält ihre Höchstlänge.
+     *
+     * Die Erwartung stammt vollständig aus `leseTaxonomie(index.xml)` — dieser
+     * Test nennt keinen Dateinamen, keine Spalte und keine Länge selbst.
+     */
+    it('⛔ jede Zelle jeder der zwanzig Dateien hält die amtliche Beschreibung', async () => {
+      const { leseTaxonomie } = await import('../../src/lib/dsfinvk-taxonomie.js');
+      const taxonomie = leseTaxonomie(NORM_XML);
+      expect(taxonomie.length).toBe(20);
+
+      const res = await get(`/api/closings/${closingId}/export/dsfinvk`);
+      expect(res.statusCode).toBe(200);
+      const dateien = readZip(Buffer.from(res.rawPayload));
+
+      const fehler: string[] = [];
+      let geprueffteZellen = 0;
+
+      for (const t of taxonomie) {
+        const datei = dateien.find((f) => f.name === t.datei);
+        if (!datei) {
+          fehler.push(`${t.datei}: fehlt im Paket`);
+          continue;
+        }
+        /*
+         * ⚠️ Nicht naiv an ';' trennen: eingefasste Zellen dürfen das
+         * Trennzeichen TRAGEN (fasseEin). Ein kleiner Zerleger nach der
+         * Einfassungsregel der Norm — genau die Sicht des Prüfwerkzeugs.
+         */
+        const zeilen = datei.content
+          .split(t.format.zeilentrenner)
+          .filter((z) => z.length > 0)
+          .map((zeile) => {
+            const raus: string[] = [];
+            let feld = '';
+            let drin = false;
+            for (let i = 0; i < zeile.length; i++) {
+              const c = zeile[i] as string;
+              if (drin) {
+                if (c === t.format.texteinfassung) {
+                  if (zeile[i + 1] === t.format.texteinfassung) {
+                    feld += c;
+                    i++;
+                  } else drin = false;
+                } else feld += c;
+              } else if (c === t.format.texteinfassung) drin = true;
+              else if (c === t.format.spaltentrenner) {
+                raus.push(feld);
+                feld = '';
+              } else feld += c;
+            }
+            raus.push(feld);
+            return raus;
+          });
+
+        for (const [nr, zeile] of zeilen.entries()) {
+          if (zeile.length !== t.spalten.length) {
+            fehler.push(
+              `${t.datei} Zeile ${nr + 1}: ${zeile.length} Spalten, die Beschreibung sagt ${t.spalten.length}`,
+            );
+            continue;
+          }
+          if (nr === 0) continue; // Kopfzeile — die prueft die Taxonomie-Probe
+          for (const [i, sp] of t.spalten.entries()) {
+            const wert = zeile[i] as string;
+            geprueffteZellen++;
+            if (wert === '') continue; // leer ist erlaubt, wo die Norm es zulaesst
+            if (sp.art === 'zahl') {
+              const muster =
+                sp.laenge !== null && sp.laenge > 0
+                  ? new RegExp(`^-?\\d+,\\d{${sp.laenge}}$`)
+                  : /^-?\d+$/;
+              if (!muster.test(wert)) {
+                fehler.push(
+                  `${t.datei} Zeile ${nr + 1} ${sp.name}: ${JSON.stringify(wert)} ` +
+                    `haelt nicht Numeric mit ${sp.laenge ?? 0} Nachkommastellen und Komma`,
+                );
+              }
+            } else if (sp.laenge !== null && wert.length > sp.laenge) {
+              fehler.push(
+                `${t.datei} Zeile ${nr + 1} ${sp.name}: ${wert.length} Zeichen, hoechstens ${sp.laenge}`,
+              );
+            }
+          }
+        }
+      }
+
+      expect(geprueffteZellen).toBeGreaterThan(200);
+      expect(fehler, fehler.slice(0, 12).join('\n')).toEqual([]);
+    });
+
     it('die Signatur der Sicherungseinrichtung steht im Paket', async () => {
       const res = await get(`/api/closings/${closingId}/export/dsfinvk`);
       const nachName = new Map(readZip(res.rawPayload).map((f) => [f.name, f.content]));
