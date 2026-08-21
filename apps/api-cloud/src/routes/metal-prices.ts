@@ -56,6 +56,11 @@ import { Money } from '@norns/domain';
 import { VERKAUFSAUFSCHLAG_KEY, leseVerkaufsaufschlag } from '../lib/verkaufsaufschlag.js';
 
 import { requireAuth, requireOwner, requireRole } from '../lib/auth-policy.js';
+import {
+  type Korn,
+  ZuVieleKoernerError,
+  leseKerzen,
+} from '../lib/kursverlauf.js';
 import { KURS_HOECHSTALTER_STUNDEN, beurteileKursalter } from '../lib/kursalter.js';
 import { type ApiErrorCode, DomainError } from '../plugins/error-handler.js';
 import {
@@ -73,6 +78,8 @@ import {
   type TVerkaufsaufschlagBody,
   VerkaufsaufschlagBody,
   VerkaufsaufschlagResponse,
+  KursverlaufQuery,
+  KursverlaufResponse,
 } from '../schemas/metal-prices.js';
 
 /**
@@ -502,7 +509,60 @@ const metalPricesRoutes: FastifyPluginAsync = async (app) => {
   // ────────────────────────────────────────────────────────────────────
   // GET /api/metal-prices/history
   // ────────────────────────────────────────────────────────────────────
-  app.get<{ Querystring: TMetalPriceHistoryQuery }>(
+    /**
+   * Ein Fensterfehler dieses Weges.
+   *
+   * ⚠️ Wie überall im Haus eine EIGENE Ableitung von `DomainError`, keine
+   * geliehene Klasse: der Code (`VALIDATION_ERROR`) und der Satz gehören zum
+   * Weg, nicht zu einem fremden Weg, der sie eines Tages ändert.
+   */
+  class FensterFehler extends DomainError {
+    public readonly httpStatus = 400;
+    public readonly code: ApiErrorCode = 'VALIDATION_ERROR';
+  }
+
+  /*
+   * ── DER VERLAUF ALS KERZEN (21.08.2026) ────────────────────────────────
+   *
+   * `/history` gibt ZEILEN und deckelt bei 200. Bei fünf Minuten Schreibtakt
+   * sind das 16,7 Stunden — die Fläche bot aber bis zu einem Jahr an. Dieser
+   * Weg fragt nach einem ZEITFENSTER und lässt die Datenbank verdichten;
+   * Abwägung und SQL in `lib/kursverlauf.ts`.
+   *
+   * ⚠️ Lesen darf JEDER Angemeldete, wie bei `/history`: die Kurve gehört an
+   * den Tresen, nicht in die Verwaltung (Befund vom 18.08.2026).
+   */
+  app.get(
+    '/api/metal-prices/verlauf',
+    {
+      schema: {
+        tags: ['metal-prices'],
+        summary: 'Kursverlauf als Kerzen über ein Zeitfenster',
+        querystring: KursverlaufQuery,
+        response: { 200: KursverlaufResponse },
+      },
+    },
+    async (req, reply) => {
+      requireAuth(req);
+      const q = req.query as { metal: string; von: string; bis?: string; korn: Korn };
+      const vonMs = Date.parse(q.von);
+      const bisMs = q.bis === undefined ? Date.now() : Date.parse(q.bis);
+      if (!Number.isFinite(vonMs) || !Number.isFinite(bisMs) || bisMs <= vonMs) {
+        throw new FensterFehler('Das Zeitfenster ist leer oder verkehrt herum: „von" muss vor „bis" liegen.');
+      }
+      try {
+        const kerzen = await leseKerzen(app.db, q.metal, vonMs, bisMs, q.korn);
+        return reply.status(200).send({ metal: q.metal, korn: q.korn, kerzen });
+      } catch (err) {
+        if (err instanceof ZuVieleKoernerError) {
+          throw new FensterFehler(err.message);
+        }
+        throw err;
+      }
+    },
+  );
+
+app.get<{ Querystring: TMetalPriceHistoryQuery }>(
     '/api/metal-prices/history',
     {
       schema: {

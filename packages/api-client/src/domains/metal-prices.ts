@@ -12,6 +12,26 @@
 
 import type { ApiClient } from '../client.js';
 
+/** Die Körner, in denen der Verlauf verdichtet wird. */
+export type Kornstufe = '5min' | 'stunde' | 'tag' | 'woche';
+
+/** Eine Kerze des Verlaufs. Beträge als Zeichenketten, nie als Gleitkomma. */
+export interface Kurskerze {
+  t: string;
+  o: string;
+  h: string;
+  l: string;
+  c: string;
+  /** Wie viele Messpunkte in diesem Korn lagen. */
+  n: number;
+}
+
+export interface Kursverlauf {
+  metal: string;
+  korn: Kornstufe;
+  kerzen: Kurskerze[];
+}
+
 export type MetalKind = 'gold' | 'silver' | 'platinum' | 'palladium';
 /**
  * Die Herkunft einer Kurszeile. Wert für Wert der Datenbanktyp
@@ -157,6 +177,22 @@ function buildQuery(q: MetalPriceHistoryQuery): string {
 export const metalPricesApi = {
   current(client: ApiClient): Promise<CurrentMetalPricesResponse> {
     return client.request<CurrentMetalPricesResponse>('GET', '/api/metal-prices/current');
+  },
+  /**
+   * Der Verlauf als KERZEN über ein Zeitfenster (21.08.2026).
+   *
+   * ⚠️ `history` gibt ZEILEN und deckelt bei 200. Bei fünf Minuten
+   * Schreibtakt sind das 16,7 Stunden — für alles jenseits eines halben
+   * Tages ist dieser Weg hier der richtige. Er lässt die Datenbank
+   * verdichten und trägt echte Hochs und Tiefs.
+   */
+  verlauf(
+    client: ApiClient,
+    query: { metal: string; von: string; bis?: string; korn: Kornstufe },
+  ): Promise<Kursverlauf> {
+    const p = new URLSearchParams({ metal: query.metal, von: query.von, korn: query.korn });
+    if (query.bis !== undefined) p.set('bis', query.bis);
+    return client.request<Kursverlauf>('GET', `/api/metal-prices/verlauf?${p.toString()}`);
   },
   history(
     client: ApiClient,

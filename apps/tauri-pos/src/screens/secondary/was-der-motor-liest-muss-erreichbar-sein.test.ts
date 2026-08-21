@@ -60,15 +60,6 @@ const MOTOR = resolve(HIER, '../../../../api-cloud/src');
  */
 const HAENGT_AM_MOTOR = [
   {
-    bereich: 'aufschlag',
-    flaeche: 'VerkaufsaufschlagSection',
-    leser: 'lib/kurspreise-lesen.ts',
-    merkmal: 'leseVerkaufsaufschlag',
-    warum:
-      'Ohne diesen Bereich bleibt der Verkaufsaufschlag auf der Vorgabe NULL ' +
-      'Prozent stehen, und die Kasse verkauft Gold zum Einkaufspreis.',
-  },
-  {
     bereich: 'kurse',
     flaeche: 'KursquelleSection',
     leser: 'lib/kursquellen.ts',
@@ -98,6 +89,52 @@ function ausgelieferteBereiche(quelle: string): string[] {
   if (m?.[1] === undefined) return [];
   return [...m[1].matchAll(/'([a-z-]+)'/g)].map((t) => t[1] ?? '');
 }
+
+/*
+ * ── 21.08.2026: DER AUFSCHLAG IST UMGEZOGEN, NICHT VERSCHWUNDEN ───────────
+ *
+ * Basels Anweisung: die Einstellungen trugen eine ZWEITE Fläche für den
+ * Verkaufsaufschlag, während die Ankaufmarge längst im Kursraum wohnt. Zwei
+ * Flächen für dieselbe Frage sind eine Einladung, die eine zu pflegen und die
+ * andere zu vergessen.
+ *
+ * Er steht jetzt im Margen-Fenster von `Kurse.tsx`, Seite an Seite mit der
+ * Ankaufmarge. Damit trägt ihn KEINE Einstellungs-Kachel mehr — die Prüfung
+ * oben (`NORNS_BEREICHE`) passt nicht. Die ZUSAGE bleibt aber dieselbe und
+ * wird hier weiter gemessen, nur am neuen Ort: die Hand, die den Schalter
+ * dreht, muss erreichbar sein.
+ */
+describe('⛔ Der Verkaufsaufschlag ist im Kursraum erreichbar', () => {
+  const KURSRAUM = new URL('./Kurse.tsx', import.meta.url);
+  const kursraum = ohneKommentare(readFileSync(KURSRAUM, 'utf8'));
+
+  it('⛔ der Kursraum LIEST den Aufschlag', () => {
+    expect(
+      kursraum,
+      'Ohne Lesen zeigt das Margen-Fenster einen leeren Wert und überschreibt ' +
+        'beim Speichern einen gepflegten Aufschlag mit null.',
+    ).toContain('leseVerkaufsaufschlag');
+  });
+
+  it('⛔ und er SCHREIBT ihn auch', () => {
+    expect(
+      kursraum,
+      'Der Motor rechnet mit dem Aufschlag JEDEN kursgebundenen Verkaufspreis. ' +
+        'Ohne eine Fläche, die ihn setzt, bleibt er auf der Vorgabe NULL stehen ' +
+        'und die Kasse verkauft Gold zum Einkaufspreis.',
+    ).toContain('setzeVerkaufsaufschlag');
+  });
+
+  it('⛔ und der Kursraum ist ohne Einstellungen erreichbar', () => {
+    // Er ist eine eigene Fläche mit eigenem Weg — keine Kachel, die eine
+    // Auswahlliste wegräumen könnte. Genau das war der Fehler vom 14.08.
+    const register = readFileSync(
+      new URL('../../app/chrome/surface-registry.ts', import.meta.url),
+      'utf8',
+    );
+    expect(register).toContain("'/kurse'");
+  });
+});
 
 describe('⛔ Woran der Motor hängt, muss erreichbar sein', () => {
   const roh = readFileSync(EINSTELLUNGEN, 'utf8');

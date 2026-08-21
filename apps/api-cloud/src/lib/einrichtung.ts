@@ -405,10 +405,19 @@ export function alleSchritte(b: Bestandsaufnahme): Schritt[] {
       erklaerung:
         'Auf den Tageskurs kommt kein Aufschlag. Wer Preise aus dem Kurs rechnen laesst, ' +
         'verkauft damit zum reinen Materialwert, ohne Marge. Die Vorgabe ist mit Absicht ' +
-        'null, damit hier keine erfundene Zahl steht; die Ihre gehoert eingetragen.',
+        'null, damit hier keine erfundene Zahl steht; die Ihre gehoert eingetragen. ' +
+        'Sie steht im Kursraum, neben der Ankaufmarge.',
       sperre: 'KOSMETIK',
-      wohin: 'Einstellungen, Verkaufsaufschlag',
-      ziel: { pfad: '/einstellungen', bereich: 'aufschlag', nurInhaber: true },
+      /*
+       * ⚠️ 21.08.2026: hier stand „Einstellungen, Verkaufsaufschlag" mit dem
+       * Ziel `/einstellungen#aufschlag`. Basels Anweisung: die Einstellungen
+       * trugen eine ZWEITE Fläche für dieselbe Frage; der Aufschlag wohnt
+       * jetzt im Kursraum, Seite an Seite mit der Ankaufmarge. Eine
+       * Startliste, die an die alte Adresse schickt, führt den Händler ins
+       * Leere — der Wächter `startliste-ziele-existieren` hat es gefangen.
+       */
+      wohin: 'Kursraum, Margen je Metall',
+      ziel: { pfad: '/kurse', nurInhaber: true },
       riegel: 'verkaufsaufschlag.ts',
       schluessel: 'pricing.verkauf_aufschlag_pct',
       erledigt: false,
@@ -418,8 +427,8 @@ export function alleSchritte(b: Bestandsaufnahme): Schritt[] {
       titel: 'Verkaufsaufschlag',
       erklaerung: 'Der Aufschlag auf den Tageskurs ist eingetragen.',
       sperre: 'KOSMETIK',
-      wohin: 'Einstellungen, Verkaufsaufschlag',
-      ziel: { pfad: '/einstellungen', bereich: 'aufschlag', nurInhaber: true },
+      wohin: 'Kursraum, Margen je Metall',
+      ziel: { pfad: '/kurse', nurInhaber: true },
       riegel: 'verkaufsaufschlag.ts',
       schluessel: 'pricing.verkauf_aufschlag_pct',
       erledigt: true,

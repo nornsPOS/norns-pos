@@ -99,6 +99,43 @@ export const MetalPriceHistoryRow = Type.Object({
   manualOverrideReason: Type.Union([Type.String(), Type.Null()]),
 });
 
+/**
+ * Der VERLAUF als Kerzen — das Fenster, nicht die Zeilenzahl.
+ *
+ * ⚠️ 21.08.2026: der alte Weg nahm `limit` (Deckel 200). Bei einem Schreibtakt
+ * von fünf Minuten sind 200 Zeilen 16,7 Stunden — der „1 Jahr"-Knopf der
+ * Fläche zeigte nicht einmal einen Tag. Hier wird nach ZEIT gefragt und
+ * serverseitig verdichtet; Einzelheiten in `lib/kursverlauf.ts`.
+ */
+export const KursverlaufQuery = Type.Object({
+  metal: METAL_ENUM,
+  /** Fensteranfang, ISO. */
+  von: Type.String({ format: 'date-time' }),
+  /** Fensterende, ISO. Vorgabe: jetzt. */
+  bis: Type.Optional(Type.String({ format: 'date-time' })),
+  korn: Type.Union([
+    Type.Literal('5min'),
+    Type.Literal('stunde'),
+    Type.Literal('tag'),
+    Type.Literal('woche'),
+  ]),
+});
+
+export const KursverlaufResponse = Type.Object({
+  metal: METAL_ENUM,
+  korn: Type.String(),
+  kerzen: Type.Array(
+    Type.Object({
+      t: Type.String({ format: 'date-time' }),
+      o: Type.String(),
+      h: Type.String(),
+      l: Type.String(),
+      c: Type.String(),
+      n: Type.Integer(),
+    }),
+  ),
+});
+
 export const MetalPriceHistoryResponse = Type.Object({
   items: Type.Array(MetalPriceHistoryRow),
   total: Type.Integer(),

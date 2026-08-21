@@ -18,8 +18,9 @@
  *   Ankauf  = Spot × (1 − Sicherheitsmarge).
  */
 
-import { useCallback, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useId, useMemo, useRef, useState, useEffect} from 'react';
 
+import type { Kornstufe, Kurskerze } from '@norns/api-client';
 import type { MetalPriceHistoryRow } from '@norns/api-client';
 
 // ── Geometry ────────────────────────────────────────────────────────────────
@@ -43,14 +44,33 @@ interface RangeDef {
   label: string;
   spanMs: number;
   bucketMs: number;
+  /** Das Korn, in dem der Motor dieses Fenster verdichtet. */
+  korn: Kornstufe;
 }
 
+/*
+ * ── DAS FENSTER UND SEIN KORN (21.08.2026) ─────────────────────────────────
+ *
+ * ⛔ DER BEFUND: diese Fläche bot Fenster bis zu einem JAHR, aber `Kurse.tsx`
+ * holte 200 Zeilen und der Server deckelte ebenfalls bei 200. Gemessen am
+ * Beiläufer werden die Kurse ALLE FÜNF MINUTEN geschrieben:
+ *
+ *     200 Zeilen × 5 Minuten = 16,7 Stunden
+ *
+ * Der „1J"-Knopf zeigte also nicht einmal einen ganzen Tag — und niemand sah
+ * es, weil eine Kurve immer wie eine Kurve aussieht.
+ *
+ * Jetzt trägt jedes Fenster sein KORN, und der Motor verdichtet
+ * serverseitig (`/api/metal-prices/verlauf`, lib/kursverlauf.ts). Die
+ * Kerzenbreite `bucketMs` ist DASSELBE Korn — sonst zeichnete die Fläche
+ * Kerzen einer Breite, die die Daten gar nicht haben.
+ */
 const RANGES: readonly RangeDef[] = [
-  { key: '1T', label: '1T', spanMs: DAY, bucketMs: 15 * 60_000 }, // 15-minute candles
-  { key: '1W', label: '1W', spanMs: 7 * DAY, bucketMs: 60 * 60_000 }, // hourly
-  { key: '1M', label: '1M', spanMs: 30 * DAY, bucketMs: DAY }, // daily
-  { key: '6M', label: '6M', spanMs: 182 * DAY, bucketMs: DAY }, // daily
-  { key: '1J', label: '1J', spanMs: 365 * DAY, bucketMs: 7 * DAY }, // weekly
+  { key: '1T', label: '1T', spanMs: DAY, bucketMs: 5 * 60_000, korn: '5min' },
+  { key: '1W', label: '1W', spanMs: 7 * DAY, bucketMs: 60 * 60_000, korn: 'stunde' },
+  { key: '1M', label: '1M', spanMs: 30 * DAY, bucketMs: DAY, korn: 'tag' },
+  { key: '6M', label: '6M', spanMs: 182 * DAY, bucketMs: DAY, korn: 'tag' },
+  { key: '1J', label: '1J', spanMs: 365 * DAY, bucketMs: 7 * DAY, korn: 'woche' },
 ];
 const DEFAULT_RANGE: RangeDef = RANGES[0] as RangeDef;
 
@@ -79,6 +99,17 @@ interface Props {
    */
   safetyMarginPct: number | null;
   fetching?: boolean;
+  /**
+   * Die KERZEN des Motors für das gewählte Fenster.
+   *
+   * ⚠️ Liegen sie vor, gelten SIE — nicht die aus `history` selbst gefalteten.
+   * Der Motor sieht alle Messpunkte des Korns; diese Fläche sähe nur die 200
+   * Zeilen, die `history` liefert, und ihre Hochs und Tiefs wären die von
+   * 16 Stunden statt die eines Jahres.
+   */
+  kerzen?: readonly Kurskerze[];
+  /** Wird gerufen, wenn der Mensch ein anderes Fenster wählt. */
+  onBereich?: (bereich: { vonMs: number; bisMs: number; korn: Kornstufe }) => void;
 }
 
 function fmtEur(n: number, frac = 2): string {
@@ -102,6 +133,8 @@ export function TradingTerminal({
   currentPrice,
   safetyMarginPct,
   fetching = false,
+  kerzen,
+  onBereich,
 }: Props): JSX.Element {
   const gradId = useId();
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -118,6 +151,17 @@ export function TradingTerminal({
   const pinchRef = useRef<{ dist: number; min: number; max: number } | null>(null);
 
   const range = RANGES.find((r) => r.key === rangeKey) ?? DEFAULT_RANGE;
+
+  /*
+   * Das gewählte Fenster nach oben melden, damit `Kurse.tsx` genau DIESES
+   * Fenster beim Motor holt. Der Ruf haengt am Fensterschluessel, nicht an
+   * der Uhr: sonst liefe bei jedem Bild eine neue Abfrage.
+   */
+  useEffect(() => {
+    if (!onBereich) return;
+    const bisMs = Date.now();
+    onBereich({ vonMs: bisMs - range.spanMs, bisMs, korn: range.korn });
+  }, [onBereich, range.spanMs, range.korn]);
   /*
    * ── ⛔ HIER STAND `?? 0.1` — EINE ERFUNDENE ANKAUFMARGE ─────────────────
    *
@@ -161,8 +205,22 @@ export function TradingTerminal({
         rows.push({ t: now, spot: cur });
       }
     }
+    /*
+     * ⚠️ Bei den langen Fenstern trägt `history` (200 Zeilen, 16,7 Stunden)
+     * die Linie NICHT. Dann kommen die Stützpunkte aus den Schlusskursen der
+     * Motorkerzen; die letzten echten Zeilen bleiben vorn dran, damit das
+     * rechte Ende so fein bleibt, wie es die Kasse wirklich weiss.
+     */
+    if (kerzen && kerzen.length > 0) {
+      const ausKerzen = kerzen
+        .map((k) => ({ t: Date.parse(k.t), spot: Number.parseFloat(k.c) }))
+        .filter((p) => Number.isFinite(p.t) && Number.isFinite(p.spot));
+      const aeltesteZeile = rows[0]?.t ?? Number.POSITIVE_INFINITY;
+      const zusammen = [...ausKerzen.filter((k) => k.t < aeltesteZeile), ...rows];
+      return zusammen.sort((a, b) => a.t - b.t);
+    }
     return rows;
-  }, [history, currentPrice]);
+  }, [history, currentPrice, kerzen]);
 
   const now = Date.now();
   const firstTick = ticks[0];
@@ -184,9 +242,27 @@ export function TradingTerminal({
     [ticks, vMin, vMax, range.bucketMs],
   );
 
-  // Candles (bucketed OHLC) for the whole tick series, then filtered to view.
+  /*
+   * Die Kerzen. Liegen die des MOTORS vor, gelten sie — er sieht alle
+   * Messpunkte des Korns, diese Fläche nur die gelieferten Zeilen. Die
+   * Eigenfaltung darunter bleibt als Rückfall stehen (frisch geöffnete
+   * Fläche, ausgefallene Abfrage): lieber eine gröbere Kerze als keine.
+   */
   const candles = useMemo<Candle[]>(() => {
-    if (mode !== 'candle' || ticks.length === 0) return [];
+    if (mode !== 'candle') return [];
+    if (kerzen && kerzen.length > 0) {
+      return kerzen
+        .map((k) => ({
+          t: Date.parse(k.t),
+          o: Number.parseFloat(k.o),
+          h: Number.parseFloat(k.h),
+          l: Number.parseFloat(k.l),
+          c: Number.parseFloat(k.c),
+        }))
+        .filter((k) => Number.isFinite(k.t) && Number.isFinite(k.o))
+        .sort((a, b) => a.t - b.t);
+    }
+    if (ticks.length === 0) return [];
     const byBucket = new Map<number, Candle>();
     for (const p of ticks) {
       const b = Math.floor(p.t / range.bucketMs) * range.bucketMs;
@@ -199,7 +275,7 @@ export function TradingTerminal({
       }
     }
     return [...byBucket.values()].sort((a, b) => a.t - b.t);
-  }, [ticks, mode, range.bucketMs]);
+  }, [ticks, mode, range.bucketMs, kerzen]);
 
   const visCandles = useMemo(
     () => candles.filter((c) => c.t >= vMin - range.bucketMs && c.t <= vMax + range.bucketMs),

@@ -317,6 +317,9 @@ export {
   type UpdateMarginResponse,
   type Verkaufsaufschlag,
   type VerkaufsaufschlagBody,
+  type Kornstufe,
+  type Kurskerze,
+  type Kursverlauf,
 } from './domains/metal-prices.js';
 export {
   stripeTerminalApi,

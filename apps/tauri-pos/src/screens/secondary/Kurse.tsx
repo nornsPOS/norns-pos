@@ -33,6 +33,7 @@ import {
   type MetalKind,
   type MetalPriceHistoryRow,
   type MetalRate,
+  type Kornstufe,
   metalPricesApi,
 } from '@norns/api-client';
 import { Fensterboden, Button, Zwischentitel, ParchmentCard, ZustandFehler } from '@norns/ui-kit';
@@ -98,6 +99,34 @@ export function Kurse(): JSX.Element {
       staleTime: 60_000,
       refetchInterval: 60_000,
     })),
+  });
+
+  /*
+   * ── DAS FENSTER, DAS DAS TERMINAL WIRKLICH ZEIGT (21.08.2026) ───────────
+   *
+   * ⛔ Darüber holt `historyQs` 200 Zeilen (Serverdeckel). Bei fünf Minuten
+   * Schreibtakt sind das 16,7 STUNDEN — das Terminal bot aber bis zu einem
+   * Jahr an. Jetzt meldet es sein gewähltes Fenster herauf, und der Motor
+   * verdichtet es serverseitig zu Kerzen (`/api/metal-prices/verlauf`).
+   *
+   * Die 200 Zeilen bleiben: sie tragen das rechte, feine Ende der Linie und
+   * den Rückfall, solange die Kerzen noch unterwegs sind.
+   */
+  const [bereich, setBereich] = useState<{ vonMs: number; bisMs: number; korn: Kornstufe } | null>(
+    null,
+  );
+  const kerzenQ = useQuery({
+    queryKey: ['metal-prices', 'verlauf', selectedMetal, bereich?.korn, bereich?.vonMs] as const,
+    queryFn: () =>
+      metalPricesApi.verlauf(api, {
+        metal: selectedMetal,
+        von: new Date((bereich as { vonMs: number }).vonMs).toISOString(),
+        bis: new Date((bereich as { bisMs: number }).bisMs).toISOString(),
+        korn: (bereich as { korn: Kornstufe }).korn,
+      }),
+    enabled: bereich !== null,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
   });
 
   const [marginOpen, setMarginOpen] = useState(false);
@@ -328,7 +357,9 @@ export function Kurse(): JSX.Element {
             ratesQ.data?.rates.find((r) => r.metal === selectedMetal)?.safetyMarginPct ??
             safetyMarginPct
           }
-          fetching={currentQ.isFetching}
+          fetching={currentQ.isFetching || kerzenQ.isFetching}
+          {...(kerzenQ.data ? { kerzen: kerzenQ.data.kerzen } : {})}
+          onBereich={setBereich}
         />
       </ParchmentCard>
 
@@ -917,6 +948,27 @@ const inputStyle: React.CSSProperties = {
 // Safety-Margin Modal (Owner / step-up)
 // ════════════════════════════════════════════════════════════════════════
 
+/*
+ * ═══════════════════════════════════════════════════════════════════════════
+ *  ⚠️ EIN ORT FÜR BEIDE MARGEN (21.08.2026, Basels Anweisung)
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Basel wörtlich: „عندنا شي مطابق وافضل موجود باعدادات الذهب … شيلو من
+ * الواجهة" — die Einstellungen trugen eine ZWEITE Fläche für den
+ * Verkaufsaufschlag, obwohl die Ankaufmarge längst hier wohnt, näher an den
+ * Kursen und am Terminal.
+ *
+ * Zwei Flächen für dieselbe Frage sind kein Komfort, sondern eine Einladung,
+ * die eine zu pflegen und die andere zu vergessen. Beide Margen stehen jetzt
+ * hier, nebeneinander, mit derselben Vorschau:
+ *
+ *     Ankaufmarge      was die Kasse beim EINKAUF vom Mittel abzieht
+ *     Verkaufsaufschlag was sie beim VERKAUF auf den Materialwert schlägt
+ *
+ * ⚠️ Der Aufschlag darf NICHT verschwinden, nur umziehen: `kurspreisFuerStueck`
+ * rechnet mit ihm JEDEN kursgebundenen Verkaufspreis. Der Wächter
+ * `was-der-motor-liest-muss-erreichbar-sein` misst genau das.
+ */
 function MarginModal({ rates, onClose }: { rates: MetalRate[]; onClose: () => void }): JSX.Element {
   const api = useApiClient();
   const qc = useQueryClient();
@@ -932,6 +984,37 @@ function MarginModal({ rates, onClose }: { rates: MetalRate[]; onClose: () => vo
     return m;
   }, [rates]);
   const [pcts, setPcts] = useState<Record<MetalKind, string>>(initial);
+
+  /*
+   * Der VERKAUFSaufschlag, seit 21.08.2026 hier statt in den Einstellungen.
+   * Er wohnt in `system_settings` als ANTEIL (0.10 = zehn Prozent); die
+   * Fläche zeigt PROZENT, denn so denkt ein Händler. Die Umrechnung steht an
+   * genau zwei Stellen: beim Lesen und beim Speichern, gleich darunter.
+   */
+  const aufschlagQ = useQuery({
+    queryKey: ['metal-prices', 'verkaufsaufschlag'] as const,
+    queryFn: () => metalPricesApi.leseVerkaufsaufschlag(api),
+    staleTime: 60_000,
+  });
+  const [aufPcts, setAufPcts] = useState<Record<string, string> | null>(null);
+  useEffect(() => {
+    if (aufschlagQ.data && aufPcts === null) {
+      const m: Record<string, string> = {};
+      for (const mk of METAL_KIND_ORDER) {
+        const anteil = aufschlagQ.data[mk];
+        m[mk] = String(Number((Number(anteil ?? '0') * 100).toFixed(2)));
+      }
+      setAufPcts(m);
+    }
+  }, [aufschlagQ.data, aufPcts]);
+
+  const aufNumOf = (mk: MetalKind): number => Number((aufPcts?.[mk] ?? '0').replace(',', '.'));
+  /** ⚠️ Höchstens 100 % — darüber ist es fast immer die Einheitenverwechslung. */
+  const aufValidOf = (mk: MetalKind): boolean => {
+    const n = aufNumOf(mk);
+    return Number.isFinite(n) && n >= 0 && n <= 100;
+  };
+  const alleAufValid = METAL_KIND_ORDER.every(aufValidOf);
 
   const numOf = (mk: MetalKind): number => Number(pcts[mk].replace(',', '.'));
   const validOf = (mk: MetalKind): boolean => {
@@ -965,12 +1048,32 @@ function MarginModal({ rates, onClose }: { rates: MetalRate[]; onClose: () => vo
           await metalPricesApi.updateMargin(api, { metal: mk, marginPct: n / 100 });
         }
       }
+      /*
+       * Und der VERKAUFSaufschlag, seit 21.08.2026 im selben Zug: eine
+       * Fläche, ein Knopf. Auch hier nur die GEÄNDERTEN Metalle — jeder
+       * unnötige Schreibzug wäre ein Tagebucheintrag ohne Anlass.
+       *
+       * ⚠️ Die Fläche zeigt PROZENT, der Motor nimmt einen ANTEIL. Die
+       * Teilung durch hundert steht genau hier und beim Lesen darüber.
+       */
+      if (aufPcts !== null && aufschlagQ.data) {
+        for (const mk of METAL_KIND_ORDER) {
+          const vorher = Number((Number(aufschlagQ.data[mk] ?? '0') * 100).toFixed(2));
+          const jetzt = aufNumOf(mk);
+          if (aufValidOf(mk) && jetzt !== vorher) {
+            await metalPricesApi.setzeVerkaufsaufschlag(api, {
+              metal: mk,
+              aufschlagAnteil: jetzt / 100,
+            });
+          }
+        }
+      }
     },
     onSuccess: async () => {
       addToast({
         tone: 'success',
         title: 'Margen gespeichert',
-        body: 'Ankaufskurse überall aktualisiert: Ticker, Ankauf-Vorschlag, Kursraum.',
+        body: 'Ankauf und Verkauf überall aktualisiert: Ticker, Ankauf-Vorschlag, Kursraum, Lagerpreise.',
       });
       // CORE FIX: invalidate the WHOLE metal-prices family (not just 'rates') so
       // EVERY consumer refetches the new server-derived Ankauf rate at once. The
@@ -994,7 +1097,7 @@ function MarginModal({ rates, onClose }: { rates: MetalRate[]; onClose: () => vo
     <Fensterboden><div
       role="dialog"
       aria-modal="true"
-      aria-label="Sicherheitsmargen je Metall"
+      aria-label="Margen je Metall"
       tabIndex={-1}
       style={{
         position: 'fixed',
@@ -1026,7 +1129,7 @@ function MarginModal({ rates, onClose }: { rates: MetalRate[]; onClose: () => vo
             fontSize: 'var(--w14-schrift-titel)',
           }}
         >
-          Sicherheitsmargen je Metall
+          Margen je Metall
         </h2>
         <Zwischentitel />
 
@@ -1037,17 +1140,36 @@ function MarginModal({ rates, onClose }: { rates: MetalRate[]; onClose: () => vo
           Ankauf-Vorschlag und Kursraum.
         </p>
         <p style={{ margin: '4px 0 0', fontSize: 'var(--w14-schrift-zeile)', color: 'var(--w14-ink-faded)' }}>
-          Die Marge betrifft nur den <strong>Ankauf</strong>. Verkaufspreise sind je Artikel
-          (Listenpreis), nicht Spot × Marge.
+          Der <strong>Verkaufsaufschlag</strong> daneben gilt für Stücke, die dem Kurs folgen
+          (Gewicht und Feingehalt gepflegt, kein fester Preis): Verkaufspreis = Feingewicht ×
+          Tageskurs × (1 + Aufschlag). Stücke mit festem Preis rührt er nicht an.
         </p>
 
         <div style={{ display: 'grid', gap: 'var(--w14-abstand-12)', marginTop: 14 }}>
+          {/* Ohne Spaltenkopf stünden zwei gleich aussehende Prozentfelder
+              nebeneinander, und niemand wüsste, welches welches ist. */}
+          <div
+            className="w14-smallcaps"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '84px 88px 88px 1fr',
+              gap: 'var(--w14-abstand-12)',
+              fontSize: 'var(--w14-schrift-kuerzel)',
+              letterSpacing: '0.06em',
+              color: 'var(--w14-ink-faded)',
+            }}
+          >
+            <span />
+            <span>Ankauf</span>
+            <span>Verkauf</span>
+            <span />
+          </div>
           {METAL_KIND_ORDER.map((mk) => (
             <div
               key={mk}
               style={{
                 display: 'grid',
-                gridTemplateColumns: '90px 96px 1fr',
+                gridTemplateColumns: '84px 88px 88px 1fr',
                 gap: 'var(--w14-abstand-12)',
                 alignItems: 'center',
               }}
@@ -1069,6 +1191,24 @@ function MarginModal({ rates, onClose }: { rates: MetalRate[]; onClose: () => vo
                     fontFamily: 'var(--w14-font-mono)',
                     textAlign: 'right',
                     borderColor: validOf(mk) ? 'var(--w14-feldlinie)' : 'var(--w14-wax-red)',
+                  }}
+                />
+                <span style={{ color: 'var(--w14-ink-faded)' }}>%</span>
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 'var(--w14-abstand-4)' }}>
+                <input
+                  value={aufPcts?.[mk] ?? ''}
+                  onChange={(e) =>
+                    setAufPcts((v) => ({ ...(v ?? {}), [mk]: e.target.value }))
+                  }
+                  inputMode="decimal"
+                  disabled={aufPcts === null}
+                  aria-label={`Verkaufsaufschlag ${METAL_LABEL[mk]} in Prozent`}
+                  style={{
+                    ...inputStyle,
+                    fontFamily: 'var(--w14-font-mono)',
+                    textAlign: 'right',
+                    borderColor: aufValidOf(mk) ? 'var(--w14-feldlinie)' : 'var(--w14-wax-red)',
                   }}
                 />
                 <span style={{ color: 'var(--w14-ink-faded)' }}>%</span>
@@ -1096,7 +1236,12 @@ function MarginModal({ rates, onClose }: { rates: MetalRate[]; onClose: () => vo
 
         {!allValid && (
           <p style={{ margin: '8px 0 0', fontSize: 'var(--w14-schrift-zeile)', color: 'var(--w14-wax-red)' }}>
-            Bitte je Metall einen Wert zwischen 0 und 50 eingeben.
+            Ankaufmarge: je Metall ein Wert zwischen 0 und 50.
+          </p>
+        )}
+        {!alleAufValid && (
+          <p style={{ margin: '4px 0 0', fontSize: 'var(--w14-schrift-zeile)', color: 'var(--w14-wax-red)' }}>
+            Verkaufsaufschlag: je Metall ein Wert zwischen 0 und 100.
           </p>
         )}
 
@@ -1106,7 +1251,7 @@ function MarginModal({ rates, onClose }: { rates: MetalRate[]; onClose: () => vo
           </Button>
           <Button
             variant="primary"
-            disabled={!allValid || save.isPending}
+            disabled={!allValid || !alleAufValid || save.isPending}
             onClick={() => save.mutate()}
           >
             {save.isPending ? 'Speichert…' : 'Übernehmen'}

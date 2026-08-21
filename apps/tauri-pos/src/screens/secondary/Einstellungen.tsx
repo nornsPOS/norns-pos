@@ -14,7 +14,7 @@ import { type CSSProperties, type ReactNode, useEffect, useState } from 'react';
 
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
-import { Button, Zwischentitel, Icon, ShieldCheck, ArrowDownToLine, Landmark, Cpu, KeyRound, Boxes, Scale, ReceiptText, HandCoins, CircleHelp, FileText } from '@norns/ui-kit';
+import { Button, Zwischentitel, Icon, ShieldCheck, ArrowDownToLine, Landmark, Cpu, KeyRound, Boxes, ReceiptText, HandCoins, CircleHelp, FileText } from '@norns/ui-kit';
 
 import { findSurfaceByPath } from '../../app/chrome/surface-registry.js';
 import { GRUPPEN } from './Uebersicht.js';
@@ -23,7 +23,6 @@ import { IconPower, IconServer } from '../../app/chrome/Icons.js';
 import { useApiClient } from '../../lib/api-context.js';
 import { NORNS_BAUART } from '../../lib/bauart.js';
 import { requestSignOut } from '../../lib/session-actions.js';
-import { VerkaufsaufschlagSection } from './VerkaufsaufschlagSection.js';
 import { useSessionStore } from '../../state/session-store.js';
 import { useToastStore } from '../../state/toast-store.js';
 import { Belegdesigner } from './Belegdesigner.js';
@@ -52,7 +51,6 @@ type SectionId =
   | 'lizenz'
   | 'sicherung'
   | 'hardware'
-  | 'aufschlag'
   | 'apikeys'
   | 'server'
   | 'beleg'
@@ -105,31 +103,19 @@ const NORNS_BEREICHE: ReadonlySet<SectionId> = new Set<SectionId>([
    *
    * ── DER BEFUND ────────────────────────────────────────────────────────
    *
-   * Der Verkaufsaufschlag ist der Prozentsatz, den die Kasse auf den
-   * Metallkurs schlägt, wenn sie einen Verkaufspreis rechnet. Vier Zeilen
-   * belegen, was seine Abwesenheit hier anrichtete:
+   * ⚰️ 21.08.2026: hier stand ein langer Absatz über den Verkaufsaufschlag
+   * und darunter der Bereich `'aufschlag'`. Basels Anweisung: „عندنا شي
+   * مطابق وافضل موجود باعدادات الذهب … شيلو من الواجهة" — die Einstellungen
+   * trugen eine ZWEITE Fläche für dieselbe Frage, während die Ankaufmarge
+   * längst im Kursraum wohnt, neben den Kursen und dem Terminal.
    *
-   *   1. `lib/verkaufsaufschlag.ts`: `const VORGABE = '0'`, also NULL Prozent.
-   *   2. `lib/kurspreise-lesen.ts` liest ihn und rechnet mit ihm JEDEN
-   *      Verkaufspreis: `kurspreisFuerStueck(s, kurse, aufschlag)`.
-   *   3. Die EINZIGE Fläche, die ihn setzen kann, ist
-   *      `VerkaufsaufschlagSection`, und die liegt in genau diesem Bereich.
-   *   4. Der Bereich stand nicht in dieser Liste.
-   *
-   * Wirkung am Tresen: jeder aus dem Kurs gerechnete Verkaufspreis trug
-   * NULL Aufschlag. Der Händler verkaufte Gold zum Einkaufspreis, und es gab
-   * keinen Weg, das zu ändern.
-   *
-   * ── UND DIE URSACHE WAR EINE GUTE ABSICHT ─────────────────────────────
-   *
-   * Diese Liste ist dafür da, dem Händler die Bereiche zu ersparen, die er
-   * nicht braucht. Richtig gedacht. Sie hat dabei einen Bereich mitgenommen,
-   * von dem der SERVER abhängt: der Schalter blieb im Motor, die Hand, die
-   * ihn dreht, verschwand aus der Fläche.
-   *
-   * Der Wächter `was-der-motor-liest-muss-erreichbar-sein` misst das jetzt.
+   * Der Aufschlag ist NICHT gelöscht: er steht jetzt im Kursraum
+   * (`Kurse.tsx`, Margen-Fenster), Seite an Seite mit der Ankaufmarge, mit
+   * derselben Vorschau und EINEM Speichern-Knopf. Der Wächter
+   * `was-der-motor-liest-muss-erreichbar-sein` misst weiterhin, dass jeder
+   * Schalter, von dem der Motor abhängt, für den Händler erreichbar bleibt —
+   * er zeigt seit heute auf den Kursraum.
    */
-  'aufschlag',
 ]);
 
 const SECTIONS: SectionDef[] = [
@@ -151,12 +137,6 @@ const SECTIONS: SectionDef[] = [
     label: 'Geräte & Kasse',
     icon: <Icon icon={Cpu} size={18} />,
     desc: 'Drucker · Terminal · TSE',
-  },
-  {
-    id: 'aufschlag',
-    label: 'Verkaufsaufschlag',
-    icon: <Icon icon={Scale} size={18} />,
-    desc: 'Was auf den Materialwert kommt',
   },
   {
     id: 'apikeys',
@@ -451,9 +431,6 @@ export function Einstellungen(): JSX.Element {
         {activeSection === 'lizenz' && <LizenzSection />}
         {activeSection === 'sicherung' && <SicherungSection />}
         {activeSection === 'hardware' && <GeraeteManager />}
-        {activeSection === 'aufschlag' && (
-          <VerkaufsaufschlagSection pad={pad} card={card} SectionTitle={SectionTitle} />
-        )}
         {activeSection === 'apikeys' && isAdmin && <ApiKeysSection />}
         {activeSection === 'server' && <ServerSection />}
         {activeSection === 'beleg' && <BelegSection />}
