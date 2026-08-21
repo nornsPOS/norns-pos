@@ -66,9 +66,7 @@ export function ReceiptResult({
             // ein N: ein GOLDENES N über jedem gebuchten Verkauf.
             label="◊"
             title="Verkauf gebucht"
-            style={{
-              animation: 'w14-siegel-setzen var(--w14-dur-base) var(--w14-ease-curator)',
-            }}
+            className="w14-siegel"
           />
           <span
             aria-hidden
@@ -78,10 +76,23 @@ export function ReceiptResult({
               borderRadius: '50%',
               border: '1px solid var(--w14-gilt)',
               opacity: 0,
-              animation: 'w14-siegel-ring var(--w14-dur-base) var(--w14-ease-exit)',
             }}
+            className="w14-siegel-welle"
           />
         </span>
+        {/*
+          ⛔ 21.08.2026, vom Bewegungs-Wächter gefangen. Diese beiden Keyframes
+          zogen beim Auseinandernehmen von `BezahlenDialog.tsx` in eine NEUE
+          Datei um — und liessen ihre Antwort auf reduzierte Bewegung zurück.
+
+          Für den Ring ist das nicht kosmetisch: er ist eine Welle, die vom
+          Siegel nach aussen läuft. Wer die Bewegungsreduzierung eingeschaltet
+          hat, hat sie meist aus einem Grund eingeschaltet — und bekam sie hier
+          nach JEDEM gebuchten Verkauf zu sehen.
+
+          Die Bewegung wandert dafür aus dem Stil-Merkmal in eine Klasse: eine
+          Media-Anweisung kann einen eingebauten Stil nicht überstimmen.
+        */}
         <style>{`
           @keyframes w14-siegel-setzen {
             from { opacity: 0.4; transform: scale(1.06); }
@@ -89,6 +100,17 @@ export function ReceiptResult({
           @keyframes w14-siegel-ring {
             0% { opacity: 0.55; transform: scale(0.92); }
             100% { opacity: 0; transform: scale(1.12); }
+          }
+          .w14-siegel {
+            animation: w14-siegel-setzen var(--w14-dur-base) var(--w14-ease-curator);
+          }
+          .w14-siegel-welle {
+            animation: w14-siegel-ring var(--w14-dur-base) var(--w14-ease-exit);
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .w14-siegel { animation: none; }
+            /* Der Ring wird gar nicht erst gezeigt: er IST nur Bewegung. */
+            .w14-siegel-welle { animation: none; display: none; }
           }
         `}</style>
       </div>

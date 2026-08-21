@@ -1038,8 +1038,8 @@ function StripeLeserPanel({
         flexDirection: 'column',
         alignItems: 'center',
         gap: 'var(--w14-abstand-12)',
-        animation: 'w14-leserschritt-ein var(--w14-dur-press) var(--w14-ease-curator)',
       }}
+      className="w14-leserschritt"
     >
       <p
         role="status"
@@ -1065,8 +1065,8 @@ function StripeLeserPanel({
             fontSize: 'var(--w14-schrift-text)',
             lineHeight: 1.45,
             textAlign: 'center',
-            animation: 'w14-leserschritt-ein var(--w14-dur-exit) var(--w14-ease-exit)',
           }}
+          className="w14-leserschritt-hinweis"
         >
           {schritt.hinweis}
         </p>
@@ -1082,12 +1082,33 @@ function StripeLeserPanel({
           Zahlung am Leser abbrechen
         </Button>
       )}
-      {/* Haus-Regel „Inhalte starten nie unsichtbar": nur der STARTZUSTAND
-          steht im Keyframe; ohne Animation (reduced motion nullt die Dauer)
-          steht der Schritt sofort fertig da. */}
+      {/*
+        Haus-Regel „Inhalte starten nie unsichtbar": nur der STARTZUSTAND
+        steht im Keyframe; ohne Animation steht der Schritt sofort fertig da.
+
+        ⛔ 21.08.2026, vom Bewegungs-Wächter gefangen: der Satz hier behauptete
+        vorher, „reduced motion nullt die Dauer" genüge. Das stimmt nicht — die
+        globale Regel in `tokens.css` kürzt nur DAUERN, nicht Verzögerungen.
+        Der Kommentar reiste beim Auseinanderziehen von `BezahlenDialog.tsx`
+        mit in diese neue Datei und war damit eine Antwort, die nie gegeben
+        wurde. Sie steht jetzt hier, im selben Modul, wie das Haus es verlangt.
+
+        Die Bewegung wandert dafür aus dem Stil-Merkmal in eine Klasse: eine
+        Media-Anweisung kann einen eingebauten Stil nicht überstimmen.
+      */}
       <style>{`
         @keyframes w14-leserschritt-ein {
           from { opacity: 0; transform: translateY(4px); }
+        }
+        .w14-leserschritt {
+          animation: w14-leserschritt-ein var(--w14-dur-press) var(--w14-ease-curator);
+        }
+        .w14-leserschritt-hinweis {
+          animation: w14-leserschritt-ein var(--w14-dur-exit) var(--w14-ease-exit);
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .w14-leserschritt,
+          .w14-leserschritt-hinweis { animation: none; }
         }
       `}</style>
     </div>
