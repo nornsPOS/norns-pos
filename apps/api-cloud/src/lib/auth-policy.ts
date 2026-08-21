@@ -127,7 +127,17 @@ export function requireRole(req: FastifyRequest, ...roles: ActorRole[]): void {
  * `is_owner` bit. Used for the rare Owner-only routes (manual ledger
  * rollover, manual KYC purge initiation, etc.).
  */
-export function requireOwner(req: FastifyRequest): void {
+/*
+ * ⚠️ `asserts` und nicht `void` (21.08.2026). Die Prüfung stellt fest, dass
+ * `req.actor` da IST — schrieb man das nicht in die Form, müsste jeder
+ * Aufrufer danach `req.actor` erneut auf null prüfen oder mit einem Griff wie
+ * `req.actor as unknown as { id: string }` daran vorbei. Genau so ein Griff
+ * steht in `auth-pin.ts`; er ist heute nicht mehr nötig.
+ */
+export function requireOwner(req: FastifyRequest): asserts req is FastifyRequest & {
+  actor: Actor;
+  session: ActorWithSession;
+} {
   requireAuth(req);
   if (!req.actor.isOwner) {
     throw new ForbiddenError('Owner-only operation');
@@ -163,7 +173,10 @@ export function requireStepUp(
  * Composed helper: Owner-only + step-up fresh. Common pattern for
  * destructive single-actor operations.
  */
-export function requireOwnerStepUp(req: FastifyRequest): void {
+export function requireOwnerStepUp(req: FastifyRequest): asserts req is FastifyRequest & {
+  actor: Actor;
+  session: ActorWithSession;
+} {
   requireOwner(req);
   requireStepUp(req);
 }

@@ -255,3 +255,5 @@ export const PasswordPolicy = {
 /** Alias for clarity — shoppers hash passwords, not PINs. */
 export const hashPassword = hashPin;
 export const verifyPassword = verifyPin;
+
+export * from './notfallschluessel.js';

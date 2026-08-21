@@ -99,6 +99,10 @@ export {
   type SignOutResponse,
 } from './domains/auth-pin.js';
 export {
+  notfallschluessel,
+  type Schluesselstand,
+} from './domains/notfallschluessel.js';
+export {
   bridgeApi,
   type BridgeSummary,
 } from './domains/bridge.js';

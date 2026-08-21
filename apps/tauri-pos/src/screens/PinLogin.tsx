@@ -14,12 +14,15 @@
  * (Roman numerals in wax-red as wax-seal failure marks).
  */
 
+import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 
-import { type AnmeldbarePerson, ApiError, authPin } from '@norns/api-client';
+import { type AnmeldbarePerson, ApiError, authPin, notfallschluessel } from '@norns/api-client';
 import { Zwischentitel, NornsWortmarke, Hourglass, Icon, ParchmentCard, PinPad, RomanIndex } from '@norns/ui-kit';
 
 import { ThemeToggle } from '../app/chrome/ThemeToggle.js';
+import { SchluesselEinloesen } from './anmeldung/SchluesselEinloesen.js';
+import { SchluesselZettel } from './anmeldung/SchluesselZettel.js';
 import { useApiClient } from '../lib/api-context.js';
 import { setSessionToken } from '../lib/session-token.js';
 import { useSessionStore } from '../state/session-store.js';
@@ -57,6 +60,27 @@ export function PinLogin(): JSX.Element {
   const [submitting, setSubmitting] = useState<boolean>(false);
   /** Diese Kasse hat noch keinen Code — der Händler setzt ihn jetzt. */
   const [einrichtung, setEinrichtung] = useState<boolean>(false);
+
+  /*
+   * ── DER NOTAUSGANG (21.08.2026) ───────────────────────────────────────
+   *
+   * Zwei Zustände, und beide halten den Bildschirm bewusst an:
+   *
+   *   `zeigeSchluessel` — ein frisch ausgegebener Schlüssel steht im
+   *     Klartext hier und NUR hier. Er wird NICHT in einen Speicher gelegt,
+   *     nicht in die Zwischenablage, nicht protokolliert. Verlässt der
+   *     Händler die Fläche, ist er fort — deshalb geht es erst weiter, wenn
+   *     er bestätigt, ihn aufgeschrieben zu haben.
+   *
+   *   `einloesen` — die Maske für den, der seinen Code vergessen hat.
+   *
+   * ⚠️ `nachAnmeldung` hält die Anmeldung ZURÜCK, bis der Zettel gelesen
+   * ist. Ginge die Kasse sofort auf, wäre der Schlüssel im selben Augenblick
+   * hinter dem Verkaufsbildschirm verschwunden.
+   */
+  const [zeigeSchluessel, setZeigeSchluessel] = useState<string | null>(null);
+  const [einloesen, setEinloesen] = useState<boolean>(false);
+  const [nachAnmeldung, setNachAnmeldung] = useState<(() => void) | null>(null);
 
   /**
    * ── WER MELDET SICH AN (02.08.2026) ────────────────────────────────────
@@ -111,6 +135,36 @@ export function PinLogin(): JSX.Element {
       // Kein Sonderweg: ab hier ist es die gewöhnliche Anmeldung.
       const res = await authPin.loginSafe(api, { pin, ...(gewaehlt ? { userId: gewaehlt } : {}) });
       setSessionToken(res.token);
+
+      /*
+       * ── DER SCHLÜSSEL, DIREKT NACH DEM ERSTEN CODE ────────────────────
+       *
+       * Genau HIER gehört er hin: der Händler hat eben seinen Code gewählt,
+       * hat Stift und Aufmerksamkeit, und die Anmeldung hat den Zeitstempel
+       * für die Zwischenprüfung frisch gesetzt — der Weg zum Ausgeben
+       * verlangt sie.
+       *
+       * ⚠️ Nur der INHABER bekommt einen. Für einen Mitarbeiter antwortet
+       * der Motor mit 403, und das ist richtig: sein Weg zurück ist der
+       * Löschweg über den Inhaber, bei dem NIEMAND den Code eines anderen
+       * erfährt (§ 146a AO). Deshalb wird der Fehlschlag hier still
+       * geschluckt — er ist keiner.
+       *
+       * ⚠️ Und wenn das Ausgeben aus einem ANDEREN Grund scheitert, geht die
+       * Kasse trotzdem auf. Eine Kasse, die sich wegen eines Zettels nicht
+       * öffnen lässt, ist am Samstagvormittag das grössere Übel.
+       */
+      let frisch: string | null = null;
+      try {
+        frisch = (await notfallschluessel.erzeugen(api)).schluessel;
+      } catch {
+        frisch = null;
+      }
+      if (frisch !== null) {
+        setNachAnmeldung(() => () => setFromLogin(res));
+        setZeigeSchluessel(frisch);
+        return;
+      }
       setFromLogin(res);
     } catch (err) {
       // ⚠️ 31.07.2026: hier wurde JEDES `UNAUTHORIZED` zu „Dieser Code ist zu
@@ -249,17 +303,73 @@ export function PinLogin(): JSX.Element {
     return `${m}:${String(s).padStart(2, '0')}`;
   }, [locked, lockoutSecondsLeft]);
 
+  /*
+   * Der Grund, auf dem jede der drei Flächen steht. Einmal benannt: drei
+   * Abschriften desselben Blocks laufen irgendwann auseinander, und dann
+   * steht der Notausgang auf anderem Papier als die Anmeldung.
+   */
+  const huelle: React.CSSProperties = {
+    minHeight: '100dvh',
+    display: 'grid',
+    placeItems: 'center',
+    padding: 'var(--w14-abstand-24)',
+    background: 'var(--w14-parchment)',
+  };
+
+  /*
+   * ── ZWEI FLÄCHEN, DIE DIE ANMELDEKARTE ERSETZEN ─────────────────────────
+   *
+   * Beide sind ein VOLLSTÄNDIGER Halt, keine Einblendung über der Tastatur.
+   * Wer seinen Schlüssel abschreibt oder seinen Code neu setzt, tut genau
+   * eine Sache; ein Ziffernfeld daneben ist nur eine Gelegenheit, sich zu
+   * vertippen.
+   */
+  if (zeigeSchluessel !== null) {
+    return (
+      <div style={huelle} className="w14-paper-noise">
+        <SchluesselZettel
+          schluessel={zeigeSchluessel}
+          onWeiter={() => {
+            const weiter = nachAnmeldung;
+            // Der Klartext wird als ERSTES fallen gelassen.
+            setZeigeSchluessel(null);
+            setNachAnmeldung(null);
+            weiter?.();
+          }}
+          {...(nachAnmeldung === null ? { weiterLabel: 'Notiert, zur Anmeldung' } : {})}
+        />
+      </div>
+    );
+  }
+
+  if (einloesen) {
+    return (
+      <div style={huelle} className="w14-paper-noise">
+        <SchluesselEinloesen
+          api={api}
+          userId={gewaehlt}
+          onAbbruch={() => setEinloesen(false)}
+          onFertig={(nachfolger) => {
+            setEinloesen(false);
+            setPin('');
+            setErrorMsg(null);
+            setFailedAttempts(0);
+            setLockedUntilIso(null);
+            /*
+             * ⚠️ KEINE Anmeldung. Der Notausgang setzt nur den Code neu; der
+             * Händler tippt ihn danach ganz gewöhnlich ein. Genau daran hängt
+             * die Zusicherung, dass ein gefundener Zettel allein nichts
+             * buchen kann. `nachAnmeldung` bleibt deshalb leer.
+             */
+            setZeigeSchluessel(nachfolger);
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div
-      style={{
-        minHeight: '100dvh',
-        display: 'grid',
-        placeItems: 'center',
-        padding: 'var(--w14-abstand-24)',
-        background: 'var(--w14-parchment)',
-      }}
-      className="w14-paper-noise"
-    >
+    <div style={huelle} className="w14-paper-noise">
       <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 'var(--w14-z-klebend)' }}>
         <ThemeToggle />
       </div>
@@ -445,12 +555,18 @@ export function PinLogin(): JSX.Element {
           Verwalterrechten. Der Weg zurück führt dann über die Datenbank,
           also über einen Techniker.
 
-          Ein eigener Notfallschlüssel wäre die Lösung. Er ist aber ein
-          ZWEITES Geheimnis, das die Kasse öffnet; wo er landet (Zettel an
-          der Kasse), schwächt er die Bedienerzuordnung. Das ist eine
-          Entscheidung des Hauses, keine des Quelltextes — sie liegt Basel
-          vor. Bis dahin sagt die Kasse WENIGSTENS die Wahrheit, statt den
-          Menschen in ein Risiko laufen zu lassen, das er nicht kennt.
+          ── 21.08.2026: DER WEG IST GEBAUT ────────────────────────────────
+
+          Der Notfallschlüssel steht. Er ist bewusst SCHWÄCHER als ein
+          Kassencode: er meldet nicht an, er erlaubt nur, einen neuen Code zu
+          setzen; er gilt einmal; er wirkt nur am gepaarten Gerät; und er
+          schreibt ins Tagebuch. Damit öffnet ein gefundener Zettel keine
+          Buchung, sondern löst einen sichtbaren Vorgang aus — die
+          Bedienerzuordnung nach § 146a AO bleibt heil.
+
+          Der Satz hier sagt deshalb jetzt etwas anderes: nicht mehr „niemand
+          kann Ihnen helfen", sondern „schreiben Sie den Schlüssel auf, der
+          gleich kommt".
         */}
         {einrichtung && (
           <p
@@ -464,9 +580,10 @@ export function PinLogin(): JSX.Element {
               textWrap: 'pretty',
             }}
           >
-            Notieren Sie ihn an einem sicheren Ort. Diesen Code kann Ihnen
-            niemand zurücksetzen, auch wir nicht: ohne ihn kommt niemand mehr
-            in diese Kasse.
+            Notieren Sie ihn an einem sicheren Ort. Gleich danach zeigt die
+            Kasse Ihnen einmalig einen Notfallschlüssel — schreiben Sie auch
+            den auf. Er ist der einzige Weg zurück, falls Sie den Code
+            vergessen.
           </p>
         )}
 
@@ -539,6 +656,41 @@ export function PinLogin(): JSX.Element {
             Code vergessen? Der Inhaber löscht ihn unter Team, danach wählen Sie
             hier einen neuen.
           </p>
+        )}
+
+        {/* ── DER AUSGANG FÜR DEN INHABER SELBST (21.08.2026) ──────────────
+
+            Den Satz darüber gibt es seit jeher, und er stimmt — für
+            MITARBEITER. Der Inhaber steht nicht darin, denn ihm kann niemand
+            den Code löschen. Bis heute endete sein Weg in der Datenbank.
+
+            Der Knopf steht mit Absicht LEISE da, als Textknopf und nicht als
+            zweiter goldener Kasten: er ist der seltene Weg, nicht der
+            tägliche. Wer ihn nicht braucht, soll ihn nicht sehen müssen. */}
+        {!einrichtung && (
+          <button
+            type="button"
+            onClick={() => {
+              setEinloesen(true);
+              setPin('');
+              setErrorMsg(null);
+            }}
+            style={{
+              minHeight: 44,
+              marginTop: 'var(--w14-abstand-6)',
+              padding: '0 var(--w14-abstand-10)',
+              border: 'none',
+              background: 'transparent',
+              color: 'var(--w14-ink-aged)',
+              fontFamily: 'var(--w14-font-body)',
+              fontSize: 'var(--w14-schrift-zeile)',
+              textDecoration: 'underline',
+              textUnderlineOffset: '0.22em',
+              cursor: 'pointer',
+            }}
+          >
+            Ich habe einen Notfallschlüssel
+          </button>
         )}
 
         {failedAttempts > 0 && !locked && (

@@ -71,6 +71,26 @@ export const users = pgTable(
     duressPinHash: text('duress_pin_hash'),
     duressPinSetAt: timestamp('duress_pin_set_at', { withTimezone: true }),
 
+    /*
+     * Wanderung 0151 (21.08.2026): der Notfallschlüssel — der einzige Weg
+     * zurück in eine Kasse, deren Inhaber seinen Kassencode vergessen hat.
+     *
+     * ⚠️ EIGENE Fehlerzählung, nicht die des Kassencodes. Liefen beide auf
+     * denselben Zähler, könnte jemand mit zehn falschen Schlüsseln den
+     * VERKAUF sperren — der Notausgang wäre zur Waffe geworden.
+     */
+    notfallschluesselHash: text('notfallschluessel_hash'),
+    notfallschluesselGesetztAm: timestamp('notfallschluessel_gesetzt_am', { withTimezone: true }),
+    notfallschluesselGebrauchtAm: timestamp('notfallschluessel_gebraucht_am', {
+      withTimezone: true,
+    }),
+    notfallschluesselFehlversuche: integer('notfallschluessel_fehlversuche')
+      .notNull()
+      .default(0),
+    notfallschluesselGesperrtBis: timestamp('notfallschluessel_gesperrt_bis', {
+      withTimezone: true,
+    }),
+
     ...timestamps(),
   },
   (table) => ({

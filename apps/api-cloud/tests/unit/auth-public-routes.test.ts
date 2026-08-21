@@ -54,16 +54,66 @@ function collectRoutes(): RouteRef[] {
 }
 
 /**
- * Does this route's handler call requireAuth? Scanned from the route's own
- * registration up to the next registration in the same file, which is the
- * handler's text. Crude but honest: it is exactly the window the bug hides in.
+ * ⛔ DER VIERTE FANG, UND DIESMAL WAR ES DER WÄCHTER SELBST (21.08.2026)
+ *
+ * Bis heute suchte diese Probe wörtlich nach `requireAuth(req)`. Ein Weg unter
+ * `/api/auth/`, der stattdessen `requireOwner(req)` ruft, lief glatt an ihr
+ * vorbei — obwohl `requireOwner` als ERSTE Zeile `requireAuth` ruft und damit
+ * exakt denselben Fehlschlag erzeugt: `req.actor` bleibt leer, der Weg
+ * antwortet für immer mit 401.
+ *
+ * Genau das ist mir beim Notfallschlüssel passiert. Zwölf Proben rot, die
+ * Ursache eine Zeile in einer ganz anderen Datei — und dieser Wächter stand
+ * daneben und blieb grün.
+ *
+ * Deshalb steht die Liste der Wächterfunktionen jetzt NIRGENDS als Liste. Sie
+ * wird aus `lib/auth-policy.ts` abgeleitet: jede ausgeführte Funktion, die
+ * `requireAuth` ruft — direkt oder über eine andere solche Funktion. Wer
+ * morgen `requireKassenwart` schreibt, ist ohne Zutun mit abgedeckt.
+ */
+function waechterfunktionen(): string[] {
+  const src = readFileSync(new URL('../../src/lib/auth-policy.ts', import.meta.url).pathname, 'utf8');
+  // Name → Rumpf, grob vom `export function` bis zum nächsten.
+  const koerper = new Map<string, string>();
+  const treffer = [...src.matchAll(/export function (\w+)\s*\(/g)];
+  for (const [i, m] of treffer.entries()) {
+    const name = m[1];
+    if (name === undefined || m.index === undefined) continue;
+    const ende = treffer[i + 1]?.index ?? src.length;
+    koerper.set(name, src.slice(m.index, ende));
+  }
+
+  const verlangt = new Set(['requireAuth']);
+  // Fixpunkt: solange noch etwas dazukommt, erneut durchgehen.
+  for (let runde = 0; runde < koerper.size + 1; runde++) {
+    const vorher = verlangt.size;
+    for (const [name, rumpf] of koerper) {
+      if (verlangt.has(name)) continue;
+      for (const bekannt of verlangt) {
+        if (new RegExp(`\\b${bekannt}\\(\\s*req\\s*\\)`).test(rumpf)) {
+          verlangt.add(name);
+          break;
+        }
+      }
+    }
+    if (verlangt.size === vorher) break;
+  }
+  return [...verlangt];
+}
+
+const WAECHTER = waechterfunktionen();
+
+/**
+ * Verlangt der Rumpf dieses Weges eine Sitzung? Gelesen von seiner eigenen
+ * Anmeldung bis zur nächsten in derselben Datei — genau das Fenster, in dem
+ * sich der Fehler versteckt.
  */
 function handlerCallsRequireAuth(file: string, index: number): boolean {
   const src = readFileSync(join(ROUTES_DIR, file), 'utf8');
   const after = src.slice(index);
   const next = after.slice(1).search(/\b(?:app|fastify)\.(?:get|post|put|patch|delete)\(/);
   const body = next === -1 ? after : after.slice(0, next + 1);
-  return /requireAuth\(\s*req\s*\)/.test(body);
+  return WAECHTER.some((w) => new RegExp(`\\b${w}\\(\\s*req\\s*\\)`).test(body));
 }
 
 const underPublicPrefix = (path: string): boolean =>
@@ -89,6 +139,15 @@ describe('public routes versus requireAuth (catch #76 guard)', () => {
         'handlers call requireAuth(req) — so req.actor is never populated and they return 401 ' +
         'forever. Add each path to AUTHENTICATED_PATHS_UNDER_PUBLIC_PREFIX in lib/public-routes.ts.',
     ).toEqual([]);
+  });
+
+  it('⛔ der Wächter kennt MEHR als requireAuth — sonst sieht er requireOwner nicht', () => {
+    // Der Fang vom 21.08.2026: die wörtliche Suche nach `requireAuth` liess
+    // jeden Weg durch, der `requireOwner` ruft. Bleibt diese Probe grün, bleibt
+    // die Ableitung aus auth-policy.ts am Leben.
+    expect(WAECHTER).toContain('requireAuth');
+    expect(WAECHTER).toContain('requireOwner');
+    expect(WAECHTER).toContain('requireOwnerStepUp');
   });
 
   it('keeps the two PIN-setting routes armed (the regression that started this)', () => {

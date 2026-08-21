@@ -19,6 +19,7 @@ import { describeError } from '@norns/i18n-de';
 import { useApiClient } from '../../lib/api-context.js';
 import { isStepUpCancelled } from '../../state/step-up-store.js';
 import { useToastStore } from '../../state/toast-store.js';
+import { NotfallschluesselKarte } from './NotfallschluesselKarte.js';
 
 type StaffRole = 'ADMIN' | 'CASHIER' | 'READONLY';
 
@@ -213,6 +214,13 @@ export function Team(): JSX.Element {
           maxWidth: 1500,
         }}
       >
+      {/* ── DER INHABER SELBST, ZUERST (21.08.2026) ──────────────────────
+          Die Liste unten beantwortet „wie kommt mein Mitarbeiter wieder
+          hinein". Der Inhaber stand in dieser Antwort nicht — ihm kann
+          niemand den Code löschen. Sein Weg zurück gehört genau hierher,
+          über die Liste, nicht in einen Bereich zwei Klicks entfernt. */}
+      <NotfallschluesselKarte />
+
       <ParchmentCard tone="parchment" padding="md">
         <div style={{ display: 'flex', gap: 'var(--w14-abstand-12)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--w14-abstand-4)', flex: '1 1 220px' }}>

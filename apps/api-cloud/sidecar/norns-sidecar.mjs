@@ -145,6 +145,12 @@ const NACHZUEGLER = [
   // Mandantennummer bekommen ihren Platzhalter, sauber als UNBESTAETIGT
   // ausgewiesen. Muss auch auf BESTEHENDE Kassen, deren Felder leer sind.
   '0150_die_steuerausfuhr_laeuft_ab_werk.sql',
+  // 21.08.2026: der Notfallschluessel bekommt seinen Platz. MUSS auf
+  // BESTEHENDE Kassen — genau der Haendler, der seinen Kassencode schon
+  // gesetzt hat und ihn vergessen kann, ist der, fuer den der Weg zurueck
+  // gebaut wird. Eine frische Kasse bekaeme ihn aus dem Grundriss, eine
+  // laufende nur hier.
+  '0151_der_notfallschluessel_bekommt_seinen_platz.sql',
 ];
 
 const melde = (s) => process.stderr.write(`[norns-sidecar] ${s}\n`);

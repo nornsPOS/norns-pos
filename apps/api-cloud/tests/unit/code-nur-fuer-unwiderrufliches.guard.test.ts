@@ -96,6 +96,26 @@ const UNWIDERRUFLICH: ReadonlyArray<{ pfad: string; grund: string }> = [
   { pfad: 'POST /api/admin/staff/:id/deactivate', grund: 'jemandem den Zugriff nehmen' },
   { pfad: 'POST /api/admin/staff/:id/kassencode-loeschen', grund: 'fremden Zugang zurücksetzen' },
   { pfad: 'POST /api/api-keys', grund: 'Schlüsselmaterial, das die Kasse von aussen öffnet' },
+  /*
+   * ⚠️ 21.08.2026 dazugekommen, und dieser Wächter hat es erzwungen: der
+   * Aufruf war gesetzt, der Lauf wurde ROT, und erst diese Begründung macht
+   * ihn gültig. Genau so soll er wirken.
+   *
+   * Zwei Dinge sind hier endgültig, und beide zählen:
+   *
+   *   1. Der VORIGE Schlüssel stirbt in demselben Augenblick. Der Zettel im
+   *      Tresor wird zu Papier. Wer den neuen nicht notiert — er steht genau
+   *      einmal auf dem Schirm —, hat danach GAR keinen Weg zurück mehr.
+   *   2. Ein gezeigter Schlüssel lässt sich nicht ungezeigt machen. Wer
+   *      danebensteht, hat ihn.
+   *
+   * Es ist ausserdem Schlüsselmaterial, das die Kasse öffnet — dieselbe
+   * Klasse wie die Zeile darüber.
+   */
+  {
+    pfad: 'POST /api/auth/notfallschluessel/erzeugen',
+    grund: 'der vorige Schlüssel stirbt dabei, und der neue ist einmal sichtbar',
+  },
   { pfad: 'POST /api/api-keys/:id/revoke', grund: 'Schlüsselmaterial entwerten' },
 
   // Die Sicherheitseinrichtung selbst.

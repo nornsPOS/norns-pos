@@ -111,6 +111,25 @@ export const AUTHENTICATED_PATHS_UNDER_PUBLIC_PREFIX: ReadonlySet<string> = new 
   // tests/auth-public-routes.test.ts so a third one cannot slip in.
   '/api/auth/pin/set',
   '/api/auth/duress-pin/set',
+  /*
+   * ⛔ DER VIERTE FANG (21.08.2026), und diesmal war der Wächter selbst blind.
+   *
+   * Diese beiden Wege rufen `requireOwner` bzw. `requireOwnerStepUp` — die als
+   * erste Zeile `requireAuth` rufen. Der Wächter in
+   * tests/unit/auth-public-routes.test.ts suchte wörtlich nach `requireAuth`
+   * und liess sie durch; zwölf Proben standen rot, bevor die Ursache eine
+   * Zeile in dieser Datei war. Der Wächter leitet die Familie jetzt aus
+   * auth-policy.ts ab, statt einen Namen zu kennen.
+   */
+  '/api/auth/notfallschluessel/stand',
+  '/api/auth/notfallschluessel/erzeugen',
+  /*
+   * ⚠️ Das Einlösen ruft KEINEN Wächter — es ist der Weg für den, der gerade
+   * NICHT hineinkommt. Es steht hier aus demselben Grund wie `pin-login`: es
+   * braucht `req.deviceId` aus dem mTLS-Vorlauf, denn ohne gepaartes Gerät
+   * darf es überhaupt nicht wirken. Aus dem Netz ist es damit unerreichbar.
+   */
+  '/api/auth/notfallschluessel/einloesen',
 ]);
 
 /**
