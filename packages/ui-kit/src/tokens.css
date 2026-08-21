@@ -859,6 +859,23 @@
  * ──────────────────────────────────────────────────────────────────── */
 html,
 body {
+  /* ⛔ 21.08.2026, AN DER LAUFENDEN KASSE GEMESSEN, nicht vermutet:
+     `document.documentElement.scrollHeight` = 916 bei einem Fenster von 900.
+     SECHZEHN Pixel Ueberschuss auf JEDER Flaeche, und die ganze Kasse sass
+     bei x=8 in ihrem eigenen Fenster.
+
+     Der Grund war die Vorgabe des Browsers: `body { margin: 8px }`. Dieser
+     Grundriss hat sie nie zurueckgesetzt. Zwei Folgen, beide taeglich:
+
+       • Jede Flaeche liess sich um 16 px scrollen, ohne dass es etwas zu
+         sehen gab -- auf einem Tresengeraet mit Finger federt dabei die
+         ganze Seite bei jeder Beruehrung.
+       • Kopfleiste und Kursstreifen sind auf volle Breite gebaut und lagen
+         trotzdem 8 px vom Fensterrand ab. Der Rand war nur deshalb nicht
+         auffaellig, weil er zufaellig die Farbe des Grundes trug.
+
+     Und jede `100dvh`-Rechnung im Haus war damit um 16 px zu gross. */
+  margin: 0;
   background-color: var(--w14-parchment);
   color: var(--w14-ink);
   font-family: var(--w14-font-inter);
