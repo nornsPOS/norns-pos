@@ -40,8 +40,10 @@ import { describe, expect, it } from 'vitest';
  * Rumpf, der beim Zitat endet. Genau daran ist dieser Waechter im ersten
  * Anlauf gescheitert -- dieselbe Falle wie beim Filter-Waechter am 20.08.
  */
-const TOKENS = readFileSync(fileURLToPath(new URL('./tokens.css', import.meta.url)), 'utf8')
-  .replace(/\/\*[\s\S]*?\*\//g, '');
+const TOKENS = readFileSync(
+  fileURLToPath(new URL('./tokens.css', import.meta.url)),
+  'utf8',
+).replace(/\/\*[\s\S]*?\*\//g, '');
 
 /** Der Rumpf des `html, body`-Blocks. */
 function grundriss(): string {

@@ -90,13 +90,12 @@ gemessen, nicht vermutet:
 
 | Datei | Zeilen | Vorgänger |
 |---|---|---|
-| `routes/admin-auth-google.ts` | 773 | `8c5bb32` |
-| `lib/uebergabe-browserbindung.ts` | 127 | `8c5bb32` |
-| `tests/unit/uebergabe-tuer.test.ts` | 216 | `8c5bb32` |
-| `tests/unit/geraete-uebergabe.test.ts` | 126 | `8c5bb32` |
+| `src/routes/admin-auth-google.ts` | 773 | `56440e6` |
+| `src/lib/uebergabe-browserbindung.ts` | 127 | `56440e6` |
+| `tests/unit/uebergabe-tuer.test.ts` | 216 | `56440e6` |
+| `tests/unit/geraete-uebergabe.test.ts` | 126 | `56440e6` |
 
-Also `git show 8c5bb32:apps/api-cloud/src/<pfad>` (die Proben unter
-`apps/api-cloud/tests/`).
+Also `git show 56440e6:apps/api-cloud/<pfad>`.
 
 **Mit ausgezogen:** die Anmeldung in `app.ts`, der öffentliche Vorsatz
 `/api/admin/auth/google/` in `lib/public-routes.ts`, und drei
