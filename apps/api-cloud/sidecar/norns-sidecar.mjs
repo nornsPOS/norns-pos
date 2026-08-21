@@ -947,7 +947,32 @@ async function main() {
       (id, device_class, hostname, cert_serial, cert_issued_at, cert_expires_at, status, paired_by_user_id)
     VALUES (gen_random_uuid(), 'POS_TERMINAL', 'norns-kasse', $1, now(), now() + interval '10 years', 'active',
       '00000000-0000-4000-8000-000000000001')
-    ON CONFLICT (cert_serial) DO UPDATE SET status = 'active'`, [KENNUNG]);
+    ON CONFLICT (cert_serial) DO UPDATE SET
+      status = 'active',
+      -- ⛔ ZEITZUENDER, gefunden am 21.08.2026.
+      --
+      -- Hier stand nur SET status = 'active'. Das Ablaufdatum wurde beim
+      -- ERSTEN Start auf now() + 10 years gesetzt und danach NIE wieder
+      -- angefasst. Der mTLS-Riegel (plugins/mtls.ts) laesst ein Geraet aber
+      -- nur durch, solange cert_expires_at > now():
+      --
+      --     gt(devices.certExpiresAt, sqlnow())
+      --
+      -- Zehn Jahre nach der Einrichtung haette die Kasse also JEDE Anfrage
+      -- abgewiesen -- auf einer Maschine, die die ganze Zeit taeglich
+      -- gestartet wurde. Kein Warnhinweis, kein Erneuerungsweg, und ein
+      -- Ausfall, den niemand mehr einem Datum zuordnet.
+      --
+      -- ⚠️ Zehn Jahre sind nicht weit weg: Paragraph 147 AO verlangt genau so
+      -- lange Aufbewahrung, und eine Kasse, die man dafuer stehenlaesst, ist
+      -- der Regelfall, nicht die Ausnahme.
+      --
+      -- Das Auffrischen NIMMT KEINE Sicherheit weg. Die Kennung selbst
+      -- (cert_serial) kommt aus dem Schluesselbund des Betriebssystems und
+      -- bleibt der Beweis; das Datum sagt nur, ob dieses Geraet noch laeuft.
+      -- Ein Geraet, das seit zehn Jahren nicht mehr gestartet ist, faellt
+      -- weiterhin heraus -- es kommt ja nie hierher.
+      cert_expires_at = now() + interval '10 years'`, [KENNUNG]);
 
   // ── 2c. Der geblendete Suchindex der Bestandskunden (Wanderung 0146) ────
   //
