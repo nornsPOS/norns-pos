@@ -32,6 +32,7 @@ import type {
   DsfinvkReceiptInput,
 } from './dsfinvk-export.js';
 import { ZNummerFehltError } from './dsfinvk-export.js';
+import { bruttoBruch, satzAm } from '@norns/domain';
 import {
   UST_STAMM_FEST,
   bonTypFuer,
@@ -592,10 +593,38 @@ export function formeDaten(input: DsfinvkBundleInput, mensch: MenschlicheAngaben
             const ekCent = zuCent(ek);
             const margeNachher = zuCent(l.lineTotalEur) - ekCent;
             const margeVorher = zuCent(l.lineTotalEur) + rabatt - ekCent;
+            /*
+             * Kaufmännisch gerundet, wie in `marge-nachrechnen.ts`. Bewusst
+             * hier und nicht importiert: das Geschwistermodul hält seine
+             * eigene, und zwei winzige Kopien einer Rundung sind harmloser
+             * als eine Abhängigkeit quer durch die fiskale Ausfuhr.
+             */
+            const rundeHalfEven = (zaehler: bigint, nenner: bigint): bigint => {
+              const q = zaehler / nenner;
+              const r = zaehler - q * nenner;
+              const zwei = 2n * r;
+              if (zwei > nenner) return q + 1n;
+              if (zwei < nenner) return q;
+              return q % 2n === 0n ? q : q + 1n;
+            };
             const ustAus = (marge: bigint): bigint => {
               if (marge <= 0n) return 0n;
-              // 19/119, kaufmännisch — dieselbe Zeile wie in marge-nachrechnen.ts.
-              return (marge * 19n + 59n) / 119n;
+              /*
+               * ⛔ HIER STAND `(marge * 19n + 59n) / 119n` (bis 21.08.2026),
+               * mit dem Kommentar „dieselbe Zeile wie in marge-nachrechnen.ts".
+               *
+               * Genau die wurde am 20.08. auf `satzAm` umgestellt — die beiden
+               * sind seitdem AUSEINANDERGELAUFEN, und der Kommentar behauptete
+               * weiter eine Gleichheit, die es nicht mehr gab. Ein Kommentar,
+               * der auf eine Zeile zeigt, altert mit ihr.
+               *
+               * ⚠️ Diese Zahl landet im PRÜFERPAKET. § 25a besteuert die Marge
+               * mit dem Regelsatz DES TAGES; im Corona-Halbjahr 2020 waren das
+               * 16 Prozent. Mit der festen Zahl trüge die Ausfuhr für solche
+               * Belege eine Steuer, die der Beleg selbst nie hatte.
+               */
+              const { zaehler, nenner } = bruttoBruch(satzAm('REGEL', businessDay));
+              return rundeHalfEven(marge * zaehler, nenner);
             };
             return ustAus(margeVorher) - ustAus(margeNachher);
           }

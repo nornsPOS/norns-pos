@@ -223,7 +223,27 @@ function computeTaxBreakdown(
         acquisitionCostSnapshotCents: null,
       };
     case 'REVERSE_CHARGE_13B': {
-      const subtotal = roundHalfEven(total * 100n, 119n);
+      /*
+       * ⛔ HIER STAND `roundHalfEven(total * 100n, 119n)` (bis 21.08.2026).
+       *
+       * Am 20.08. wurden die festen Sätze an vier Stellen durch `satzAm`
+       * ersetzt. Diese eine Zeile hat die Umstellung übersehen — jeder
+       * Nachbarfall in derselben Verzweigung fragt längst das Verzeichnis,
+       * nur der Reverse-Charge rechnete weiter mit fest verdrahteten 19 %.
+       *
+       * ⚠️ WARUM ES AUSGERECHNET HIER AM MEISTEN WEHTUT: beim § 13b weist der
+       * Verkäufer KEINE Steuer aus — der Käufer schuldet sie und rechnet sie
+       * sich selbst auf das NETTO. Ist das Netto falsch, ist die Steuerschuld
+       * des KÄUFERS falsch, und auf dem Beleg steht keine Steuer, an der es
+       * jemandem auffallen könnte.
+       *
+       * Gemessen: 1.190,00 EUR brutto im Corona-Halbjahr 2020 ergaben 1.000,00
+       * statt 1.025,86 EUR — 25,86 EUR zu wenig, still, auf jedem Beleg.
+       */
+      const { zaehler, nenner } = bruttoBruch(satzAm('REGEL', tag));
+      // Netto = Brutto − Steueranteil. Derselbe Bruch wie überall sonst,
+      // damit hier keine zweite Rechnung entsteht.
+      const subtotal = total - roundHalfEven(total * zaehler, nenner);
       return {
         lineTotalCents: subtotal,
         lineVatCents: 0n,
