@@ -349,6 +349,19 @@ export function PinLogin(): JSX.Element {
           api={api}
           userId={gewaehlt}
           onAbbruch={() => setEinloesen(false)}
+          onFertigOhneZettel={(_neuerCode, hinweis) => {
+            /*
+             * Stick- und Meister-Weg geben keinen Zettel aus: der Stick hat
+             * sich selbst nachgeladen, der Meister gibt nichts. Zurück zur
+             * Anmeldung; ein Hinweis (toter Stick) erscheint als Fehlerzeile,
+             * denn er verlangt Handeln — unter Team neu schreiben.
+             */
+            setEinloesen(false);
+            setPin('');
+            setFailedAttempts(0);
+            setLockedUntilIso(null);
+            setErrorMsg(hinweis);
+          }}
           onFertig={(nachfolger) => {
             setEinloesen(false);
             setPin('');

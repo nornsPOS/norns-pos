@@ -151,6 +151,10 @@ const NACHZUEGLER = [
   // gebaut wird. Eine frische Kasse bekaeme ihn aus dem Grundriss, eine
   // laufende nur hier.
   '0151_der_notfallschluessel_bekommt_seinen_platz.sql',
+  // 21.08.2026: der Rettungsstick (USB) — Basels Auftrag fuer den Haendler,
+  // der lieber ein Ding als einen Zettel verwahrt. MUSS auf BESTEHENDE
+  // Kassen: genau dort ist der Kassencode schon gesetzt und vergessbar.
+  '0152_der_rettungsstick_bekommt_seinen_platz.sql',
 ];
 
 const melde = (s) => process.stderr.write(`[norns-sidecar] ${s}\n`);
@@ -987,6 +991,10 @@ async function main() {
     // Die Gerätebindung offline: der Wächter löst über devices.cert_serial
     // auf, und die Kennung des Rumpfs IST die Bespannung dieser Aufstellung
     // (Zeile dazu steht seit Abschnitt 2b in der Tabelle).
+    // 21.08.2026: sagt dem Motor, dass er IN einer Kasse laeuft (nicht in der
+    // Wolke). Nur dann existieren die Wege, die an Laufwerke fassen
+    // (Rettungsstick) — in der Wolke antworten sie 404, als gaebe es sie nicht.
+    NORNS_LOKALE_KASSE: '1',
     TEST_DEVICE_FINGERPRINT: KENNUNG,
     ALLOW_TEST_DEVICE_FINGERPRINT_IN_PROD: 'true',
     // Basels Entscheidung vom 30.07.2026: offline meldet sich der Händler

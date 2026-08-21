@@ -44,14 +44,11 @@ import { type Static, Type } from '@sinclair/typebox';
 import { and, eq, isNull } from 'drizzle-orm';
 import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 
-import { emit } from '@norns/audit';
 import {
   PIN_FAILED_THRESHOLD,
   PIN_LOCKOUT_MINUTES,
-  PinPolicy,
   decideAttemptOutcome,
   erzeugeNotfallschluessel,
-  hashPin,
   schluesselAbdruck,
   schluesselFormStimmt,
   schluesselStimmt,
@@ -65,6 +62,7 @@ import {
   requireOwner,
   requireOwnerStepUp,
 } from '../lib/auth-policy.js';
+import { setzeKassencodeNeu } from '../lib/kassencode-neusetzen.js';
 
 // ────────────────────────────────────────────────────────────────────────
 //  Formen
@@ -341,69 +339,36 @@ const notfallschluesselRoutes: FastifyPluginAsync<{ env: Env }> = async (app) =>
       // Zeile gäbe es keinen Abdruck, gegen den er hätte stimmen können.
       const treffer = stand as Schluesselstand;
 
-      /*
-       * ⚠️ Der neue Kassencode muss dieselbe Prüfung bestehen wie überall
-       * sonst. Ein Notausgang, durch den ein Code wie 123456 hineinkommt, ist
-       * die Hintertür, die er nicht sein darf.
-       */
-      const fehler = PinPolicy.validate(neuerCode, {
-        enforceBlacklist: process.env.NODE_ENV === 'production',
-      });
-      if (fehler) {
-        throw new UnauthorizedError(
-          fehler.code === 'BLACKLISTED'
-            ? 'Dieser Code ist zu leicht zu erraten. Bitte einen anderen wählen.'
-            : 'Der Code hat genau sechs Ziffern.',
-        );
-      }
-
       // Der verbrauchte Schlüssel geht, ein frischer kommt — in EINEM Zug,
       // damit die Kasse nie einen Augenblick ohne Rückweg dasteht.
       const nachfolger = erzeugeNotfallschluessel();
-      const [codeAbdruck, nachfolgerAbdruck] = await Promise.all([
-        hashPin(neuerCode),
-        schluesselAbdruck(nachfolger),
-      ]);
-
-      await app.db.transaction(async (tx) => {
-        await tx
-          .update(users)
-          .set({
-            posPinHash: codeAbdruck,
-            posPinSetAt: jetzt,
-            posPinFailedAttempts: 0,
-            posPinLockedUntil: null,
-            notfallschluesselHash: nachfolgerAbdruck,
-            notfallschluesselGesetztAm: jetzt,
-            notfallschluesselGebrauchtAm: jetzt,
-            notfallschluesselFehlversuche: 0,
-            notfallschluesselGesperrtBis: null,
-          })
-          .where(eq(users.id, treffer.id));
-        await tx.insert(auditLog).values({
-          eventType: 'notfallschluessel.eingeloest',
-          actorUserId: treffer.id,
-          deviceId: req.deviceId,
-          ipAddress: ip,
-          payload: { at: jetzt.toISOString() },
-        });
-      });
+      const nachfolgerAbdruck = await schluesselAbdruck(nachfolger);
 
       /*
-       * Auf die Aufsicht, ohne den Vorgang aufzuhalten. Ein eingelöster
-       * Notfallschlüssel ist entweder ein vergesslicher Händler oder ein
-       * Einbruch — in beiden Fällen soll es jemand sehen, und zwar sofort.
+       * 21.08.2026: Codeprüfung, Abdruck, PIN-Spalten, Tagebuch und Alarm
+       * wohnen seit dem Rettungsstick im gemeinsamen Herzen
+       * (`lib/kassencode-neusetzen.ts`) — drei Türen, EINE Abschrift. Der
+       * Nachfolge-Abdruck reist als `zusatz` in derselben Transaktion mit.
        */
-      void emit(app.db, {
-        eventType: 'alert.notfallschluessel',
-        entityTable: 'users',
-        entityId: treffer.id,
-        actorUserId: treffer.id,
+      await setzeKassencodeNeu(app, {
+        userId: treffer.id,
+        neuerCode,
         deviceId: req.deviceId,
-        ipAddress: ip,
-        payload: { at: jetzt.toISOString() },
-      }).catch((err: unknown) => {
-        app.log.error({ err }, 'notfallschluessel: ledger emit failed');
+        ip,
+        tagebuchArt: 'notfallschluessel.eingeloest',
+        alarmArt: 'alert.notfallschluessel',
+        zusatz: async (tx) => {
+          await tx
+            .update(users)
+            .set({
+              notfallschluesselHash: nachfolgerAbdruck,
+              notfallschluesselGesetztAm: jetzt,
+              notfallschluesselGebrauchtAm: jetzt,
+              notfallschluesselFehlversuche: 0,
+              notfallschluesselGesperrtBis: null,
+            })
+            .where(eq(users.id, treffer.id));
+        },
       });
 
       return { ok: true as const, neuerSchluessel: nachfolger };

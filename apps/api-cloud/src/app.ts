@@ -52,7 +52,9 @@ import appointmentsRoutes from './routes/appointments.js';
 // Day 22 — Konvolut + Appraisals
 import appraisalRoutes from './routes/appraisals.js';
 import approvalsRoutes from './routes/approvals.js';
+import meisterRoutes from './routes/auth-meister.js';
 import notfallschluesselRoutes from './routes/auth-notfallschluessel.js';
+import rettungsstickRoutes from './routes/auth-rettungsstick.js';
 import authPinRoutes from './routes/auth-pin.js';
 import authSessionRoutes from './routes/auth-session.js';
 import belegtextRoutes from './routes/belegtext.js';
@@ -252,6 +254,8 @@ export async function buildApp(opts: BuildAppOpts): Promise<FastifyInstance> {
   await app.register(healthRoute, { env: opts.env });
   await app.register(authPinRoutes, { env: opts.env });
   await app.register(notfallschluesselRoutes, { env: opts.env });
+  await app.register(rettungsstickRoutes, { env: opts.env });
+  await app.register(meisterRoutes, { env: opts.env });
   await app.register(authSessionRoutes);
   // Phase 1 — staff/owner Sign-in-with-Google (the enterprise-grade replacement
   // for the PIN front door). Resolves the verified Google email against `users`

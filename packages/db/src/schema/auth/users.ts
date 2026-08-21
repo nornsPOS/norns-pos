@@ -91,6 +91,18 @@ export const users = pgTable(
       withTimezone: true,
     }),
 
+    /*
+     * Wanderung 0152 (21.08.2026): der Rettungsstick — dasselbe Geheimnis wie
+     * der Notfallschlüssel, aber als DING (USB-Stick) statt als Zettel. Der
+     * Klartext liegt NUR auf dem Stick; hier sein argon2id-Abdruck.
+     * Eigene Fehlerzählung: drei Türen, drei Zähler.
+     */
+    rettungsstickHash: text('rettungsstick_hash'),
+    rettungsstickGesetztAm: timestamp('rettungsstick_gesetzt_am', { withTimezone: true }),
+    rettungsstickGebrauchtAm: timestamp('rettungsstick_gebraucht_am', { withTimezone: true }),
+    rettungsstickFehlversuche: integer('rettungsstick_fehlversuche').notNull().default(0),
+    rettungsstickGesperrtBis: timestamp('rettungsstick_gesperrt_bis', { withTimezone: true }),
+
     ...timestamps(),
   },
   (table) => ({

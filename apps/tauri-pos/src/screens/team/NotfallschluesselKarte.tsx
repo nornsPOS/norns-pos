@@ -21,10 +21,10 @@
  * dachte, es käme ein zweiter dazu.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
-import { ApiError, notfallschluessel } from '@norns/api-client';
+import { ApiError, type Laufwerk, notfallschluessel, rettungsstick } from '@norns/api-client';
 import { Button, ParchmentCard, Zwischentitel, ZustandFehler } from '@norns/ui-kit';
 import { describeError } from '@norns/i18n-de';
 
@@ -54,6 +54,56 @@ export function NotfallschluesselKarte(): JSX.Element {
     queryKey: ['notfallschluessel', 'stand'],
     queryFn: () => notfallschluessel.stand(client),
   });
+
+  /*
+   * ── DER RETTUNGSSTICK (21.08.2026) ──────────────────────────────────────
+   * Solange die Karte offen ist, alle 3 Sekunden nach Laufwerken sehen —
+   * der Inhaber steckt den Stick und der Knopf erscheint, ohne Suchen.
+   * 404 (Wolke, alte Fassung) heisst still: kein Stick-Absatz.
+   */
+  const [laufwerke, setLaufwerke] = useState<Laufwerk[] | null>(null);
+  const [stickLaeuft, setStickLaeuft] = useState(false);
+  const [stickGesetztAm, setStickGesetztAm] = useState<string | null>(null);
+  useEffect(() => {
+    let lebt = true;
+    const frage = async (): Promise<void> => {
+      try {
+        const r = await rettungsstick.laufwerke(client);
+        if (lebt) setLaufwerke(r.laufwerke);
+      } catch {
+        if (lebt) setLaufwerke(null);
+      }
+    };
+    void frage();
+    const takt = window.setInterval(() => void frage(), 3000);
+    return () => {
+      lebt = false;
+      window.clearInterval(takt);
+    };
+  }, [client]);
+
+  async function stickSchreiben(l: Laufwerk): Promise<void> {
+    if (stickLaeuft) return;
+    setStickLaeuft(true);
+    try {
+      const r = await rettungsstick.schreiben(client, l.pfad);
+      setStickGesetztAm(r.gesetztAm);
+      addToast({
+        tone: 'success',
+        title: 'Rettungsstick beschrieben',
+        body: `Der Stick „${l.name}" öffnet jetzt den Weg zu einem neuen Kassencode. Sicher verwahren; ein vorheriger Stick gilt nicht mehr.`,
+      });
+    } catch (err) {
+      if (isStepUpCancelled(err)) return;
+      addToast({
+        tone: 'alert',
+        title: 'Der Stick konnte nicht beschrieben werden',
+        body: err instanceof ApiError ? describeError(err) : 'Unbekannter Fehler.',
+      });
+    } finally {
+      setStickLaeuft(false);
+    }
+  }
 
   /*
    * ⚠️ Der erschöpfende Zustand statt `isLoading`/`isError`. Ohne Netz steht
@@ -170,6 +220,63 @@ export function NotfallschluesselKarte(): JSX.Element {
                 ? 'Neuen ausgeben (alter verfällt)'
                 : 'Schlüssel ausgeben'}
           </Button>
+        </div>
+      )}
+
+      {laufwerke !== null && (
+        <div
+          style={{
+            marginTop: 'var(--w14-abstand-16)',
+            paddingTop: 'var(--w14-abstand-12)',
+            borderTop: '1px solid var(--w14-rule)',
+          }}
+        >
+          <p
+            style={{
+              margin: '0 0 var(--w14-abstand-8)',
+              maxWidth: '64ch',
+              lineHeight: 1.6,
+              color: 'var(--w14-ink-aged)',
+              fontSize: 'var(--w14-schrift-zeile)',
+              textWrap: 'pretty',
+            }}
+          >
+            Rettungsstick: derselbe Schlüssel als Ding. Ein gewöhnlicher
+            USB-Stick wird beschrieben und öffnet an der Anmeldung denselben
+            Weg, ganz ohne Zettel.
+            {stickGesetztAm !== null && (
+              <> Zuletzt beschrieben am {alsTag(stickGesetztAm)}.</>
+            )}
+          </p>
+          {laufwerke.length === 0 ? (
+            <p style={{ margin: 0, color: 'var(--w14-ink-faded)' }}>
+              Kein USB-Stick eingesteckt. Stick einstecken — er erscheint hier
+              von selbst.
+            </p>
+          ) : (
+            <div style={{ display: 'flex', gap: 'var(--w14-abstand-8)', flexWrap: 'wrap' }}>
+              {laufwerke.map((l) => (
+                <Button
+                  key={l.pfad}
+                  variant="ghost"
+                  size="md"
+                  disabled={stickLaeuft}
+                  title={
+                    l.traegtSchluessel
+                      ? 'Trägt schon einen Rettungsschlüssel. Neu beschreiben ersetzt ihn.'
+                      : 'Schreibt den Rettungsschlüssel auf diesen Stick. Der Stick wird NICHT gelöscht.'
+                  }
+                  onClick={() => void stickSchreiben(l)}
+                >
+                  {stickLaeuft
+                    ? 'Wird beschrieben …'
+                    : l.traegtSchluessel
+                      ? `${l.name}: Schlüssel erneuern`
+                      : `Auf „${l.name}" schreiben`}
+                </Button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </ParchmentCard>

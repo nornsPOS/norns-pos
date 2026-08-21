@@ -116,6 +116,18 @@ const UNWIDERRUFLICH: ReadonlyArray<{ pfad: string; grund: string }> = [
     pfad: 'POST /api/auth/notfallschluessel/erzeugen',
     grund: 'der vorige Schlüssel stirbt dabei, und der neue ist einmal sichtbar',
   },
+  /*
+   * 21.08.2026, vom Wächter erzwungen (Lauf wurde ROT, erst diese Zeile
+   * macht den Aufruf gültig): das Beschreiben eines Rettungssticks ist
+   * dieselbe Klasse wie das Erzeugen des Notfallschlüssels — der VORIGE
+   * Stick stirbt dabei (sein Abdruck wird ersetzt), und es entsteht
+   * Schlüsselmaterial, das die Kasse öffnet. Ein unbeaufsichtigter
+   * Bildschirm darf sich keinen Zweitschlüssel auf einen Stick ziehen.
+   */
+  {
+    pfad: 'POST /api/auth/rettungsstick/schreiben',
+    grund: 'der vorige Stick stirbt dabei, und es entsteht Schlüsselmaterial',
+  },
   { pfad: 'POST /api/api-keys/:id/revoke', grund: 'Schlüsselmaterial entwerten' },
 
   // Die Sicherheitseinrichtung selbst.

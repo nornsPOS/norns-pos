@@ -128,6 +128,18 @@ export const AUTHENTICATED_PATHS_UNDER_PUBLIC_PREFIX: ReadonlySet<string> = new 
    * darf es überhaupt nicht wirken. Aus dem Netz ist es damit unerreichbar.
    */
   '/api/auth/notfallschluessel/einloesen',
+  /*
+   * 21.08.2026: die zwei neuen Notausgänge, aus demselben Grund wie
+   * `notfallschluessel/einloesen` — sie brauchen `req.deviceId` aus dem
+   * mTLS-Vorlauf, denn ohne gepaartes Gerät dürfen sie gar nicht wirken.
+   * `schreiben` ruft zusätzlich requireOwnerStepUp; der geschärfte Wächter
+   * (auth-public-routes) verlangt die Einträge ohnehin.
+   */
+  '/api/auth/rettungsstick/laufwerke',
+  '/api/auth/rettungsstick/schreiben',
+  '/api/auth/rettungsstick/einloesen',
+  '/api/auth/meister/aufgabe',
+  '/api/auth/meister/einloesen',
 ]);
 
 /**
