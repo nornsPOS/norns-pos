@@ -254,7 +254,7 @@ export function Risikoanalyse(): JSX.Element {
                       justifyContent: 'space-between',
                       gap: 'var(--w14-abstand-12)',
                       padding: 'var(--w14-abstand-8) 0',
-                      borderBottom: '1px solid var(--w14-parchment-3)',
+                      borderBottom: '1px solid var(--w14-rule)',
                     }}
                   >
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--w14-abstand-8)' }}>

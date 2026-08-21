@@ -52,12 +52,50 @@
        erhaben gegen Karte    1,17  ->  1,36
      und die Schrift wird dabei BESSER statt schlechter: die blasse Tinte
      haelt jetzt mindestens 5,14 statt 5,07. */
-  --w14-parchment: #e8dfcd;   /* Grundfläche — gealtertes Elfenbein */
-  --w14-parchment-2: #faf6ee; /* Karten, Felder — das hellere Papier */
-  --w14-parchment-3: #ded4c0; /* erhaben, stille Fuellung — die dritte Stufe */
+  /* ── 21.08.2026: DIE LEITER STAND AUF DEM KOPF ────────────────────────
+     Basel, wieder: das helle Thema sei „باهتة، مافيها روح" — blass, ohne
+     Seele. Nachgemessen in OKLab (der WAHRGENOMMENEN Helligkeit), nicht nach
+     Gefuehl:
+
+                        Grund   Karte   Feld     Stufen        Spanne
+       Nacht (vorher)   0.190   0.239   0.288    .049 , .049    0.098
+       Tag   (vorher)   0.906   0.974   0.873    +.068, -.101   0.033
+
+     Zwei Befunde in einer Zeile:
+
+     1. DIE DRITTE STUFE GING RUECKWAERTS. `parchment-3` lag UNTER dem Grund.
+        Gemessen, wofuer sie wirklich gebraucht wird (25 Stellen): Feldfuellung
+        und der Zustand „ausgewaehlt" — nie eine schwebende Ebene. Ein
+        ausgewaehlter Reiter und ein Eingabefeld wurden also DUNKLER als die
+        Seite selbst gezeichnet. Das ist kein Eindruck, das ist verkehrt herum.
+
+     2. DIE GANZE LEITER SASS IM OBERSTEN ZEHNTEL. Zwischen erster und letzter
+        Stufe lagen 0.033 gegen 0.098 in der Nacht — ein Drittel. Und oben im
+        Hellen trennt das Auge kleine Schritte SCHLECHTER als unten im Dunkeln
+        (der Absatz darueber wusste das schon und hat einmal nachgeholfen; es
+        reichte nicht).
+
+     Jetzt, Ton und Saettigung des Pergaments unveraendert, nur die Helligkeit:
+
+       Tag   (jetzt)    0.872   0.974   0.925    .053 , .049    0.102
+
+     Derselbe Rhythmus wie die Nacht, und die Leiter steigt endlich:
+     Grund → Feld → Karte. Der Tisch, der Abdruck im Papier, das Papier.
+
+     ⚠️ JEDER Kontrast wurde dabei BESSER oder blieb gleich — nachgemessen:
+       Grundtext 11.58 / 13.63 / 15.81 · Nebentext 6.51 / 7.66 / 8.88
+       blasse Tinte 5.14 / 6.05 / 7.01 · Fehlerrot 4.63 / 5.45 / 6.32
+       Feldkante 3.14 / 3.69 / 4.28 (§ 1.4.11 verlangt 3.0)                */
+  --w14-parchment: #ddd4c2;   /* Grundfläche — der Tisch, gealtertes Elfenbein */
+  --w14-parchment-2: #faf6ee; /* Karten — das Papier darauf */
+  --w14-parchment-3: #efe5d1; /* Felder und „ausgewaehlt" — der Abdruck im Papier */
   /* Compatibility aliases so every surface slot has a stable name. */
   --w14-parchment-1: var(--w14-parchment-2);
   --w14-card: var(--w14-parchment-2);
+  /* ⚠️ Der Name luegt seit dem 21.08.2026 und bleibt trotzdem stehen: 25
+     Stellen rufen ihn, und eine Umbenennung waere Laerm ohne Gewinn.
+     GEMESSEN ist er die Fuellung eines Feldes und der Zustand
+     „ausgewaehlt" — ein ABDRUCK im Papier, nichts Schwebendes. */
   --w14-raised: var(--w14-parchment-3);
 
   /* ─── Ink — text + strokes. Warm near-black, never pure ────────────── */
@@ -102,11 +140,15 @@
   /* ─── GILT — the house gilding. THREAD / EDGE / SEAL only ────────────
      Inspired by the gilded edges of rare stamps and antique trading cards.
      NEVER a fill, NEVER a background, NEVER body text. */
-  --w14-gilt: #917333;       /* aged gilt thread — 20.08.2026 mit dem Grund vertieft: haelt 3,04 als Faden/grosse Schrift */
+  --w14-gilt: #907232;       /* aged gilt thread — 21.08.2026 mit dem Grund nachgezogen: haelt 3,08 als Faden/grosse Schrift */
   /* TIEFER GESETZT (27.07.2026): vorher #876a2c mit 4,31:1 auf Pergament —
      gilt-deep steht vereinzelt als Text und muss dann 4,5:1 halten. Jetzt
      5,03 / 5,51 / 4,59 : 1, derselbe gealterte Goldton, nur gepresster. */
-  --w14-gilt-deep: #725926;  /* pressed / hover gilt — haelt 4,50 als Text auf allen drei Flaechen */
+  /* ⛔ 21.08.2026: stand auf haargenau 4,4996 und fiel, als der Grund tiefer
+     ging. Der Kontrast-Waechter hat es gefangen — das ist genau sein Zweck,
+     und dass er es MERKT, ist mehr wert, als hier auf Vorrat abzudunkeln
+     (weiter unten wuerde aus Gold Braun). Jetzt 4,57 / 5,38 / 6,23. */
+  --w14-gilt-deep: #715825;  /* pressed / hover gilt — haelt 4,57 als Text auf allen drei Flaechen */
 
   /* ─── Functional — meaning only ───────────────────────────────────── */
   --w14-verdigris: #3a624d;  /* patina green — positive; 20.08.2026 vertieft, haelt 4,71 */
@@ -150,9 +192,9 @@
 
   /* ─── RGB channel triplets — REQUIRED for Tailwind slash-opacity ──── */
   /* Im Gleichschritt mit den Elfenbein-Flaechen oben (27.07.2026). */
-  --w14-parchment-rgb: 232 223 205;
+  --w14-parchment-rgb: 221 212 194;
   --w14-parchment-2-rgb: 250 246 238;
-  --w14-parchment-3-rgb: 222 212 192;
+  --w14-parchment-3-rgb: 239 229 209;
   --w14-ink-rgb: 28 28 28;
   --w14-ink-aged-rgb: 71 69 64;
   --w14-ink-faded-rgb: 87 84 76;
@@ -161,8 +203,8 @@
   --w14-gold-rgb: 46 43 38;
   --w14-gold-soft-rgb: 89 85 77;
   --w14-gold-deep-rgb: 23 21 15;
-  --w14-gilt-rgb: 145 115 51;
-  --w14-gilt-deep-rgb: 114 89 38;
+  --w14-gilt-rgb: 144 114 50;
+  --w14-gilt-deep-rgb: 113 88 37;
   --w14-verdigris-rgb: 58 98 77;
   --w14-wax-red-rgb: 160 56 35;
   --w14-forest-rgb: 70 88 63;

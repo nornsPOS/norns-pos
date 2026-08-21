@@ -75,7 +75,7 @@ const thStyle: CSSProperties = {
 };
 const tdStyle: CSSProperties = {
   padding: 'var(--w14-abstand-10) var(--w14-abstand-12)',
-  borderBottom: '1px solid var(--w14-parchment-3)',
+  borderBottom: '1px solid var(--w14-rule)',
   verticalAlign: 'middle',
 };
 const inputStyle: CSSProperties = {

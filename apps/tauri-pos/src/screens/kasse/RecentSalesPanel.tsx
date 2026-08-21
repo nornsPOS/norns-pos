@@ -208,7 +208,7 @@ export function RecentSalesPanel(): JSX.Element {
                     alignItems: 'center',
                     gap: 'var(--w14-abstand-10)',
                     padding: 'var(--w14-abstand-6) var(--w14-abstand-4)',
-                    borderBottom: '1px solid var(--w14-parchment-3)',
+                    borderBottom: '1px solid var(--w14-rule)',
                     opacity: reversed ? 0.6 : 1,
                   }}
                 >
@@ -316,7 +316,7 @@ export function RecentSalesPanel(): JSX.Element {
                   alignItems: 'center',
                   gap: 'var(--w14-abstand-10)',
                   padding: 'var(--w14-abstand-6) var(--w14-abstand-4)',
-                  borderBottom: '1px solid var(--w14-parchment-3)',
+                  borderBottom: '1px solid var(--w14-rule)',
                   opacity: reversed ? 0.6 : 1,
                 }}
               >
