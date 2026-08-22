@@ -23,7 +23,9 @@
  * Belege an, die nirgendwo landen.
  */
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
+
+import { ladeSitzungAusTresor } from '../lib/session-token.js';
 
 import { NornsWortmarke } from '@norns/ui-kit';
 
@@ -81,6 +83,23 @@ export function Motorstart({
           setStand('ohneMotor');
           return;
         }
+        /*
+         * ⛔ 22.08.2026 — DAS SITZUNGSMERKMAL, BEVOR DIE KASSE ERSCHEINT.
+         *
+         * Es wohnt seit heute im Tresor des Betriebssystems und nicht mehr im
+         * Browserspeicher. Der Wert muss im Arbeitsspeicher stehen, BEVOR die
+         * erste angemeldete Anfrage hinausgeht — sonst hielte sich die Kasse
+         * nach jedem Neustart für abgemeldet und schickte den Händler
+         * grundlos an den Kassencode.
+         *
+         * Hier ist der richtige Ort: diese Fläche wartet ohnehin auf den
+         * Motor, der Zug reist mit und kostet keinen eigenen Augenblick. Er
+         * ist bewusst NICHT abgesichert gegen ein Scheitern — `ladeSitzung`
+         * verschluckt einen stummen Tresor selbst und lässt den Wert dann
+         * `null`, was „bitte anmelden" heisst.
+         */
+        if (s.stand === 'bereit') await ladeSitzungAusTresor();
+        if (!lebt) return;
         setStand(s);
         // Nur weiterfragen, solange er wirklich noch hochfährt.
         if (s.stand === 'startet') uhr = setTimeout(runde, TAKT);
@@ -90,10 +109,7 @@ export function Motorstart({
         // Rumpfes, kein Grund weiterzulaufen.
         setStand({
           stand: 'fehler',
-          grund:
-            e instanceof Error
-              ? e.message
-              : 'Die Kasse erreicht ihren eigenen Rumpf nicht.',
+          grund: e instanceof Error ? e.message : 'Die Kasse erreicht ihren eigenen Rumpf nicht.',
         });
       }
     };

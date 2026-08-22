@@ -34,7 +34,7 @@ import { useRecents } from '../state/recents-store.js';
 import { useSessionStore } from '../state/session-store.js';
 import { useToastStore } from '../state/toast-store.js';
 import { releaseCart } from './release-cart.js';
-import { clearSessionToken } from './session-token.js';
+import { clearSessionToken, tresorIstGeschrieben } from './session-token.js';
 
 /**
  * Schlüssel im `localStorage`, die AN EINEM MENSCHEN hängen (§19.2 C-2).
@@ -111,6 +111,21 @@ export async function fuehreAbmeldungAus(opts: AbmeldeOptionen): Promise<void> {
 
   // 4. Sitzung und Oberflächenzustand.
   clearSessionToken();
+  /*
+   * ⛔ 22.08.2026 — UND WARTEN, BIS DER TRESOR ES WIRKLICH LOS IST.
+   *
+   * Das Merkmal wohnt seit heute in der Schlüsselverwaltung des
+   * Betriebssystems. `clearSessionToken()` leert den Arbeitsspeicher sofort
+   * und schickt das Löschen dorthin ab — asynchron. Ohne dieses Warten
+   * meldete die Fläche „abgemeldet", während das Löschen noch unterwegs ist;
+   * ein Absturz oder ein Ausschalten in dieser Sekunde liesse ein GÜLTIGES
+   * Merkmal im Tresor zurück, auf einem Gerät, das der Händler für
+   * abgemeldet hält.
+   *
+   * `tresorIstGeschrieben` wartet auf die Kette, nicht auf einen einzelnen
+   * Zug — auch ein gleichzeitiges Anmelden wäre dann durch.
+   */
+  await tresorIstGeschrieben();
   useSessionStore.getState().setUnauthenticated();
   useLedgerFeed.getState().clear();
   useRecents.getState().clear();

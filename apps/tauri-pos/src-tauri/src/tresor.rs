@@ -671,3 +671,81 @@ mod tests {
         let _ = std::fs::remove_dir_all(&ort);
     }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  DAS SITZUNGSMERKMAL — aus dem Browserspeicher in den Tresor (22.08.2026)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// ── BASELS ANWEISUNG ──────────────────────────────────────────────────────
+//
+// Wörtlich: „انقله ضروري لـ OS Keychain. نبي هنا أقصى درجات الأمان وبمستوى
+// البنوك." Das Sitzungsmerkmal gehört in die Schlüsselverwaltung des
+// Betriebssystems, mit der höchsten Stufe.
+//
+// ── WAS VORHER WAR, UND WAS ES WIRKLICH BEDEUTET ──────────────────────────
+//
+// Das Merkmal lag in `localStorage` unter `w14.session-token`. Die Datei
+// `session-token.ts` trug den Vermerk selbst: „SECURITY (go-live TODO)".
+//
+// Zwei Dinge folgen daraus, und beide sind ernst:
+//
+//   • RUHEND AUF DER PLATTE. Der Speicher der Webansicht ist eine gewöhnliche
+//     Datei im Benutzerprofil, unverschlüsselt. Wer das Gerät in die Hand
+//     bekommt oder eine Sicherung des Profils liest, hat das Merkmal — ohne
+//     die Kasse je zu starten und ohne den Kassencode zu kennen.
+//   • JEDES SKRIPT IM FENSTER. `localStorage` ist für jedes Stück JavaScript
+//     im selben Ursprung lesbar.
+//
+// ── ⚠️ WAS DIESER SCHRITT NICHT LEISTET, EHRLICH GESAGT ───────────────────
+//
+// Ein Träger-Merkmal MUSS zur Laufzeit im Fenster liegen, sonst kann die
+// Kasse keine Anfrage stellen. Ein Angreifer, der IN DIESEM AUGENBLICK Code
+// im Fenster ausführt, kommt weiterhin an den laufenden Wert. Das ist der
+// Preis eines Träger-Merkmals und wäre nur durch gebundene Merkmale zu
+// beheben — eine ganz andere Bauweise.
+//
+// Was der Schritt WIRKLICH nimmt: das Merkmal liegt nicht mehr RUHEND und
+// lesbar auf der Platte. Es überlebt keinen Profilzugriff, keine Sicherung
+// des Benutzerordners und keinen Blick in die Entwicklerwerkzeuge nach dem
+// Schliessen. Das ist die Stufe, die zählt, wenn ein Gerät verlorengeht.
+//
+// ── WARUM EIN EIGENES FACH UND NICHT DAS BÜNDEL ───────────────────────────
+//
+// Die vier Geheimnisse im Bündel sind FÜR IMMER: geht der Kundenschlüssel
+// verloren, sind die Kundendaten unlesbar. Das Sitzungsmerkmal ist das
+// Gegenteil — es wird bei jeder Anmeldung neu geschrieben und beim Abmelden
+// gelöscht. Es in dasselbe Fach zu legen hiesse, das Unersetzliche bei jeder
+// Anmeldung anzufassen.
+const SITZUNGSFACH: &str = "NORNS_SITZUNG";
+
+/// Das Sitzungsmerkmal aus dem Tresor, oder `None`, wenn keines liegt.
+///
+/// ⚠️ Ein stummer Tresor gibt hier `None` und KEINEN Fehler. Wer sich nicht
+/// anmelden kann, weil die Schlüsselverwaltung klemmt, sieht sonst einen
+/// Fehler statt des Anmeldebildes. `None` heisst „bitte anmelden", und das
+/// ist in jedem Fall richtig.
+#[tauri::command]
+pub fn sitzung_lesen() -> Option<String> {
+    lies_fach_genau(SITZUNGSFACH).ok().flatten()
+}
+
+/// Das Sitzungsmerkmal schreiben, oder mit `None` löschen.
+///
+/// ⚠️ DIESER BEFEHL MELDET FEHLER, im Gegensatz zum Lesen. Ein Schreiben,
+/// das scheitert, heisst: die Anmeldung überlebt den Neustart nicht. Ein
+/// LÖSCHEN, das scheitert, ist schwerer — dann bliebe ein gültiges Merkmal
+/// nach dem Abmelden liegen. Beides muss die Fläche erfahren können.
+#[tauri::command]
+pub fn sitzung_schreiben(merkmal: Option<String>) -> Result<(), String> {
+    let fach = keyring::Entry::new(DIENST, SITZUNGSFACH).map_err(|e| e.to_string())?;
+    match merkmal {
+        Some(wert) => fach.set_password(&wert).map_err(|e| e.to_string()),
+        None => match fach.delete_credential() {
+            Ok(()) => Ok(()),
+            // Nichts zu löschen ist der Erfolgsfall, nicht der Fehlerfall:
+            // Abmelden ohne vorherige Anmeldung darf nicht scheitern.
+            Err(keyring::Error::NoEntry) => Ok(()),
+            Err(e) => Err(e.to_string()),
+        },
+    }
+}

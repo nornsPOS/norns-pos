@@ -351,6 +351,10 @@ pub fn run() {
             lizenz::lizenz_freigabe,
             lizenz::lizenz_einloesen,
             sicherung::sicherung_jetzt,
+            // 22.08.2026, Basels Anweisung: das Sitzungsmerkmal wohnt in der
+            // Schluesselverwaltung des Betriebssystems, nicht im Browserspeicher.
+            tresor::sitzung_lesen,
+            tresor::sitzung_schreiben,
             // Mandate 1 — image compression
             commands::image::compress_to_webp,
             // Mandate 2-A — TSE (Fiskaly Cloud)
