@@ -155,6 +155,11 @@ const NACHZUEGLER = [
   // der lieber ein Ding als einen Zettel verwahrt. MUSS auf BESTEHENDE
   // Kassen: genau dort ist der Kassencode schon gesetzt und vergessbar.
   '0152_der_rettungsstick_bekommt_seinen_platz.sql',
+  // 22.08.2026, Basels Anweisung: die fuenf Webshop-Tische ohne einen
+  // einzigen Aufrufer ziehen aus, und `erase_customer` wird im selben Zug
+  // neu gesetzt — sonst scheitert JEDER Loeschantrag danach an einer
+  // Tabelle, die es nicht mehr gibt.
+  '0153_der_webshop_zieht_auch_mit_seinen_tischen_aus.sql',
 ];
 
 const melde = (s) => process.stderr.write(`[norns-sidecar] ${s}\n`);

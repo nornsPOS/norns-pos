@@ -1,24 +1,16 @@
 /**
- * carts + cart_items — B2C basket + items (Day 19).
+ * carts — der Reservierungskorb der Kasse (Day 19).
+ *
+ * ⚰️ 22.08.2026: hiess „carts + cart_items". Die Stuecktabelle ist mit
+ * Wanderung 0153 ausgezogen; `carts` selbst traegt den Abholweg und bleibt.
  *
  * State machine: ACTIVE → CHECKOUT (15-min window) → CONVERTED (payment ok)
  *                                                    or ABANDONED (sweeper)
  */
 
 import { sql } from 'drizzle-orm';
-import {
-  check,
-  index,
-  integer,
-  numeric,
-  pgTable,
-  text,
-  timestamp,
-  uniqueIndex,
-  uuid,
-} from 'drizzle-orm/pg-core';
+import { check, index, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
-import { products } from '../products/products.js';
 import { transactions } from '../transactions/transactions.js';
 import { cartStatus } from './enums.js';
 import { shoppers } from './shoppers.js';
@@ -72,32 +64,17 @@ export const carts = pgTable(
   }),
 );
 
-export const cartItems = pgTable(
-  'cart_items',
-  {
-    id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
-    cartId: uuid('cart_id')
-      .notNull()
-      .references(() => carts.id),
-    productId: uuid('product_id')
-      .notNull()
-      .references(() => products.id),
-    unitPriceEur: numeric('unit_price_eur', { precision: 18, scale: 2 }).notNull(),
-    quantity: integer('quantity').notNull().default(1),
-    addedAt: timestamp('added_at', { withTimezone: true }).notNull().default(sql`now()`),
-  },
-  (table) => ({
-    cartIdx: index('cart_items_cart_idx').on(table.cartId),
-    oneProductPerCart: uniqueIndex('cart_items_one_product_per_cart').on(
-      table.cartId,
-      table.productId,
-    ),
-    quantityPositive: check('cart_items_quantity_positive', sql`${table.quantity} > 0`),
-    pricesNonNegative: check('cart_items_price_nonneg', sql`${table.unitPriceEur} >= 0`),
-  }),
-);
+/*
+ * ⚰️ 22.08.2026 (Wanderung 0153): hier stand `cartItems`, der Warenkorb des
+ * Webshops. Gemessen ueber `apps/api-cloud/src`, `apps/tauri-pos/src` und
+ * alle Pakete: NULL Aufrufer. Basels Anweisung: „اقتلعها وتخلص منها … نبي
+ * قاعدة بيانات نظيفة وخفيفة تركز 100% على الكاشير بس".
+ *
+ * ⚠️ `carts` daneben bleibt und ist LEBENDIG — der Reservierungsweg der
+ * Kasse haengt daran (`transactions-finalize.ts`, `products-detail.ts`,
+ * `autoReleaseExpired.ts`). Wer hier „Webshop" liest und beide mitnimmt,
+ * reisst die Abholung heraus.
+ */
 
 export type Cart = typeof carts.$inferSelect;
 export type NewCart = typeof carts.$inferInsert;
-export type CartItem = typeof cartItems.$inferSelect;
-export type NewCartItem = typeof cartItems.$inferInsert;
