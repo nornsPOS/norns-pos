@@ -10,7 +10,26 @@
  * sha256, and binds a kyc_documents row. The document number stays
  * `encrypt_pii` (the PII red line — untouched).
  *
- * Both routes: requireAuth + requireRole('ADMIN') + requireStepUp — identity
+ * ⚰️ 22.08.2026: hier stand „Both routes: … + requireStepUp". Der Satz wurde
+ * geschrieben, als es zwei Wege gab — die beiden LOESCHwege. Es sind vier,
+ * und die zwei juengeren tragen den Geraetecode BEWUSST nicht.
+ *
+ * ⚠️ UND DIESER SATZ IST EINE FALLE, KEINE UNGENAUIGKEIT. Ich bin am
+ * 22.08. selbst hineingelaufen: gemessen „zwei von vier Wegen ohne
+ * Step-Up", die Zusammenfassung des Bildwegs versprach ihn, also habe ich
+ * ihn eingebaut — und `code-nur-fuer-unwiderrufliches.guard` wurde ROT.
+ *
+ * Basels Entscheidung vom 05.08.2026, woertlich: „مرة عند الفتح، وثانية فقط
+ * عند الأفعال التي لا تُلغى" — einmal beim Oeffnen, ein zweites Mal NUR bei
+ * Handlungen, die sich nicht widerrufen lassen. Der Code stand vorher an
+ * 47 Endpunkten; wer einen Vormittag arbeitete, tippte ihn ein Dutzend Mal.
+ *
+ * Deshalb steht der Geraetecode hier vor dem LOESCHEN (unwiderruflich) und
+ * nicht vor dem Ansehen oder Ablegen. Wer das aendern will, aendert eine
+ * Entscheidung des Haendlers, nicht einen Mangel.
+ *
+ * Alle vier: requireAuth + requireRole('ADMIN'). Die beiden Loeschwege
+ * zusaetzlich requireStepUp — identity
  * capture AND viewing an Ausweis are owner-sensitive. The image is NEVER public
  * (not in PUBLIC_PATH_PATTERNS); the view serves with Cache-Control: no-store.
  * Audit_log carries a REDACTED payload — never the plaintext document number.
@@ -131,7 +150,10 @@ const customerKycDocumentsRoute: FastifyPluginAsync<CustomerKycDocumentsOpts> = 
         description:
           'Compresses + EXIF-strips the image, AES-256-GCM-encrypts it to a local file, ' +
           'computes the SHA-256, and creates a kyc_documents row with the encrypted document ' +
-          'number. ADMIN-only + step-up REQUIRED. The image is NEVER public.',
+          // ⚰️ 22.08.2026: sagte „step-up REQUIRED". Das Ablegen ist keine
+          // unwiderrufliche Handlung; der Geraetecode steht hier bewusst
+          // nicht (Basels Entscheidung vom 05.08.2026).
+          'number. ADMIN-only. The image is NEVER public.',
         params: Type.Object({ id: Type.String({ format: 'uuid' }) }),
         body: KycDocumentBody,
         response: {
@@ -422,7 +444,11 @@ const customerKycDocumentsRoute: FastifyPluginAsync<CustomerKycDocumentsOpts> = 
     {
       schema: {
         tags: ['customers'],
-        summary: 'View a customer KYC ID-document image (ADMIN + step-up, never public).',
+        // ⚰️ 22.08.2026: sagte „ADMIN + step-up". Der Weg hat keinen
+        // Step-Up und soll keinen haben (siehe Kopf der Datei). Eine
+        // Zusammenfassung, die einen Riegel behauptet, den es nicht gibt,
+        // laedt zum „Beheben" in die falsche Richtung ein.
+        summary: 'View a customer KYC ID-document image (ADMIN only, never public).',
         params: Type.Object({
           id: Type.String({ format: 'uuid' }),
           docId: Type.String({ format: 'uuid' }),

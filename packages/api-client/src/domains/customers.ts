@@ -217,7 +217,10 @@ export interface CustomerUpdateResponse {
 }
 
 // ────────────────────────────────────────────────────────────────────────
-// POST /api/customers/:id/kyc-documents (Day 12 — closes #I-47, step-up)
+// POST /api/customers/:id/kyc-documents (Day 12 — closes #I-47)
+// ⚰️ 22.08.2026: hier stand „step-up". Der Motor verlangt ihn hier NICHT und
+// soll es nicht — der Gerätecode steht nur vor Unwiderruflichem (Basels
+// Entscheidung vom 05.08.2026). Der Vermerk ließ das Gegenteil vermuten.
 // ────────────────────────────────────────────────────────────────────────
 
 export type KycDocumentType =
