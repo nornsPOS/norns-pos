@@ -91,9 +91,74 @@ pub fn parse_mt_sics(raw: &str) -> HwResult<WeightReading> {
         )));
     }
 
+    // Token 3 ist die EINHEIT, und bis zum 22.08.2026 hat sie niemand gelesen.
+    pruefe_einheit(tokens.next(), line)?;
+
     Ok(WeightReading {
         grams: value.to_string(),
     })
+}
+
+/// ═══════════════════════════════════════════════════════════════════════════
+///  ⛔ DIE EINHEIT WAR DAS UNGELESENE VIERTE WORT
+/// ═══════════════════════════════════════════════════════════════════════════
+///
+/// ── DER BEFUND VOM 22.08.2026 ──────────────────────────────────────────────
+///
+/// Eine MT-SICS-Antwort lautet `S S      14.50 g` — Kennung, Zustand, Wert,
+/// EINHEIT. Der Leser prüfte Kennung und Zustand peinlich genau (`D`, `I`,
+/// `+`, `-` haben je einen eigenen Fehler) und bewahrte sogar die
+/// Nachkommastellen als Zeichenkette. Das vierte Wort las er nie. Das Feld
+/// heisst `grams`, und das ganze Haus rechnet damit in Gramm.
+///
+/// ⚠️ EINE JUWELIERWAAGE IST GENAU DIE WAAGE, DIE UMGESTELLT WIRD. Waagen
+/// dieser Bauart können nach Karat (ct), Feinunze (ozt), Pennyweight (dwt),
+/// Unze (oz) oder Kilogramm wiegen, und bei Edelmetall und Steinen ist das
+/// der übliche Gebrauch, nicht die Ausnahme.
+///
+/// Was das am Ankaufstisch heisst, wenn niemand die Einheit liest:
+///
+/// ```text
+/// Karat (1 ct = 0,2 g)      „14,50" sind 2,9 g, gebucht als 14,50 g
+///                           → Basel zahlt das FÜNFFACHE.
+/// Feinunze (1 ozt ≈ 31,1 g) „1,00" sind 31,1 g, gebucht als 1 g
+///                           → der Verkäufer bekommt ein Dreissigstel.
+/// ```
+///
+/// ⚠️ Der Block trägt `text`: ohne ihn hält Rust eine eingerückte Zeile in
+/// einem `///`-Kommentar für RUST und übersetzt sie als Doku-Probe. Genau
+/// daran ist der volle Lauf zuerst gescheitert.
+///
+/// Und keine Zahl sieht dabei falsch aus. Das ist die gefährlichste Form:
+/// nicht falsch, sondern STILL.
+///
+/// ── ⚠️ WARUM HIER NICHT UMGERECHNET WIRD ───────────────────────────────────
+///
+/// Der naheliegende Weg wäre eine Umrechnungstabelle. Er wird bewusst NICHT
+/// gegangen: dann hinge der Ankaufpreis an Faktoren, die hier niemand gegen
+/// ein echtes Gerät messen kann, und ein falscher Faktor wäre wieder ein
+/// stiller Geldfehler. Ein klarer Halt mit dem Namen der gemeldeten Einheit
+/// kann nicht still danebenliegen, und die Waage auf Gramm zu stellen ist
+/// eine einmalige Handgriff am Gerät.
+///
+/// Wer später eine Tabelle nachrüsten will, hat mit dieser Funktion genau
+/// EINE Stelle dafür — und sollte sie gegen ein echtes Gerät messen.
+///
+/// ── UND WARUM EINE FEHLENDE EINHEIT DURCHGEHT ──────────────────────────────
+///
+/// Der Norm nach steht die Einheit immer da. Fehlt sie trotzdem, ist damit
+/// NICHT bewiesen, dass die Waage falsch steht — nur, dass sie schweigt. Eine
+/// Waage abzulehnen, die heute richtig arbeitet, wäre ein erfundener Fehler.
+/// Abgelehnt wird, was NACHWEISLICH nicht Gramm ist.
+fn pruefe_einheit(einheit: Option<&str>, line: &str) -> HwResult<()> {
+    let Some(roh) = einheit else { return Ok(()) };
+    let e = roh.trim().to_ascii_lowercase();
+    if e == "g" || e == "gram" || e == "grams" || e == "gramm" {
+        return Ok(());
+    }
+    Err(HardwareError::Device(format!(
+        "Die Waage wiegt in {roh:?}, nicht in Gramm ({line:?}). Der Ankaufpreis          wird je Gramm gerechnet; eine andere Einheit als Gramm zu buchen waere          ein stiller Geldfehler. Bitte die Waage auf Gramm umstellen."
+    )))
 }
 
 /// True iff `raw` is a well-formed Dynamic (`S D …`) reply. The transport loop
@@ -286,6 +351,29 @@ mod tests {
         assert!(!is_dynamic_reply("S I"));
         assert!(!is_dynamic_reply("garbage line"));
         assert!(!is_dynamic_reply(""));
+    }
+
+    #[test]
+    fn lehnt_karat_und_feinunze_ab() {
+        // ⛔ 22.08.2026: bis heute gingen beide durch und wurden als GRAMM
+        // gebucht. Karat waere das Fuenffache, Feinunze ein Dreissigstel.
+        let karat = parse_mt_sics("S S      14.50 ct").expect_err("ct must not pass");
+        assert!(format!("{karat:?}").contains("Gramm"), "{karat:?}");
+        assert!(parse_mt_sics("S S       1.00 ozt").is_err());
+        assert!(parse_mt_sics("S S       1.00 oz").is_err());
+        assert!(parse_mt_sics("S S       0.50 kg").is_err());
+        assert!(parse_mt_sics("S S      10.00 dwt").is_err());
+    }
+
+    #[test]
+    fn nimmt_gramm_in_jeder_schreibweise() {
+        assert_eq!(parse_mt_sics("S S 14.50 g").expect("g").grams, "14.50");
+        assert_eq!(parse_mt_sics("S S 14.50 G").expect("G").grams, "14.50");
+        assert_eq!(parse_mt_sics("S S 14.50 gram").expect("gram").grams, "14.50");
+        // Fehlt die Einheit ganz, ist NICHT bewiesen, dass die Waage falsch
+        // steht. Eine heute richtig arbeitende Waage abzulehnen waere ein
+        // erfundener Fehler.
+        assert_eq!(parse_mt_sics("S S 14.50").expect("ohne Einheit").grams, "14.50");
     }
 
     #[test]

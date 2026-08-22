@@ -3182,7 +3182,7 @@ dependencies = [
 
 [[package]]
 name = "norns-pos"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "aes-gcm",
  "base64 0.22.1",
