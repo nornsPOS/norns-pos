@@ -1,6 +1,6 @@
 {
   "name": "@norns/tauri-pos",
-  "version": "0.7.3",
+  "version": "0.7.4",
   "private": true,
   "type": "module",
   "description": "Warehouse14 cashier-floor POS — Tauri 2 + React 18 + Vite. Runs on the salon counter (21\" touchscreen, single-operator).",
