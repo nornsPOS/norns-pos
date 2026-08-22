@@ -153,7 +153,12 @@ pub fn parse_mt_sics(raw: &str) -> HwResult<WeightReading> {
 fn pruefe_einheit(einheit: Option<&str>, line: &str) -> HwResult<()> {
     let Some(roh) = einheit else { return Ok(()) };
     let e = roh.trim().to_ascii_lowercase();
-    if e == "g" || e == "gram" || e == "grams" || e == "gramm" {
+    // ⚠️ `gr` steht bewusst mit drin. MT-SICS schreibt `g`, aber Geraete am
+    // Markt melden auch `gr`, und das meint zweifelsfrei Gramm (Gran hiesse
+    // `GN`). Zu streng zu sein hiesse hier: Basels Ankauf steht still, mit
+    // einer Meldung ueber eine Einheit, die in Wahrheit die richtige ist.
+    // Ein Fehlalarm an dieser Stelle kostet den Verkaufstag.
+    if e == "g" || e == "gr" || e == "gram" || e == "grams" || e == "gramm" {
         return Ok(());
     }
     Err(HardwareError::Device(format!(
@@ -370,6 +375,7 @@ mod tests {
         assert_eq!(parse_mt_sics("S S 14.50 g").expect("g").grams, "14.50");
         assert_eq!(parse_mt_sics("S S 14.50 G").expect("G").grams, "14.50");
         assert_eq!(parse_mt_sics("S S 14.50 gram").expect("gram").grams, "14.50");
+        assert_eq!(parse_mt_sics("S S 14.50 gr").expect("gr").grams, "14.50");
         // Fehlt die Einheit ganz, ist NICHT bewiesen, dass die Waage falsch
         // steht. Eine heute richtig arbeitende Waage abzulehnen waere ein
         // erfundener Fehler.
